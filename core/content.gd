@@ -1,0 +1,138 @@
+extends RefCounted
+## All content and balance numbers.
+## Originality guard: every entry carries a `note` on why it is roulette-specific.
+## Before adding an item, check it is not a reskin of a Balatro joker, enhancement or seal.
+## `unlock`: Marker cost in the Pawn Shop (0 = available from the first run).
+
+# --- Run structure ------------------------------------------------------------------
+const NIGHTS := 4
+const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
+const NIGHT_BASE := [8, 20, 45, 80]     ## Take target of each night's Floor table
+const TABLE_MULT := [1.0, 1.4, 1.8]      ## Floor / High Roller / Enforcer
+const SPINS := 6
+const START_STACK := 25                 ## betting chips handed out at each table
+const START_CASH := 4
+const CLEAR_CASH := [3, 4, 6]            ## base cash for clearing each table type
+const CASH_PER_SPIN_LEFT := 1
+const COMPS_PER := 5                     ## +$1 per $5 held when a table clears...
+const COMPS_MAX := 5                     ## ...up to $5
+const RELIC_SLOTS := 5
+const REROLL_BASE := 2
+const STACK_UPGRADE := 5                 ## +betting chips per stack upgrade
+const STACK_UPGRADE_PRICE := 5
+const RELOCATE_PRICE := 2
+const SELL_SHARE := 0.5
+
+# --- Effect numbers -------------------------------------------------------------------
+const LINK_SHARE := 0.25
+const RED_STREAK_STEP := 0.10
+const RENT_CONTROL_CUT := 0.10
+const WILDCARD_BONUS := 6.0
+const HOT_HAND_MULT := 3.0
+const SIGNATURE_RANGE := 3
+const SIGNATURE_BONUS := 0.5
+const ZERO_TAX := 0.10
+
+# --- Meta ------------------------------------------------------------------------------
+const DEBT_START := 1000000
+const DEBT_PER_TAKE := 100               ## each point of Take pays $100 of the marker
+const MARKERS_PER_NIGHT := 1
+const MARKERS_VICTORY := 3
+
+# --- Chips (permanent; bought in the shop, placed at a table) -------------------------
+const CHIPS := {
+	"perm": {"name": "Permanent", "desc": "Stays on the felt for the whole run. Pays its odds into your Take whenever it hits.",
+		"price": 4, "unlock": 0, "any_bet": true,
+		"note": "The core idea: a bet that is never collected."},
+	"magnet": {"name": "Magnet", "desc": "If the ball lands one grid square away, it slides onto the winner.",
+		"price": 6, "unlock": 0,
+		"note": "Uses the physical 3xN felt layout only a roulette table has."},
+	"compounding": {"name": "Compounding", "desc": "+1 value every spin.",
+		"price": 6, "unlock": 0,
+		"note": "'Let it ride' on a bet nobody ever collects."},
+	"croupier": {"name": "Croupier", "desc": "When it hits, +1 Take for each betting chip that lost this spin.",
+		"price": 5, "unlock": 0,
+		"note": "The rake sweeping the losers off the layout, paid to you."},
+	"wildcard_zero": {"name": "Wildcard Zero", "desc": "Sits on a zero. When any zero hits: outside bets push and +6 Take.",
+		"price": 6, "unlock": 0, "zero_only": true,
+		"note": "Targets the green pockets, the literal source of the house edge."},
+	"mint": {"name": "Mint", "desc": "+$1 every spin, hit or miss.",
+		"price": 5, "unlock": 0,
+		"note": "A comp from the pit for staying at the table."},
+	"respin": {"name": "Respin", "desc": "When it hits, +1 spin at this table.",
+		"price": 6, "unlock": 0,
+		"note": "Buys time against the payment clock."},
+	"ledger": {"name": "Ledger", "desc": "When it hits, +1 value to your permanent chips on adjacent squares.",
+		"price": 6, "unlock": 2,
+		"note": "Growth spreads along felt neighbours, the same geometry splits and corners use."},
+	"collector": {"name": "Collector", "desc": "When it hits, +1 Take per value of your other chips in its dozen or column.",
+		"price": 6, "unlock": 2,
+		"note": "Pays off roulette's own groupings when you crowd them."},
+}
+const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zero", "mint", "respin", "ledger", "collector"]
+
+# --- Felt upgrades -------------------------------------------------------------------
+## target: "number" (any pocket) or "outside" (column/dozen)
+const UPGRADES := {
+	"gilded": {"name": "Gilded Number", "desc": "Straight bets here pay +1/7 more (35:1 becomes 40:1).", "target": "number",
+		"price": 6, "unlock": 0, "note": "Rewrites a printed payout on the felt."},
+	"hot": {"name": "Hot Column/Dozen", "desc": "+1x payout on this column or dozen.", "target": "outside",
+		"price": 6, "unlock": 0, "note": "Turns a 2:1 outside box into 3:1."},
+	"link": {"name": "Neighbour Link", "desc": "When this number hits, your chips on adjacent squares pay 25% of a straight.", "target": "number",
+		"price": 6, "unlock": 0, "note": "A 'neighbours' call bet made physical on the layout."},
+	"double_felt": {"name": "Double Felt", "desc": "Chips on this number score double.", "target": "number",
+		"price": 7, "unlock": 0, "note": "Thick felt for a favourite number."},
+	"pinned": {"name": "Pinned Pocket", "desc": "When this number hits, call bets (Voisins/Tiers/Orphelins) score double.", "target": "number",
+		"price": 6, "unlock": 2, "note": "Ties the felt to the wheel: a pocket that anchors its sector."},
+}
+
+# --- House Rules (relics) ---------------------------------------------------------------
+const HOUSE_RULES := {
+	"la_partage": {"name": "La Partage", "desc": "On a zero, losing even-money bets return half to your stack.",
+		"price": 6, "unlock": 0, "note": "A real French-table rule."},
+	"red_streak": {"name": "Red Streak", "desc": "Each consecutive red adds +10% to that spin's Take.",
+		"price": 7, "unlock": 0, "note": "Plays on the gambler's belief in streaks; the odds stay fair."},
+	"rent_control": {"name": "Rent Control", "desc": "Every payment due is 10% smaller.",
+		"price": 8, "unlock": 0, "note": "Haggling with the Owner over the vig."},
+	"thirteen": {"name": "Thirteen", "desc": "13 is cursed and pays nothing; its grid neighbours score double.",
+		"price": 6, "unlock": 0, "note": "Superstition around a specific number on the layout."},
+	"en_prison": {"name": "En Prison", "desc": "On a zero, losing even-money bets stay on the felt for the next spin.",
+		"price": 6, "unlock": 2, "note": "A real French-table rule: the bet is 'imprisoned'."},
+	"hot_hand": {"name": "Hot Hand", "desc": "If the ball repeats the last number, that spin's Take is tripled.",
+		"price": 8, "unlock": 3, "note": "Every roulette player has seen a number hit twice."},
+	"dealer_signature": {"name": "Dealer's Signature", "desc": "Hits within 3 wheel pockets of the last ball score +50%.",
+		"price": 7, "unlock": 3, "note": "The myth that a croupier's throw lands in the same sector."},
+}
+
+# --- Unlockable table features --------------------------------------------------------------
+const FEATURES := {
+	"call_bets": {"name": "Call Bets", "desc": "Adds Voisins, Tiers and Orphelins to the felt: bets on arcs of the wheel.",
+		"unlock": 2, "note": "Real French call bets; finally makes wheel order matter."},
+}
+
+# --- Enforcers (boss tables) -----------------------------------------------------------------
+const ENFORCERS := {
+	"accountant": {"name": "The Accountant", "rule": "no_outside",
+		"desc": "Outside bets are off the books: they can't be placed and don't pay.",
+		"intro": "Mr. Vance doesn't like round numbers. Inside bets only tonight.",
+		"defeat": "...The ledger balances. For now."},
+	"oro": {"name": "Madame Oro", "rule": "zero_tax",
+		"desc": "Every zero costs you 10% of the Take you've built.",
+		"intro": "Green is my favourite colour, darling. Every time it comes up, I take a cut.",
+		"defeat": "Lucky. Luck doesn't last in this building."},
+	"vic": {"name": "Vic \"The Rake\"", "rule": "frozen",
+		"desc": "Your biggest permanent chip is frozen and pays nothing this table.",
+		"intro": "Nice stack. Be a shame if it couldn't move.",
+		"defeat": "Vance is gonna hear about this."},
+	"sal": {"name": "Big Sal", "rule": "called",
+		"desc": "Every 3rd spin is called: you can't place new bets on it.",
+		"intro": "I call the spins at my table. You just watch.",
+		"defeat": "Huh. Didn't call that one."},
+}
+
+
+static func targets_for(night: int) -> Array:
+	var out := []
+	for m in TABLE_MULT:
+		out.append(int(round(NIGHT_BASE[mini(night, NIGHT_BASE.size() - 1)] * m)))
+	return out

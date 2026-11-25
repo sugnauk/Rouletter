@@ -1,0 +1,290 @@
+extends Control
+## The Cage: the cashier's window between tables. Tokens on the velvet counter are for sale;
+## the felt on the right is where you place, move or sell your permanent chips.
+
+const P := preload("res://scenes/ui/palette.gd")
+const Art := preload("res://scenes/ui/art.gd")
+const Board := preload("res://core/board.gd")
+const Content := preload("res://core/content.gd")
+const RunState := preload("res://core/run_state.gd")
+const FeltView := preload("res://scenes/ui/felt_view.gd")
+const Token := preload("res://scenes/ui/token_button.gd")
+
+const CAGE := Rect2(8, 28, 288, 150)
+
+var main
+var cage_view: Control
+var counter: HBoxContainer
+var service_box: HBoxContainer
+var desc_title: Label
+var desc_body: Label
+var next_lbl: Label
+var felt_view
+var mode_box: HBoxContainer
+var rack: HFlowContainer
+var status_lbl: Label
+var mode := "place"
+var selected_item := -1
+var board_id := ""
+var t := 0.0
+
+
+func setup() -> void:
+	cage_view = Control.new()
+	cage_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	P.place(cage_view, Vector2.ZERO, Vector2(640, 360))
+	cage_view.draw.connect(_draw_cage)
+	add_child(cage_view)
+	counter = HBoxContainer.new()
+	counter.add_theme_constant_override("separation", 14)
+	P.place(counter, Vector2(CAGE.position.x + 14, CAGE.position.y + 62))
+	add_child(counter)
+	service_box = HBoxContainer.new()
+	service_box.add_theme_constant_override("separation", 6)
+	P.place(service_box, Vector2(8, 184))
+	add_child(service_box)
+	var dp := Panel.new()
+	dp.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.WOOD, 1))
+	P.place(dp, Vector2(8, 252), Vector2(288, 64))
+	add_child(dp)
+	desc_title = P.label(dp, "", P.FONT, P.GOLD)
+	P.place(desc_title, Vector2(6, 4))
+	desc_body = P.label(dp, "Hover something on the counter.", P.FONT_SMALL, P.CREAM)
+	desc_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	P.place(desc_body, Vector2(6, 18), Vector2(276, 44))
+	next_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
+	next_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	P.place(next_lbl, Vector2(8, 320), Vector2(200, 36))
+	var nb := P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
+	nb.add_theme_stylebox_override("normal", P.box(Color("#b8862b"), P.BLACK, 1))
+	nb.add_theme_stylebox_override("hover", P.box(Color("#d9a63c"), P.CREAM, 1))
+	for s in ["font_color", "font_hover_color", "font_pressed_color"]:
+		nb.add_theme_color_override(s, P.WOOD_DARK)
+	P.place(nb, Vector2(212, 322))
+
+	felt_view = FeltView.new()
+	P.place(felt_view, Vector2(304, 32))
+	felt_view.bet_clicked.connect(_on_felt)
+	felt_view.bet_hovered.connect(func(k): status_lbl.text = felt_view.describe(k) if k != "" else _hint())
+	add_child(felt_view)
+	P.place(P.label(self, "YOUR CHIPS", P.FONT_SMALL, P.DIM), Vector2(304, 152))
+	mode_box = HBoxContainer.new()
+	mode_box.add_theme_constant_override("separation", 4)
+	P.place(mode_box, Vector2(304, 164))
+	add_child(mode_box)
+	for m in [["place", "PLACE"], ["move", "MOVE $%d" % Content.RELOCATE_PRICE], ["sell", "SELL"]]:
+		var b := P.button(mode_box, m[1], _set_mode.bind(m[0]), Vector2(70, 16), P.FONT_SMALL)
+		b.toggle_mode = true
+		b.set_meta("mode", m[0])
+	P.place(P.label(self, "RACK", P.FONT_SMALL, P.DIM), Vector2(304, 188))
+	rack = HFlowContainer.new()
+	rack.add_theme_constant_override("h_separation", 4)
+	rack.add_theme_constant_override("v_separation", 4)
+	P.place(rack, Vector2(304, 198), Vector2(330, 0))
+	add_child(rack)
+	status_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
+	status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	P.place(status_lbl, Vector2(304, 300), Vector2(330, 50))
+
+
+func _process(delta: float) -> void:
+	if visible:
+		t += delta
+		cage_view.queue_redraw()
+
+
+func _draw_cage() -> void:
+	var c := cage_view
+	var run = main.run
+	var font := P.title_font()
+	# Header plaque.
+	Art.plaque(c, Rect2(8, 3, 150, 20))
+	Art.text(c, font, Vector2(83, 17), "THE CAGE", 8, P.CREAM, true)
+	Art.icon(c, "cash", Vector2(176, 13), 1)
+	Art.text(c, font, Vector2(186, 18), "$%d" % run.cash, 16, P.GOLD)
+	# The cashier's window: wood frame, dark interior, a lamp, brass bars, velvet counter.
+	var w := CAGE
+	c.draw_rect(w.grow(4), P.WOOD_DARK)
+	c.draw_rect(w.grow(2), P.WOOD)
+	c.draw_rect(w, Color("#0d0907"))
+	for i in range(4):
+		c.draw_circle(Vector2(w.get_center().x, w.position.y + 6), 60.0 - i * 14.0, Color(1, 0.8, 0.4, 0.03 + i * 0.01), true, -1.0, false)
+	c.draw_rect(Rect2(w.get_center().x - 1, w.position.y, 2, 6), P.GOLD.darkened(0.3))
+	Art.text(c, P.font(), Vector2(w.get_center().x, w.position.y + 22), "CASHIER", 8, P.GOLD.darkened(0.2), true)
+	# Counter.
+	var counter_r := Rect2(w.position.x, w.position.y + 54, w.size.x, w.size.y - 54)
+	c.draw_rect(counter_r, Color("#5c1020"))
+	for x in range(int(counter_r.position.x), int(counter_r.end.x), 3):
+		c.draw_rect(Rect2(x, counter_r.position.y, 1, counter_r.size.y), Color("#4a0c19"))
+	c.draw_rect(Rect2(counter_r.position, Vector2(counter_r.size.x, 3)), P.WOOD)
+	# Bars stop at the counter so the tokens sit in front of them.
+	for x in range(int(w.position.x) + 8, int(w.end.x), 18):
+		c.draw_rect(Rect2(x, w.position.y, 2, 54), P.GOLD.darkened(0.35))
+		c.draw_rect(Rect2(x, w.position.y, 1, 54), P.GOLD.lightened(0.1))
+	c.draw_rect(Rect2(w.position.x, w.position.y + 30, w.size.x, 2), P.GOLD.darkened(0.35))
+
+
+func _hint() -> String:
+	if main.run.shop.get("pending_upgrade", "") != "":
+		return "Click a glowing spot on the felt to lay your %s." % Content.UPGRADES[main.run.shop.pending_upgrade].name
+	match mode:
+		"move":
+			return "Click one of your chips on the felt to pick it up ($%d), then place it again." % Content.RELOCATE_PRICE
+		"sell":
+			return "Click one of your chips on the felt to sell it for half its price."
+	return "Pick a chip from your rack, then click the felt to place it."
+
+
+func _describe(title: String, body: String) -> void:
+	desc_title.text = title
+	desc_body.text = body
+
+
+func _set_mode(m: String) -> void:
+	mode = m
+	selected_item = -1
+	Sfx.play("click")
+	refresh()
+
+
+func _next() -> void:
+	if main.run.leave_shop():
+		Sfx.play("click")
+		main.route()
+	else:
+		status_lbl.text = "Lay your upgrade first."
+
+
+func refresh() -> void:
+	var run = main.run
+	if run.phase != RunState.Phase.SHOP:
+		return
+	var bid: String = run.wheel_id + str(run.has_feature("call_bets"))
+	if felt_view.run != run or board_id != bid:
+		felt_view.run = run
+		felt_view.layout()
+		board_id = bid
+	for ch in counter.get_children():
+		ch.queue_free()
+	for i in range(run.shop.stock.size()):
+		var item: Dictionary = run.shop.stock[i]
+		var tok = Token.new(item.id, Vector2(52, 62))
+		tok.price = "SOLD" if item.sold else "$%d" % item.price
+		tok.dim = item.sold or run.cash < item.price
+		tok.disabled = item.sold
+		var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE"}[item.type]
+		tok.hover_target = func(_s): _describe("%s  -  %s  $%d" % [run.item_name(item), tag, item.price], run.item_desc(item))
+		tok.pressed.connect(_buy.bind(i))
+		counter.add_child(tok)
+	for ch in service_box.get_children():
+		ch.queue_free()
+	var rr = Token.new("reroll", Vector2(40, 44))
+	rr.price = "$%d" % run.shop.reroll
+	rr.dim = run.cash < run.shop.reroll
+	rr.hover_target = func(_s): _describe("Reroll  $%d" % run.shop.reroll, "New stock on the counter. Gets $1 pricier each time.")
+	rr.pressed.connect(func():
+		if run.reroll():
+			Sfx.play("buy")
+			main.fx.burst(Vector2(152, 110), 14, [P.GOLD, P.CREAM]))
+	service_box.add_child(rr)
+	var sb = Token.new("stack", Vector2(40, 44))
+	sb.price = "$%d" % run.stack_price()
+	sb.dim = run.cash < run.stack_price()
+	sb.hover_target = func(_s): _describe("Bigger Stack  $%d" % run.stack_price(), "+%d betting chips at every table from now on (you have %d)." % [Content.STACK_UPGRADE, run.stack_size])
+	sb.pressed.connect(func():
+		if run.buy_stack():
+			Sfx.play("buy"))
+	service_box.add_child(sb)
+	var rules := P.label(service_box, "", P.FONT_SMALL, P.DIM)
+	rules.custom_minimum_size = Vector2(190, 44)
+	rules.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var rl := []
+	for r in run.felt.house_rules:
+		rl.append(Content.HOUSE_RULES[r].name)
+	rules.text = "HOUSE RULES %d/%d\n%s" % [rl.size(), Content.RELIC_SLOTS, ", ".join(rl) if not rl.is_empty() else "none yet"]
+	var nxt := "NEXT: Night %d %s - pay %d" % [run.night + 1, run.table_name(), run.current_target()]
+	if run.table_idx == 2:
+		var e: Dictionary = Content.ENFORCERS[run.night_enforcer()]
+		nxt += "\n%s: %s" % [e.name, e.desc]
+	next_lbl.text = nxt
+	next_lbl.add_theme_color_override("font_color", P.DANGER if run.table_idx == 2 else P.CREAM)
+	for b in mode_box.get_children():
+		b.button_pressed = b.get_meta("mode") == mode
+	felt_view.targets = run.upgrade_targets()
+	felt_view.queue_redraw()
+	_refresh_rack()
+	status_lbl.text = _hint()
+	cage_view.queue_redraw()
+
+
+func _refresh_rack() -> void:
+	for c in rack.get_children():
+		c.queue_free()
+	var inv: Array = main.run.inventory
+	if selected_item >= inv.size():
+		selected_item = -1
+	if inv.is_empty():
+		P.label(rack, "(nothing to place)", P.FONT_SMALL, P.DIM)
+	for i in range(inv.size()):
+		var item: Dictionary = inv[i]
+		var tok = Token.new(item.kind, Vector2(25, 25))
+		tok.badge = "x%d" % item.value if item.value > 1 else ""
+		tok.selected = i == selected_item
+		tok.hover_target = func(_s): status_lbl.text = "%s: %s" % [Content.CHIPS[item.kind].name, Content.CHIPS[item.kind].desc]
+		tok.pressed.connect(_select.bind(i))
+		rack.add_child(tok)
+
+
+func _select(i: int) -> void:
+	selected_item = -1 if selected_item == i else i
+	mode = "place"
+	Sfx.play("click")
+	refresh()
+
+
+func _buy(i: int) -> void:
+	var run = main.run
+	var item: Dictionary = run.shop.stock[i]
+	if run.buy(i):
+		Sfx.play("buy")
+		main.fx.burst(counter.global_position + Vector2(26 + i * 66, 30), 18, [P.GOLD, P.CREAM, P.chip_color(item.id)])
+		if item.type == "chip":
+			selected_item = run.inventory.size() - 1
+			mode = "place"
+		elif item.type == "rule":
+			main.fx.banner(Content.HOUSE_RULES[item.id].name.to_upper(), P.GOLD, 1.0, 120, 8)
+		refresh()
+	else:
+		_describe("Can't buy that", "Not enough cash, or your House Rule slots are full.")
+
+
+func _on_felt(key: String, button: int) -> void:
+	var run = main.run
+	if button != MOUSE_BUTTON_LEFT or main.dialogue.is_open():
+		return
+	if run.shop.pending_upgrade != "":
+		if run.apply_upgrade(key):
+			felt_view.flash(key)
+			main.fx.burst(felt_view.global_position + felt_view.key_center(key), 20, [P.CYAN, P.GOLD, P.CREAM])
+			Sfx.play("chip_place")
+		return
+	if selected_item >= 0:
+		if run.place_chip(selected_item, key):
+			selected_item = -1
+			felt_view.pop(key)
+			main.fx.burst(felt_view.global_position + felt_view.key_center(key), 10, [P.GOLD, P.CREAM], 60.0)
+			Sfx.play("chip_place")
+		else:
+			status_lbl.text = "That chip can't go there."
+		return
+	var mine: Array = run.felt.chips_on(key).filter(func(c): return not c.is_bet())
+	if mine.is_empty():
+		return
+	if mode == "move" and run.pick_up(mine[0].id):
+		selected_item = run.inventory.size() - 1
+		mode = "place"
+		Sfx.play("chip_remove")
+		refresh()
+	elif mode == "sell" and run.sell_chip(mine[0].id):
+		main.fx.burst(felt_view.global_position + felt_view.key_center(key), 12, [P.GOLD])
+		Sfx.play("cash")
