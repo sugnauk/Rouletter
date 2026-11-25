@@ -31,21 +31,26 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	# The 640x360 design is centred; the wall and floor run on past it to fill any extra window space.
+	var off := ((size - Vector2(640, 360)) / 2.0).floor()
+	draw_set_transform(off)
+	var ex := off.x + 16.0
+	var ey := off.y + 16.0
 	var wall := Color("#140d0f")
-	draw_rect(Rect2(0, 0, 640, 360), wall)
+	draw_rect(Rect2(-off.x, -off.y, size.x, 300 + off.y), wall)
 	# Damask diamonds.
 	var pat := wall.lightened(0.05)
-	for y in range(0, 300, 16):
-		for x in range(0, 640, 16):
-			var o := 8 if (y / 16) % 2 == 1 else 0
+	for y in range(-int(ceil(ey / 16.0)) * 16, 300, 16):
+		for x in range(-int(ceil(ex / 16.0)) * 16, 640 + int(ex), 16):
+			var o := 8 if posmod(y / 16, 2) == 1 else 0
 			var c := Vector2(x + o, y + 8)
 			draw_rect(Rect2(c - Vector2(1, 3), Vector2(2, 6)), pat)
 			draw_rect(Rect2(c - Vector2(3, 1), Vector2(6, 2)), pat)
 	# Wainscot and floor.
-	draw_rect(Rect2(0, 300, 640, 60), Color("#1d120c"))
-	draw_rect(Rect2(0, 300, 640, 2), P.WOOD)
-	for x in range(0, 640, 40):
-		draw_rect(Rect2(x + 4, 308, 32, 46), Color("#24170f"))
+	draw_rect(Rect2(-off.x, 300, size.x, 60 + off.y), Color("#1d120c"))
+	draw_rect(Rect2(-off.x, 300, size.x, 2), P.WOOD)
+	for x in range(-int(ceil(off.x / 40.0)) * 40, 640 + int(off.x), 40):
+		draw_rect(Rect2(x + 4, 308, 32, 46 + off.y), Color("#24170f"))
 	# Lamplight pools (banded, like dithered 16-bit lighting).
 	for l in lamps:
 		for i in range(5):

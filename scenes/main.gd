@@ -22,6 +22,7 @@ const SCREENS := {
 
 var run
 var profile
+var frame: Control  ## the fixed 640x360 play area, centred in whatever window we get
 var stage: Control
 var screens: Dictionary = {}
 var current: String = ""
@@ -45,9 +46,15 @@ func _ready() -> void:
 		run = RunState.new()
 		profile = Profile.new()
 	add_child(Backdrop.new())
+	frame = Control.new()
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.size = Vector2(640, 360)
+	add_child(frame)
+	resized.connect(_recenter)
+	_recenter()
 	stage = Control.new()
 	stage.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(stage)
+	frame.add_child(stage)
 	for k in SCREENS:
 		var s: Control = SCREENS[k].new()
 		s.set("main", self)
@@ -57,9 +64,9 @@ func _ready() -> void:
 		s.call("setup")
 		screens[k] = s
 	fx = FxLayer.new()
-	add_child(fx)
+	frame.add_child(fx)
 	dialogue = DialogueBox.new()
-	add_child(dialogue)
+	frame.add_child(dialogue)
 	crt = CanvasLayer.new()
 	crt.layer = 10
 	var rect := ColorRect.new()
@@ -74,6 +81,10 @@ func _ready() -> void:
 	run.table_cleared.connect(_on_table_cleared)
 	run.run_ended.connect(_on_run_ended)
 	show_screen("title")
+
+
+func _recenter() -> void:
+	frame.position = ((size - Vector2(640, 360)) / 2.0).floor()
 
 
 func _on_run_changed() -> void:
