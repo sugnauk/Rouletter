@@ -299,7 +299,7 @@ func _draw_gauges(c: Control) -> void:
 	for ti in range(towers):
 		var in_tower := mini(10, stack - ti * 10)
 		for j in range(in_tower):
-			Art.chip(c, Vector2(56 + ti * 19, 112 - j * 3), 7.0, Art.denom_color(1) if (j % 5) != 4 else P.RED)
+			Art.chip(c, Vector2(56 + ti * 19, 112 - j * 3), 7.0, Art.denom_color(1))
 	if stack == 0:
 		Art.text(c, font, Vector2(56, 100), "EMPTY", 8, P.DANGER)
 
