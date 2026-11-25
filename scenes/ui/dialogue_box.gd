@@ -21,8 +21,11 @@ func _ready() -> void:
 	visible = false
 	var shade := ColorRect.new()
 	shade.color = Color(0, 0, 0, 0.45)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Huge so it also covers the extra space around the 640x360 frame on wide/tall windows.
+	shade.position = Vector2(-4000, -4000)
+	shade.size = Vector2(8640, 8360)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.gui_input.connect(_gui_input)
 	add_child(shade)
 	panel = Panel.new()
 	panel.add_theme_stylebox_override("panel", P.box(P.PANEL, P.GOLD, 2))
