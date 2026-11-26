@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -291,6 +291,7 @@ func test_odds() -> void:
 func new_run(wheel := "european", seed := 42):
 	var run = RunState.new()
 	run.start_run(seed, wheel, Profile.default_unlocks())
+	run.table_offer = []   # most tests skip the free pick; test_free_chips covers it
 	return run
 
 
@@ -929,19 +930,10 @@ func test_pinned_clear() -> void:
 
 
 func test_cage_decisions() -> void:
-	# Opening pick: after the first table, three free items from different directions.
 	var run = new_run()
 	run.place_bet("S17", 1)
 	run.spin(17)
-	check(run.phase == RunState.Phase.SHOP and run.shop.offer.size() == 3, "opening pick offers three items")
-	var dirs := {}
-	for o in run.shop.offer:
-		dirs[o.dir] = true
-	check(dirs.size() == 3, "...each from a different build direction")
-	var inv: int = run.inventory.size()
-	var first: Dictionary = run.shop.offer[0]
-	check(run.take_offer(0) and run.shop.offer.is_empty(), "taking one closes the offer")
-	check(run.inventory.size() == inv + 1 or first.id in run.felt.house_rules, "...and grants it")
+	check(run.phase == RunState.Phase.SHOP and run.shop.get("offer", []).is_empty(), "the Cage no longer has its own opening pick")
 	# Early clear: cleared on the first ball with spins to spare.
 	check(run.shop.bonus.size() == 3, "early clear offers a bonus choice")
 	var c0: int = run.cash
@@ -1082,7 +1074,6 @@ func test_table_variety() -> void:
 	# Routes.
 	check(r6.shop.get("routes", []).size() == 2, "a route choice before the High Roller")
 	check(r6.pick_route("back_room") and r6.shop.routes.is_empty(), "pick a route")
-	r6.take_offer(0) if not r6.shop.offer.is_empty() else null
 	r6.inventory = []
 	r6.leave_shop()
 	check(r6.table.spins_left <= 5 and r6.table.route == "back_room", "the Back Room is a short table")
@@ -1207,6 +1198,54 @@ func test_stacking_twins() -> void:
 	check(kc2.copies == 2 and run.sell_chip(kc2.id) and run.cash == c0 + int(Content.CHIPS.kingmaker.price * 2 * Content.SELL_SHARE), "selling a stack refunds both chips")
 
 
+func test_free_chips() -> void:
+	var run = RunState.new()
+	run.start_run(11, "european", Profile.default_unlocks())
+	check(run.table_offer.size() == 3, "the first table opens with a free pick of three chips")
+	var dirs := {}
+	for o in run.table_offer:
+		dirs[o.dir] = true
+		check(o.type == "chip" and o.id != "perm", "free picks are special chips (%s)" % o.id)
+	check(dirs.size() == 3, "...from three different build directions")
+	var d: Dictionary = run.to_dict()
+	var back = RunState.new()
+	check(back.from_dict(d) and back.table_offer.size() == 3, "the offer survives a save")
+	d.erase("table_offer")
+	check(RunState.new().from_dict(d), "old saves without it still load")
+	var inv: int = run.inventory.size()
+	var picked: String = run.table_offer[1].id
+	check(run.take_table_offer(1) and run.table_offer.is_empty() and run.inventory.back().kind == picked and run.inventory.size() == inv + 1, "taking one puts it in the rack")
+	check(not run.take_table_offer(0), "only one pick per table")
+	run.inventory = []
+	run.place_bet("S17", 1)
+	run.table.take = run.table.target
+	run.spin(17)
+	run.leave_shop()
+	check(run.table_offer.size() == 3, "the next table offers a fresh pick")
+	run.place_bet("S17", 1)
+	run.spin(5)
+	check(run.table_offer.is_empty(), "spinning passes on the pick")
+	var nz = RunState.new()
+	nz.start_run(3, "no_zero", Profile.default_unlocks())
+	check(not nz.table_offer.any(func(o): return Content.CHIPS[o.id].get("zero_only", false)), "no zero chips on a wheel without a zero")
+	var fr = RunState.new()
+	fr.start_run(3, "european", Profile.default_unlocks(), 1, 0, {"challenge": "fence_run"})
+	check(fr.table_offer.is_empty(), "no free picks in the Fence's Run")
+	# The Cage: three chips at the Cashier, plain Permanents now rare.
+	var perms := 0
+	var total := 0
+	run.shop.vendors = ["cashier", "fence"]
+	for i in range(50):
+		run._restock()
+		var chips: Array = run.shop.stock.filter(func(it): return it.type == "chip" and it.vendor == "cashier")
+		check(chips.size() == Content.CASHIER_CHIPS, "the Cashier stocks 3 chips")
+		for it in run.shop.stock:
+			if it.type == "chip":
+				total += 1
+				perms += 1 if it.id == "perm" else 0
+	check(float(perms) / total < 0.3, "plain Permanents are rare in the Cage (%d of %d)" % [perms, total])
+
+
 func test_new_rules() -> void:
 	var zt = felt("european", [["bet", "RED", 4]])
 	zt.house_rules.append("zero_tolerance")
@@ -1257,7 +1296,7 @@ func test_shop() -> void:
 	check(run.shop.vendors.size() == 2 and run.shop.vendors[0] == "cashier", "the Cashier plus one rotating vendor")
 	run.shop.vendors = ["cashier", "pit_boss"]
 	run._restock()
-	check(run.shop.stock.size() == 5, "Cashier (2 chips + upgrade) and Pit Boss (2 rules)")
+	check(run.shop.stock.size() == 6, "Cashier (3 chips + upgrade) and Pit Boss (2 rules)")
 	var up_i := -1
 	for i in range(run.shop.stock.size()):
 		if run.shop.stock[i].type == "upgrade":

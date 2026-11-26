@@ -428,9 +428,16 @@ func _build_windows(run) -> void:
 		groups[v] = []
 	for i in range(run.shop.stock.size()):
 		groups[run.shop.stock[i].vendor].append(i)
-	const TOK := Vector2(46, 62)
-	const SEP := 6.0
 	const GAP := 8.0
+	# Tokens shrink (46 wide down to 36) when a busy counter wouldn't otherwise fit the Cage.
+	var n_tok := 0
+	for v in run.shop.vendors:
+		n_tok += maxi(1, groups[v].size())
+	var nv: int = run.shop.vendors.size()
+	var SEP := 6.0 if n_tok <= 5 else 4.0
+	var tw: float = floor((CAGE.size.x - (n_tok - nv) * SEP - 16.0 * nv - GAP * (nv - 1)) / n_tok)
+	tw = clampf(tw, 36.0, 46.0)
+	var TOK := Vector2(tw, round(tw * 62.0 / 46.0))
 	var widths := []
 	var total := 0.0
 	for v in run.shop.vendors:
@@ -448,7 +455,7 @@ func _build_windows(run) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", int(SEP))
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		P.place(row, Vector2(r.position.x, r.position.y + 62), Vector2(r.size.x, TOK.y))
+		P.place(row, Vector2(r.position.x, r.position.y + 62 + (62.0 - TOK.y) / 2.0), Vector2(r.size.x, TOK.y))
 		counter.add_child(row)
 		if groups[v].is_empty():
 			P.label(row, "SOLD OUT", P.FONT_SMALL, P.DIM)

@@ -64,6 +64,8 @@ var hits := 0                    ## scoring events this spin (the combo counter)
 var shown_cash := -1.0           ## HUD cash, counted up toward run.cash
 var zoom_bg: ColorRect            ## dims the table while the felt is zoomed for touch betting
 var zoomed := false
+var offer_panel: Panel = null   ## the free pick-1-of-3 chip at the start of each table
+var offer_key := ""
 var pinned: Dictionary = {}      ## bet keys that survive Clear (Alt-click to pin)
 const ZOOM := 1.8
 var count                        ## the spin count-up (table_count.gd)
@@ -279,6 +281,76 @@ func _on_hover(k: String) -> void:
 	felt_view.queue_redraw()
 
 
+## The free special chip waiting at the start of every table: three to choose from, over the
+## score panel so the felt stays visible for hover previews.
+func _refresh_offer(run) -> void:
+	var key: String = "" if run.table_offer.is_empty() else "%s|%s" % [table_key, str(run.table_offer.map(func(o): return o.id))]
+	if key == offer_key:
+		return
+	offer_key = key
+	if offer_panel != null:
+		offer_panel.queue_free()
+		offer_panel = null
+	if key == "":
+		return
+	offer_panel = Panel.new()
+	offer_panel.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.97), P.GOLD, 1))
+	P.place(offer_panel, Vector2(MID_X, 184), Vector2(330, 170))
+	add_child(offer_panel)
+	var title := P.label(offer_panel, "ON THE HOUSE: PICK A CHIP", P.FONT, P.GOLD)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	P.place(title, Vector2(0, 8), Vector2(330, 12))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	P.place(row, Vector2(0, 28), Vector2(330, 100))
+	offer_panel.add_child(row)
+	for i in range(run.table_offer.size()):
+		var o: Dictionary = run.table_offer[i]
+		var spec: Dictionary = Content.CHIPS[o.id]
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 2)
+		col.custom_minimum_size = Vector2(90, 0)
+		row.add_child(col)
+		var h := P.label(col, Content.DIRECTIONS[o.dir].to_upper(), P.FONT_SMALL, P.CYAN)
+		h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var tok = Token.new(o.id, Vector2(46, 46))
+		tok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tok.rarity = Content.rarity_of(o.id)
+		tok.hover_target = func(_s):
+			_status("%s: %s" % [spec.name, spec.desc])
+			felt_view.preview = {}
+			if Preview.absolute_trigger(o.id):
+				for p in Preview.pays_on(run.felt, o.id, Preview.rep_key(run.felt, o.id)):
+					felt_view.preview[Board.straight_key(p)] = P.CYAN
+			felt_view.queue_redraw()
+		tok.hover_exit = func():
+			felt_view.preview = {}
+			felt_view.queue_redraw()
+		tok.pressed.connect(func():
+			if run.take_table_offer(i):
+				main.profile.note_seen(o.id)
+				main.profile.note_used(o.id)
+				selected_item = run.inventory.size() - 1
+				felt_view.preview = {}
+				Sfx.play("buy")
+				main.fx.burst(main.fx.local(tok.global_position + tok.size / 2.0), 24, [P.GOLD, P.CREAM, P.CYAN], 120.0)
+				refresh()
+				_status("%s: click the felt to place it." % spec.name))
+		col.add_child(tok)
+		var n := P.label(col, spec.name, P.FONT_SMALL, P.CREAM)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		n.custom_minimum_size = Vector2(90, 0)
+	var sub := P.label(offer_panel, "A free chip at every table.", P.FONT_SMALL, P.DIM)
+	P.place(sub, Vector2(8, 150))
+	var sk := P.button(offer_panel, "No thanks", func():
+		run.skip_table_offer()
+		Sfx.play("click")
+		refresh(), Vector2(64, 16), P.FONT_SMALL)
+	P.place(sk, Vector2(258, 148))
+
+
 ## Gold rings on the bets that could pay the rest of the table in one hit.
 func _mark_clearing() -> void:
 	var run = main.run
@@ -383,9 +455,10 @@ func refresh() -> void:
 	spin_btn.disabled = spinning or run.phase != RunState.Phase.TABLE
 	clear_btn.disabled = spinning or run.phase != RunState.Phase.TABLE or run.is_called_spin() or not _has_bets()
 	undo_btn.disabled = spinning or run.phase != RunState.Phase.TABLE or bet_history.is_empty()
-	spin_btn.text = "CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN")
+	spin_btn.text = "PICK A CHIP" if not run.table_offer.is_empty() else ("CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN"))
 	_refresh_tokens()
 	_mark_clearing()
+	_refresh_offer(run)
 	if t.boss:
 		var e: Dictionary = Content.ENFORCERS[t.enforcer]
 		boss_panel.visible = true
@@ -768,6 +841,10 @@ func _on_spin() -> void:
 	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
 		return
 	_unzoom()
+	if not run.table_offer.is_empty():
+		_status("Pick your free chip first (or No thanks).")
+		Sfx.play("click")
+		return
 	if run.has_unplaced_chips():
 		_status("Place the chips in your rack before you spin.")
 		if selected_item < 0:

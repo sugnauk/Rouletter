@@ -26,6 +26,7 @@ var phase: int = Phase.TABLE
 var unlocked: Array = []
 var cash: int = 0
 var inventory: Array = []        ## unplaced permanent chips: {kind, value}
+var table_offer: Array = []      ## the free pick-1-of-3 special chip waiting at this table
 var stack_size: int = Content.START_STACK
 var stack_buys: int = 0
 var stack_owed: int = 0        ## betting chips owed to the Pit Boss, docked at the next table
@@ -149,7 +150,7 @@ static func parse_seed(text: String) -> int:
 
 
 ## Saved too, but optional, so saves from before they existed still load.
-const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": ""}
+const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": []}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
 	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade", "used_outside"]
@@ -162,7 +163,8 @@ func to_dict() -> Dictionary:
 		var v = get(k)
 		d[k] = v.duplicate(true) if (v is Dictionary or v is Array) else v
 	for k in OPTIONAL_FIELDS:
-		d[k] = get(k)
+		var ov = get(k)
+		d[k] = ov.duplicate(true) if ov is Array else ov
 	return d
 
 
@@ -176,7 +178,8 @@ func from_dict(d: Dictionary) -> bool:
 		var v = d[k]
 		set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
 	for k in OPTIONAL_FIELDS:
-		set(k, d.get(k, OPTIONAL_FIELDS[k]))
+		var ov = d.get(k, OPTIONAL_FIELDS[k])
+		set(k, ov.duplicate(true) if ov is Array else ov)
 	rng.set_state(d.rng)
 	felt = FeltState.from_dict(d.felt)
 	last_result = {}
@@ -369,6 +372,8 @@ func _start_table() -> void:
 		message += " The Pit Boss takes %d chips off your stack." % table.docked
 	if table.loan > 0.0:
 		message += " The Loan Shark's cut: +%d%% on this payment." % int(round(table.loan * 100))
+	# Every table opens with a free special chip to pick (not in the Fence's Run).
+	table_offer = [] if challenge == "fence_run" else _opening_offer(true)
 	changed.emit()
 
 
@@ -544,6 +549,7 @@ func expected_value() -> Dictionary:
 func spin(forced_pocket: int = -99) -> Dictionary:
 	if phase != Phase.TABLE:
 		return {}
+	table_offer = []   # spinning passes on the free pick (the table screen asks first)
 	var pockets: Array = felt.board.pockets
 	var pocket: int = forced_pocket if forced_pocket != -99 else pockets[rng.range_i(0, pockets.size() - 1)]
 	if not is_called_spin():
@@ -723,9 +729,6 @@ func _open_shop(info: Dictionary = {}) -> void:
 	# Before the Enforcer: sometimes someone in the Cage has an offer.
 	if table_idx == 2 and rng.chance(Content.EVENT_CHANCE):
 		shop.event = rng.pick(Content.EVENTS.keys())
-	# After the very first table: a free pick from three different build directions.
-	if night == 0 and table_idx == 1:
-		shop.offer = _opening_offer()
 	# Cleared with balls to spare: choose a bonus.
 	if info.get("bonus_pick", false):
 		var fav: String = rng.pick(Content.FAVOURS.keys())
@@ -784,7 +787,8 @@ func next_table_detail() -> String:
 
 
 ## Three free items, each pointing the build a different way.
-func _opening_offer() -> Array:
+## chips_only: just special chips (the per-table pick), never the plain Permanent.
+func _opening_offer(chips_only: bool = false) -> Array:
 	var out := []
 	var dirs: Array = rng.shuffle(Content.DIRECTIONS.keys())
 	for d in dirs:
@@ -792,11 +796,14 @@ func _opening_offer() -> Array:
 			break
 		var pool := []
 		for k in Content.CHIPS:
+			if chips_only and (k == "perm" or (Content.CHIPS[k].get("zero_only", false) and felt.board.zeros.is_empty())):
+				continue
 			if (k in unlocked or k == "perm") and d in Content.tags_of(k):
 				pool.append(k)
-		for k in Content.HOUSE_RULES:
-			if k in unlocked and d in Content.tags_of(k) and not felt.has_rule(k):
-				pool.append(k)
+		if not chips_only:
+			for k in Content.HOUSE_RULES:
+				if k in unlocked and d in Content.tags_of(k) and not felt.has_rule(k):
+					pool.append(k)
 		pool = pool.filter(func(k): return not out.any(func(o): return o.id == k))
 		if pool.is_empty():
 			continue
@@ -819,6 +826,20 @@ func take_offer(i: int) -> bool:
 	shop.offer = []
 	changed.emit()
 	return true
+
+
+func take_table_offer(i: int) -> bool:
+	if phase != Phase.TABLE or i < 0 or i >= table_offer.size():
+		return false
+	inventory.append({"kind": table_offer[i].id, "value": 1})
+	table_offer = []
+	changed.emit()
+	return true
+
+
+func skip_table_offer() -> void:
+	table_offer = []
+	changed.emit()
 
 
 func skip_offer() -> void:
@@ -995,6 +1016,17 @@ func _restock() -> void:
 	shop.stock = stock
 
 
+## One chip for a shop slot: mostly special chips, now and then a plain Permanent (for levelling).
+func _shop_chip() -> String:
+	var pool := []
+	for k in Content.CHIPS:
+		if k in unlocked and k != "perm":
+			pool.append(k)
+	if pool.is_empty() or rng.chance(Content.PERM_CHANCE):
+		return "perm"
+	return _pick_rare(pool)
+
+
 ## Pick by rarity: common items show up more often than rare and legendary ones.
 func _pick_rare(ids: Array):
 	var w := []
@@ -1008,12 +1040,8 @@ func _vendor_stock(v: String) -> Array:
 	var cur: String = Content.VENDORS[v].currency
 	match v:
 		"cashier":
-			var chips := ["perm"]
-			for k in Content.CHIPS:
-				if k in unlocked:
-					chips.append(k)
-			for i in range(2):
-				var k: String = _pick_rare(chips)
+			for i in range(Content.CASHIER_CHIPS):
+				var k: String = _shop_chip()
 				out.append({"type": "chip", "id": k, "price": Content.CHIPS[k].price})
 			var ups := []
 			for k in Content.UPGRADES:
@@ -1047,12 +1075,8 @@ func _vendor_stock(v: String) -> Array:
 			for l in Content.LOANS:
 				out.append({"type": "loan", "id": "loan", "price": l.cash, "pct": l.pct})
 		"fence":
-			var chips := ["perm"]
-			for k in Content.CHIPS:
-				if k in unlocked:
-					chips.append(k)
 			for i in range(2):
-				var k: String = _pick_rare(chips)
+				var k: String = _shop_chip()
 				out.append({"type": "chip", "id": k, "flaw": rng.pick(Content.FLAWS.keys()),
 					"price": maxi(1, int(ceil(Content.CHIPS[k].price * Content.FENCE_SHARE)))})
 	for item in out:

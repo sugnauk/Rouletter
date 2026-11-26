@@ -10,7 +10,7 @@ const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
 const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
 const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
 ## Take target of each night's first table (nights 5-8 are Act II only).
-const NIGHT_BASE := [8, 21, 52, 96, 140, 195, 260, 340]
+const NIGHT_BASE := [9, 32, 105, 240, 330, 450, 600, 780]
 const TABLE_MULT := [1.0, 1.4, 1.8]      ## Floor / High Roller / Enforcer
 const SPINS := 6
 const START_STACK := 25                 ## betting chips handed out at each table
@@ -404,6 +404,8 @@ const EVENTS := {
 		"options": [["Take it", "A random chip, free, but HOT: lost the first time a zero hits."], ["Pass", "Leave it."]]},
 }
 const EVENT_CHANCE := 0.6
+const CASHIER_CHIPS := 3                ## chips on the Cashier's counter each visit
+const PERM_CHANCE := 0.15               ## chance a shop chip slot is a plain Permanent
 
 ## Named challenges: handcrafted runs with their own Feat (Act I, base marker).
 const CHALLENGES := {

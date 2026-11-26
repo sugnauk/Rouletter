@@ -3,6 +3,12 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.26
+- A free special chip at every table: before the first spin, pick one of three, each from a different build direction. It's never a plain Permanent. Hover to see what it does; picking it puts it in your rack to place. This replaces the one-off pick after the first table.
+- More to buy: the Cashier now stocks 3 chips. Plain Permanents are much rarer in the Cage (about 1 slot in 7, for levelling), so the counter is mostly special chips.
+- The Cage's tokens shrink a little when a busy counter needs the room.
+- Balance: payments from night 2 on are higher to match the extra chips. Night bases went from 8 / 21 / 52 / 96 to 9 / 32 / 105 / 240, and Act II scales the same way. Balance bot wins: French 35%, European 28%, Mini 40%.
+
 ## 0.0.25
 - Stacking a chip on its twin is never worse than owning the two apart. Each chip in a stack keeps its full effect:
   - Multipliers multiply per stacked chip: two Kingmakers stacked are x1.5 x1.5 = x2.25 (was x2.0). The same goes for Ace of Spades and Column Crown. Levels gained other ways (Echo, Ledger, growth) still add +0.5 / +0.25 each.

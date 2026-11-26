@@ -30,6 +30,8 @@ func _process(delta: float) -> void:
 		[2.1, func(): main.start_run("european")],
 		[2.3, func():
 			run.place_chip(0, "S30")
+			while not run.inventory.is_empty():
+				run.place_chip(0, "S8")
 			run.place_bet("S17", 5)
 			run.place_bet("DOZ2", 5)
 			run.place_bet("RED", 3)],
@@ -38,7 +40,11 @@ func _process(delta: float) -> void:
 			main.profile.settings.cb_marks = true
 			main.screens.table.pinned = {"RED": true}
 			main.screens.table.refresh()],
-		[2.6, func(): main.screens.table._zoom()],
+		[2.55, func(): shot("04s_table_offer")],
+		[2.6, func():
+			run.skip_table_offer()
+			main.screens.table.refresh()
+			main.screens.table._zoom()],
 		[2.8, func(): shot("04z_zoomed_felt")],
 		[2.85, func(): main.screens.table._unzoom()],
 		[2.92, func(): main.screens.table._on_hover("S17")],
