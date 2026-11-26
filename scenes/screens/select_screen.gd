@@ -16,6 +16,9 @@ var stat_lbl: Label
 var go_btn: Button
 var act_btn: Button
 var acts := 1
+var grade := 0
+var grade_box: HBoxContainer
+var grade_lbl: Button
 
 
 func setup() -> void:
@@ -59,11 +62,25 @@ func setup() -> void:
 	P.place(desc_lbl, Vector2(8, 26), Vector2(592, 40))
 	stat_lbl = P.label(panel, "", P.FONT_SMALL, P.DIM)
 	P.place(stat_lbl, Vector2(8, 80))
-	go_btn = P.button(self, "Deal me in", func(): main.start_run(selected, acts), Vector2(120, 24))
-	act_btn = P.button(self, "", _toggle_act, Vector2(170, 24))
-	P.place(act_btn, Vector2(326, 322))
+	go_btn = P.button(self, "Deal me in", func(): main.start_run(selected, acts, grade), Vector2(120, 24))
+	act_btn = P.button(self, "", _toggle_act, Vector2(166, 24))
+	P.place(act_btn, Vector2(334, 322))
+	# Marker grade (difficulty) picker, shown once you've won a run.
+	grade_box = HBoxContainer.new()
+	grade_box.add_theme_constant_override("separation", 2)
+	P.place(grade_box, Vector2(102, 322))
+	add_child(grade_box)
+	P.button(grade_box, "<", func(): _grade(-1), Vector2(22, 24))
+	grade_lbl = P.button(grade_box, "", func(): pass, Vector2(180, 24), P.FONT_SMALL)
+	P.button(grade_box, ">", func(): _grade(1), Vector2(22, 24))
 	P.place(go_btn, Vector2(504, 322))
 	P.place(P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 24)), Vector2(16, 322))
+
+
+func _grade(d: int) -> void:
+	grade = clampi(grade + d, 0, main.profile.max_grade())
+	Sfx.play("click")
+	refresh()
 
 
 func _toggle_act() -> void:
@@ -83,6 +100,9 @@ func refresh() -> void:
 	var prof = main.profile
 	if not prof.is_unlocked(selected):
 		selected = "french"
+	grade = clampi(grade, 0, prof.max_grade())
+	grade_box.visible = prof.max_grade() > 0
+	grade_lbl.text = "GRADE %d: %s" % [grade + 1, Content.GRADES[grade].name.to_upper()]
 	if not prof.act2_unlocked():
 		acts = 1
 	act_btn.visible = prof.act2_unlocked()
@@ -107,6 +127,11 @@ func refresh() -> void:
 		desc_lbl.text = d.desc + "  ACT II: eight nights, ending at the Owner's table."
 	elif acts == 3:
 		desc_lbl.text = d.desc + "  ENDLESS: the nights never stop; payments grow 30% a night past the eighth."
+	if grade > 0:
+		var tw := []
+		for g in range(1, grade + 1):
+			tw.append(Content.GRADES[g].name)
+		desc_lbl.text += "  GRADE %d marker ($%s): %s." % [grade + 1, P.money(int(round(Content.MARKER_ACT1 * (1.0 + Content.MARKER_GRADE_STEP * grade)))), ", ".join(tw)]
 	var edge_txt := "%.1f%%" % edge + (" (%.1f%% even-money)" % (edge / 2.0) if "la_partage" in d.rules else "")
 	stat_lbl.text = "%d pockets   house edge %s   payments x%.1f   start: $%d%s" % [
 		b.pockets.size(), edge_txt, d.get("target", 1.0),

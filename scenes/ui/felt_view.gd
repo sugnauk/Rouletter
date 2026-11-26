@@ -359,6 +359,18 @@ func _upgrade_color(up: String) -> Color:
 			return P.GOOD
 		"pinned":
 			return P.VIOLET
+		"diamond":
+			return Color("#9ad7ff")
+		"magnetized":
+			return P.RED
+		"twin_square", "spoke":
+			return P.CYAN.darkened(0.2)
+		"gold_trim", "lamp", "sweet_spot":
+			return P.GOLD
+		"fat_box", "repeat_box", "silk":
+			return Color("#c08ad8")
+		"lucky_colour":
+			return P.GOOD
 	return P.CREAM
 
 
@@ -388,6 +400,11 @@ func _outside_name(k: String) -> String:
 		var kind: String = {"split": "Split", "street": "Street", "corner": "Corner", "line": "Line"}[B.bet(k).type]
 		return "%s %s" % [kind, "/".join(names)]
 	return k.capitalize()
+
+
+## Centre of a bet area in global coordinates (respects zoom and the centred frame).
+func key_global(k: String) -> Vector2:
+	return get_global_transform() * key_center(k)
 
 
 ## Centre of a bet area in this control's coordinates (for FX).

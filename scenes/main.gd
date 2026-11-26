@@ -7,6 +7,7 @@ const DialogueBox := preload("res://scenes/ui/dialogue_box.gd")
 const Backdrop := preload("res://scenes/ui/backdrop.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
 const Transition := preload("res://scenes/ui/transition.gd")
+const PauseMenu := preload("res://scenes/ui/pause_menu.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
@@ -24,6 +25,7 @@ const SCREENS := {
 	"journal": preload("res://scenes/screens/journal_screen.gd"),
 	"options": preload("res://scenes/screens/options_screen.gd"),
 	"feats": preload("res://scenes/screens/feats_screen.gd"),
+	"credits": preload("res://scenes/screens/credits_screen.gd"),
 }
 
 var run
@@ -36,6 +38,8 @@ var dialogue
 var fx
 var crt: CanvasLayer
 var transition
+var pause
+var options_return := ""   ## screen the Options screen goes back to (when opened mid-run)
 var fast_ui := false
 var shake_t := 0.0
 var shake_amt := 0.0
@@ -78,6 +82,9 @@ func _ready() -> void:
 	frame.add_child(fx)
 	dialogue = DialogueBox.new()
 	frame.add_child(dialogue)
+	pause = PauseMenu.new()
+	pause.main = self
+	frame.add_child(pause)
 	crt = CanvasLayer.new()
 	crt.layer = 10
 	var rect := ColorRect.new()
@@ -89,6 +96,9 @@ func _ready() -> void:
 	crt.add_child(rect)
 	add_child(crt)
 	crt.visible = profile.settings.crt
+	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
+	Sfx.play_music.call_deferred("lounge")
+	get_tree().create_timer(4.0).timeout.connect(func(): Sfx.preload_track("enforcer"))
 	var tl := CanvasLayer.new()
 	tl.layer = 9
 	transition = Transition.new()
@@ -117,6 +127,7 @@ func show_screen(n: String) -> void:
 	screens[n].call("refresh")
 	if n == "table" or n == "shop":
 		save_run()
+	Sfx.play_music("enforcer" if n == "table" and not run.table.is_empty() and run.table.boss else "lounge")
 
 
 # --- Run saves: the run in progress is kept next to the profile ---------------------------
@@ -197,7 +208,13 @@ func route() -> void:
 				var intro: Dictionary = Story.VENDOR_INTROS.get(v, {})
 				if not intro.is_empty() and intro.id not in profile.seen_beats:
 					_queue_scene(intro)
-			go("shop", "THE CAGE", " and ".join(names) + " are open", P.GOLD)
+			if run.overflow > 0:
+				tip("spare")
+			if run.shop.stock.any(func(it): return it.get("flaw", "") != ""):
+				tip("flaw")
+			if run.shop.stock.any(func(it): return it.type in ["chip", "upgrade", "rule"] and Content.rarity_of(it.id) != "common"):
+				tip("rarity")
+			go("shop", "THE CAGE", " and ".join(names) + (" is open" if names.size() == 1 else " are open"), P.GOLD)
 		_:
 			if run.phase == RunState.Phase.VICTORY:
 				go("end", "THE OWNER FALLS" if run.acts == 2 else "PAID IN FULL", "The Floor Above is yours, for tonight" if run.acts == 2 else "Mr. Vance almost smiles", P.GOOD)
@@ -215,8 +232,9 @@ func begin_flow() -> void:
 		show_screen("select")
 
 
-func start_run(wheel: String, acts: int = 1) -> void:
-	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts)
+func start_run(wheel: String, acts: int = 1, grade: int = 0) -> void:
+	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts, mini(grade, profile.max_grade()))
+	run.new_player = profile.best_night == 0 and profile.wins == 0
 	run_feats = []
 	Sfx.play("click")
 	if Story.TUTORIAL.table.id not in profile.seen_beats:
@@ -250,6 +268,19 @@ func _on_table_cleared(info: Dictionary) -> void:
 			_queue_scene(Story.interlude(run.night + 1, profile))
 
 
+## Queue a one-time tip (Story.TIPS) if it hasn't been shown before.
+func tip(key: String, now: bool = false) -> void:
+	var t: Dictionary = Story.TIPS[key]
+	if t.id in profile.seen_beats:
+		return
+	if now:
+		profile.seen_beats.append(t.id)
+		save_profile()
+		say(t.lines)
+	else:
+		_queue_scene(t)
+
+
 ## Queue a story scene to play after the next loading card, and remember it for the Journal.
 func _queue_scene(scene: Dictionary) -> void:
 	if scene.is_empty():
@@ -264,7 +295,9 @@ func _on_run_ended(won: bool) -> void:
 	delete_saved_run()
 	check_feats("end", {"won": won})
 	var paid: int = run.marker_paid()
-	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid)
+	profile.add_history({"wheel": run.wheel_id, "acts": run.acts, "nights": run.nights_cleared,
+		"take": int(run.total_take), "best_spin": int(run.best_spin), "won": won, "grade": run.grade})
+	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid, run.grade)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
 		"paid": paid, "marker": run.marker_total(), "markers": res.markers, "feats": run_feats.duplicate(),
 		"best_spin": run.best_spin, "beaten": run.beaten.duplicate()}
@@ -297,16 +330,63 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_F2:
+		if event.keycode == KEY_ESCAPE and in_run() and not pause.visible and not dialogue.is_open():
+			open_pause()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_F2:
 			set_option("crt", not profile.settings.crt)
 		elif event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
 			toggle_fullscreen()
 
 
+# --- Pause menu ------------------------------------------------------------------------
+
+func in_run() -> bool:
+	return current in ["table", "shop"] and (run.phase == RunState.Phase.TABLE or run.phase == RunState.Phase.SHOP)
+
+
+func open_pause() -> void:
+	if current == "table" and screens.table.spinning:
+		return
+	pause.open()
+
+
+## Options, remembering where to go back to.
+func open_options(from_run: bool = false) -> void:
+	options_return = current if from_run else "title"
+	show_screen("options")
+
+
+func close_options() -> void:
+	var back := options_return if options_return != "" else "title"
+	options_return = ""
+	if back == "table" or back == "shop":
+		show_screen(back)
+	else:
+		show_screen("title")
+
+
+func reset_progress() -> void:
+	profile.reset()
+	delete_saved_run()
+	save_profile()
+
+
+func quit_to_title() -> void:
+	save_run()
+	go("title", "LAST ORDERS", "Your seat is kept for you", P.GOLD)
+
+
+func abandon_run() -> void:
+	if run.abandon():
+		route()
+
+
 ## Change one option, apply it straight away and save it.
-func set_option(key: String, value: bool) -> void:
+func set_option(key: String, value) -> void:
 	profile.settings[key] = value
 	crt.visible = profile.settings.crt
+	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
 	save_profile()
 	if screens.has(current) and screens[current].visible:
 		screens[current].call("refresh")

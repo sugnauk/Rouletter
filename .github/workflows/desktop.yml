@@ -1,0 +1,84 @@
+# Desktop builds (Windows / Linux / macOS).
+#  - On a push to main that changes the version (core/version.gd), the builds are attached to a
+#    GitHub Release tagged v<version>, with that version's CHANGELOG entry as the notes.
+#  - On a push to any other branch that touches the export presets or this workflow, the builds
+#    are made and uploaded as the run's "desktop-builds" artifact (to check they still export).
+#  - Can also be run by hand (Actions > Desktop builds > Run workflow).
+name: Desktop builds
+
+on:
+  push:
+    paths:
+      - core/version.gd
+      - export_presets.cfg
+      - .github/workflows/desktop.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot and export templates
+        run: |
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          chmod +x godot
+          tdir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$tdir"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          mv templates/* "$tdir/"
+          rm -rf templates *.zip *.tpz
+
+      - name: Import project
+        run: ./godot --headless --path . --import
+
+      - name: Read version
+        id: ver
+        run: echo "version=$(grep -oP 'const VERSION := "\K[^"]+' core/version.gd)" >> "$GITHUB_OUTPUT"
+
+      - name: Stamp build version
+        run: |
+          stamp="$(git rev-parse --short HEAD) $(date -u +'%Y-%m-%d %H:%M')Z"
+          sed -i "s|^const BUILD := .*|const BUILD := \"$stamp\"|" core/version.gd
+
+      - name: Export Windows, Linux and macOS
+        run: |
+          v="${{ steps.ver.outputs.version }}"
+          mkdir -p build/windows build/linux build/macos dist
+          ./godot --headless --path . --export-release "Windows Desktop" build/windows/Rouletter.exe
+          ./godot --headless --path . --export-release "Linux" build/linux/Rouletter.x86_64
+          ./godot --headless --path . --export-release "macOS" build/macos/Rouletter.zip
+          test -f build/windows/Rouletter.exe && test -f build/linux/Rouletter.x86_64 && test -f build/macos/Rouletter.zip
+          (cd build/windows && zip -q -r "../../dist/Rouletter-$v-windows.zip" .)
+          (cd build/linux && zip -q -r "../../dist/Rouletter-$v-linux.zip" .)
+          cp build/macos/Rouletter.zip "dist/Rouletter-$v-macos.zip"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-builds
+          path: dist/
+
+      - name: Publish GitHub Release (main only, once per version)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.ver.outputs.version }}"
+          if gh release view "v$v" > /dev/null 2>&1; then
+            echo "Release v$v already exists; skipping."
+            exit 0
+          fi
+          awk -v ver="## $v" '$0==ver{f=1;next} /^## /{if(f)exit} f' CHANGELOG.md > notes.md
+          gh release create "v$v" dist/* --title "Rouletter $v" --notes-file notes.md --target "$GITHUB_SHA"

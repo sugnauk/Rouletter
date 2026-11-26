@@ -47,6 +47,8 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 
 	var take := 0.0
 	var lost := 0
+	var biggest_loss := 0
+	var lost_chips := 0
 	var hits := []
 	for c in w.chips.duplicate():
 		var b: Dictionary = B.bet(c.bet)
@@ -81,8 +83,20 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				res.log.rules.append("La Partage: %d of %s bet returned" % [back, c.bet])
 				_event(res, "loss", c.bet, -(c.value - back), "half back")
 				_remove(res, w, c, "half")
+			elif zero_hit and w.has_rule("zero_tolerance"):
+				res.stack += c.value
+				res.log.rules.append("Zero Tolerance: %s bet goes back to the stack" % c.bet)
+				_event(res, "push", c.bet, 0.0, "zero tolerance")
+				_remove(res, w, c, "push")
+			elif w.bet_upgrades.get(c.bet, "") == "silk":
+				res.stack += c.value
+				res.log.upgrades.append("Silk Box: %s bet goes back to the stack" % c.bet)
+				_event(res, "push", c.bet, 0.0, "silk")
+				_remove(res, w, c, "push")
 			else:
 				lost += c.value
+				lost_chips += c.value
+				biggest_loss = maxi(biggest_loss, c.value)
 				_event(res, "loss", c.bet, -c.value, "")
 				_remove(res, w, c, "lost")
 			continue
@@ -123,6 +137,8 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 
 	# Chip effects.
 	var kings := []
+	var crowns := []
+	var aces := []
 	for c in hits:
 		match c.kind:
 			"bridge":
@@ -132,6 +148,30 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				_event(res, "bonus", c.bet, nb, "bridge")
 			"kingmaker":
 				kings.append(c.value)
+			"crown":
+				crowns.append(c.value)
+			"penny":
+				res.cash += Content.PENNY_CASH * c.value
+				res.log.chips.append("Lucky Penny: +$%d" % (Content.PENNY_CASH * c.value))
+				_event(res, "cash", c.bet, Content.PENNY_CASH * c.value, "penny")
+			"snowball":
+				_value(res, c, 2)
+				res.log.chips.append("Snowball on %s grows to %d" % [c.bet, c.value])
+			"jar":
+				if c.value > 1:
+					res.log.chips.append("Jackpot Jar on %s pays out and empties" % c.bet)
+					_value(res, c, 1 - c.value)
+			"echo":
+				for oc in w.perm_chips():
+					if oc.id != c.id:
+						_value(res, oc, 1)
+				res.log.chips.append("Echo: every other permanent chip gains a level")
+			"ace":
+				aces.append(c.value)
+			"signpost":
+				res.cash += Content.SIGNPOST_CASH * c.value
+				res.log.chips.append("Signpost: +$%d" % (Content.SIGNPOST_CASH * c.value))
+				_event(res, "cash", c.bet, Content.SIGNPOST_CASH * c.value, "signpost")
 			"croupier":
 				if lost > 0:
 					take += lost * c.value
@@ -158,6 +198,94 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		for c in w.chips:
 			if c.kind == "wildcard_zero":
 				_event(res, "bonus", c.bet, Content.WILDCARD_BONUS, "wildcard")
+	for c in w.perm_chips():
+		if c.id == w.frozen_id:
+			continue
+		var crack: float = 0.5 if c.flaw == "cracked" else 1.0
+		var own: int = Board.straight_number(c.bet) if Board.is_straight(c.bet) else -99
+		var covered: bool = pocket in B.bet(c.bet).numbers
+		match c.kind:
+			"street_light":
+				if own > 0 and pocket > 0 and pocket != own and Board.grid_col(pocket) == Board.grid_col(own):
+					_bonus(res, c, Content.STREET_LIGHT_BONUS * c.value * crack, "street light")
+					take += Content.STREET_LIGHT_BONUS * c.value * crack
+			"red_herring":
+				if pocket > 0 and B.is_red(pocket):
+					_bonus(res, c, Content.RED_HERRING_BONUS * c.value * crack, "red herring")
+					take += Content.RED_HERRING_BONUS * c.value * crack
+			"hedge":
+				if not covered:
+					_bonus(res, c, Content.HEDGE_BONUS * c.value * crack, "hedge")
+					take += Content.HEDGE_BONUS * c.value * crack
+			"wheel_spoke":
+				if own >= 0 and pocket != own:
+					var wd: int = B.wheel_distance(own, pocket)
+					if wd >= 1 and wd <= 2:
+						_bonus(res, c, Content.SPOKE_CHIP_BONUS * c.value * crack, "wheel spoke")
+						take += Content.SPOKE_CHIP_BONUS * c.value * crack
+			"jar":
+				if not covered:
+					_value(res, c, 1)
+			"green_thumb":
+				if zero_hit:
+					_value(res, c, 1)
+					res.log.chips.append("Green Thumb grows to %d" % c.value)
+			"tip_jar":
+				var tips: int = mini(Content.TIP_JAR_CAP, lost_chips) * c.value
+				if tips > 0:
+					res.cash += tips
+					_event(res, "cash", c.bet, tips, "tip jar")
+		# Felt upgrades that let a square's chips catch nearby balls.
+		if own > 0 and own != pocket:
+			var sq: String = w.square_upgrades.get(own, "")
+			var part := 0.0
+			if sq == "magnetized" and pocket in B.neighbours(own):
+				part = c.value * B.bet(c.bet).payout * 0.5 * crack
+			elif sq == "twin_square" and pocket > 0 and pocket == B.numbers + 1 - own:
+				part = c.value * B.bet(c.bet).payout * crack
+			if part > 0.0:
+				take += part
+				_bonus(res, c, part, sq.replace("_", " "))
+		var trig: Dictionary = Content.CHIPS.get(c.kind, {}).get("trigger", {})
+		if not trig.is_empty() and _triggered(trig, B, own, pocket, covered):
+			var tk: float = trig.get("take", 0.0) * c.value * crack
+			if tk > 0.0:
+				take += tk
+				_bonus(res, c, tk, Content.CHIPS[c.kind].name.to_lower())
+			var tc: int = int(trig.get("cash", 0)) * c.value
+			if tc > 0:
+				res.cash += tc
+				_event(res, "cash", c.bet, tc, Content.CHIPS[c.kind].name.to_lower())
+			if trig.has("grow") and c.value < trig.get("cap", 99):
+				_value(res, c, int(trig.grow))
+		if c.kind == "black_cat" and pocket > 0 and not B.is_red(pocket):
+			var bc: float = Content.BLACK_CAT_BONUS * c.value * (0.5 if c.flaw == "cracked" else 1.0)
+			take += bc
+			res.log.chips.append("Black Cat: black %s, +%s" % [B.label(pocket), _fmt(bc)])
+			_event(res, "bonus", c.bet, bc, "black cat")
+		elif c.kind == "sentinel" and zero_hit:
+			var sb: float = Content.SENTINEL_BONUS * c.value * (0.5 if c.flaw == "cracked" else 1.0)
+			take += sb
+			res.log.chips.append("Sentinel: +%s on the zero" % _fmt(sb))
+			_event(res, "bonus", c.bet, sb, "sentinel")
+	if w.square_upgrades.get(pocket, "") == "spoke":
+		var idx: int = B.order.find(pocket)
+		for d in [-1, 1]:
+			var nb: int = B.order[(idx + d + B.order.size()) % B.order.size()]
+			for c in w.chips_on(Board.straight_key(nb)):
+				if not c.is_bet():
+					var sp: float = c.value * B.bet(c.bet).payout * 0.5
+					take += sp
+					_bonus(res, c, sp, "spoke")
+	if w.square_upgrades.get(pocket, "") == "diamond":
+		for c in w.chips_on(pkey):
+			if not c.is_bet():
+				_value(res, c, 1)
+				res.log.upgrades.append("Diamond Square: %s chip grows to %d" % [c.kind, c.value])
+	if w.square_upgrades.get(pocket, "") == "lamp":
+		res.cash += Content.LAMP_CASH
+		res.log.upgrades.append("Lucky Lamp on %s: +$%d" % [B.label(pocket), Content.LAMP_CASH])
+		_event(res, "cash", pkey, Content.LAMP_CASH, "lamp")
 	if zero_hit:
 		for c in w.perm_chips():
 			if c.flaw == "hot":
@@ -193,6 +321,30 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		take *= 1.0 + Content.SIGNATURE_BONUS
 		res.log.rules.append("Dealer's Signature: +50%")
 		_mult(res, 1.0 + Content.SIGNATURE_BONUS, "Signature")
+	for av in aces:
+		if take > 0.0:
+			var am: float = 2.0 + 0.5 * (av - 1)
+			take *= am
+			res.log.chips.append("Ace of Spades x%.1f" % am)
+			_mult(res, am, "Ace of Spades")
+	for cv in crowns:
+		if take > 0.0:
+			var cm: float = Content.CROWN_MULT + 0.25 * (cv - 1)
+			take *= cm
+			res.log.chips.append("Column Crown x%.2f" % cm)
+			_mult(res, cm, "Column Crown")
+	if w.has_rule("double_down") and w.spin_no == 1 and take > 0.0:
+		take *= 2.0
+		res.log.rules.append("Double Down: the first spin scores double")
+		_mult(res, 2.0, "Double Down")
+	if w.has_rule("late_bloomer") and w.spin_no >= 4 and take > 0.0:
+		take *= 1.5
+		res.log.rules.append("Late Bloomer x1.5")
+		_mult(res, 1.5, "Late Bloomer")
+	if w.has_rule("last_call") and w.final_spin and take > 0.0:
+		take *= 2.0
+		res.log.rules.append("Last Call: the final spin scores double")
+		_mult(res, 2.0, "Last Call")
 	for kv in kings:
 		if take > 0.0:
 			var km: float = Content.KINGMAKER_MULT + Content.KING_STEP * (kv - 1)
@@ -218,6 +370,16 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	w.red_streak = res.red_streak
 	w.hit_streak = res.hit_streak
 	w.last_pocket = pocket
+	if w.has_rule("bankroll"):
+		res.stack += 1
+		res.log.rules.append("Bankroll: +1 chip to your stack")
+	if w.has_rule("big_spender") and take - lost >= 50.0:
+		res.cash += 3
+		res.log.rules.append("Big Spender: +$3")
+		_event(res, "cash", "", 3, "big spender")
+	if w.has_rule("insurance") and biggest_loss > 0:
+		lost -= biggest_loss
+		res.log.rules.append("Insurance: the %d-chip loss doesn't count" % biggest_loss)
 	res.gross = take
 	res.lost = lost
 	res.take = maxf(0.0, take - lost)
@@ -230,6 +392,50 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 ##   kind: win | bonus | loss | push | cash | mult
 static func _event(res: Dictionary, kind: String, key: String, amount: float, label: String) -> void:
 	res.events.append({"kind": kind, "key": key, "amount": amount, "label": label})
+
+
+## Does a trigger chip (Content.CHIPS[...].trigger) fire on this pocket?
+static func _triggered(t: Dictionary, B, own: int, pocket: int, covered: bool) -> bool:
+	match t.on:
+		"every":
+			return true
+		"hit":
+			return covered
+		"miss":
+			return not covered
+		"zero":
+			return B.is_zero(pocket)
+		"odd":
+			return pocket > 0 and pocket % 2 == 1
+		"even":
+			return pocket > 0 and pocket % 2 == 0
+		"low":
+			return pocket > 0 and pocket <= B.numbers / 2
+		"high":
+			return pocket > B.numbers / 2
+		"set":
+			return pocket in t.arg
+	if own == -99 or pocket == own:  # the chip isn't on a single number (or it hit outright)
+		return false
+	match t.on:
+		"dozen":
+			return pocket > 0 and B.dozen_of(pocket) == B.dozen_of(own)
+		"column":
+			return pocket > 0 and Board.grid_row(pocket) == Board.grid_row(own)
+		"grid":
+			return pocket in B.neighbours(own)
+		"wheel":
+			return B.wheel_distance(own, pocket) <= int(t.arg)
+		"digit":
+			return pocket > 0 and pocket % 10 == own % 10
+		"opposite":
+			return B.wheel_distance(own, pocket) == B.order.size() / 2
+	return false
+
+
+static func _bonus(res: Dictionary, c, amount: float, label: String) -> void:
+	res.log.chips.append("%s on %s: +%s" % [label.capitalize(), c.bet, _fmt(amount)])
+	_event(res, "bonus", c.bet, amount, label)
 
 
 static func _mult(res: Dictionary, m: float, label: String) -> void:
@@ -280,6 +486,20 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	if w.has_rule("satin_gloves") and b.type in ["red", "black", "odd", "even", "low", "high"]:
 		payout += 0.5
 		res.log.rules.append("Satin Gloves: %s pays 1.5:1" % c.bet)
+	var bu: String = w.bet_upgrades.get(c.bet, "")
+	if bu == "gold_trim":
+		payout += 0.5
+		res.cash += 1
+		res.log.upgrades.append("Gold Trim %s: +0.5x and +$1" % c.bet)
+	elif bu == "lucky_colour":
+		payout += 1.0
+		res.log.upgrades.append("Lucky Colour %s pays 2:1" % c.bet)
+	if w.has_rule("corner_office") and b.type == "corner":
+		payout += 2.0
+		res.log.rules.append("Corner Office: %s +2x" % c.bet)
+	if w.has_rule("high_society") and b.type in ["column", "dozen"]:
+		payout += 1.0
+		res.log.rules.append("High Society: %s +1x" % c.bet)
 	if w.has_rule("split_decision") and b.type in Board.LINE_TYPES:
 		payout += 1.0
 		res.log.rules.append("Split Decision: %s +1x" % c.bet)
@@ -287,6 +507,21 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	if b.type in Board.LINE_TYPES and up == "cornerstone":
 		amount *= 2.0
 		res.log.upgrades.append("Cornerstone %s: x2" % B.label(pocket))
+	if bu == "fat_box":
+		amount += 2.0 * c.value
+		res.log.upgrades.append("Fat Box %s: +%d" % [c.bet, 2 * c.value])
+	elif bu == "repeat_box" and w.last_pocket in b.numbers:
+		amount *= 2.0
+		res.log.upgrades.append("Repeat Box %s: same box again, x2" % c.bet)
+	if w.has_rule("veterans") and not c.is_bet() and c.value >= 3:
+		amount *= 1.5
+		res.log.rules.append("Old Timers: level %d chip x1.5" % c.value)
+	if up == "sweet_spot":
+		amount *= 1.5
+		res.log.upgrades.append("Sweet Spot %s: x1.5" % B.label(pocket))
+	if w.has_rule("black_tie") and straight and pocket > 0 and not B.is_red(pocket):
+		amount *= 1.5
+		res.log.rules.append("Black Tie: black %s x1.5" % B.label(pocket))
 	if w.has_rule("sevens") and straight and pocket > 0 and "7" in B.label(pocket):
 		amount *= 2.0
 		res.log.rules.append("Lucky Sevens: %s x2" % B.label(pocket))

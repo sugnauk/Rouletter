@@ -26,6 +26,17 @@ const CHIP_COLORS := {
 	"respin": CYAN, "ledger": Color("#f4a261"), "collector": VIOLET,
 	"bridge": Color("#cdb4db"), "kingmaker": Color("#ffd166"),
 	"mirror": Color("#90e0ef"), "porch_light": Color("#f6bd60"),
+	"black_cat": Color("#4a4a5a"), "penny": Color("#d08a4a"), "snowball": Color("#e8f4ff"),
+	"sentinel": Color("#2ec46a"), "crown": Color("#ffd166"),
+	"street_light": Color("#e9c46a"), "red_herring": Color("#e76f51"), "jar": Color("#8ecae6"), "hedge": Color("#52b788"),
+	"wheel_spoke": Color("#d4a373"), "echo": Color("#a2d2ff"), "ace": Color("#f8f9fa"), "tip_jar": Color("#90be6d"),
+	"green_thumb": Color("#38b000"), "signpost": Color("#bc8a5f"),
+	"odd_fellow": Color("#e9c46a"), "even_keel": Color("#90e0ef"), "low_roller": Color("#80ed99"), "penthouse": Color("#f4a261"),
+	"dozen_watch": Color("#cdb4db"), "pillar": Color("#a8dadc"), "night_owl": Color("#b5838d"), "piggy_bank": Color("#ffafcc"),
+	"clover": Color("#38b000"), "doorbell": Color("#ffd166"), "prime_time": Color("#e76f51"), "square_deal": Color("#4cc9f0"),
+	"teen_idol": Color("#ff8fab"), "fibonacci": Color("#c77dff"), "nickel": Color("#adb5bd"), "seventh_heaven": Color("#ffe066"),
+	"last_digit": Color("#8ecae6"), "far_side": Color("#f28482"), "seedling": Color("#95d5b2"), "golden_goose": Color("#fcbf49"),
+	"heart_of_gold": Color("#ef476f"), "spare_key": Color("#2ec4b6"),
 }
 
 ## Fonts (SIL Open Font License, see fonts/*-OFL.txt):

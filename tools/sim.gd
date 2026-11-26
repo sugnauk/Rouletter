@@ -2,6 +2,7 @@ extends SceneTree
 ## Headless balancing sim:  godot --headless --path . --script res://tools/sim.gd [-- runs=200 all act=2]
 ##   all    -> bot plays with every unlock (default: starting pool only)
 ##   act=2  -> Act II runs (8 nights, ending at the Owner)
+##   grade=N -> marker grade N (1-9, difficulty ladder)
 ## Prints clear rates per table for each wheel, using a simple greedy bot.
 
 const Board := preload("res://core/board.gd")
@@ -16,6 +17,7 @@ func _initialize() -> void:
 	var runs := 200
 	var all := false
 	var acts := 1
+	var grade := 0
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("runs="):
 			runs = int(a.substr(5))
@@ -23,6 +25,8 @@ func _initialize() -> void:
 			all = true
 		elif a.begins_with("act="):
 			acts = int(a.substr(4))
+		elif a.begins_with("grade="):
+			grade = int(a.substr(6)) - 1
 	var unlocks := Profile.default_unlocks()
 	if all:
 		for e in Profile.catalogue():
@@ -34,11 +38,11 @@ func _initialize() -> void:
 		print("  %-12s pockets %2d  even-money EV/unit %+.4f" % [id, f.board.pockets.size(), Resolver.expected_value(f).net / 2.0])
 	print("== Bot runs (%d per wheel, %s pool) ==" % [runs, "full" if all else "starting"])
 	for id in Wheels.ORDER:
-		sim_wheel(id, runs, unlocks, acts)
+		sim_wheel(id, runs, unlocks, acts, grade)
 	quit()
 
 
-func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1) -> void:
+func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: int = 0) -> void:
 	var reached := []
 	var cleared := []
 	var n: int = Content.NIGHTS if acts == 1 else Content.ACT2_NIGHTS
@@ -49,7 +53,7 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1) -> void:
 	var wins := 0
 	for s in range(runs):
 		var run = RunState.new()
-		run.start_run(5000 + s, wheel, unlocks, acts)
+		run.start_run(5000 + s, wheel, unlocks, acts, grade)
 		var guard := 0
 		while guard < 400:
 			guard += 1
@@ -109,20 +113,61 @@ func favourite_numbers(run) -> Array:
 	return out
 
 
+## Placement: line-only chips on a corner by our numbers, zero chips on a zero (if the wheel
+## has one), everything else spread over fresh numbers.
 func place_inventory(run) -> void:
 	var guard := 0
 	while not run.inventory.is_empty() and guard < 20:
 		guard += 1
 		var item: Dictionary = run.inventory[0]
-		var key := "S0" if item.kind == "wildcard_zero" else Board.straight_key(1 + (run.felt.perm_chips().size() * 7) % run.felt.board.numbers)
-		if not run.place_chip(0, key):
+		var key := ""
+		# Spreading chips over more numbers beat stacking twins in the sim (steadier Take), so
+		# the bot only levels up when it has run out of fresh numbers.
+		if run.felt.perm_chips().size() >= run.felt.board.numbers:
+			for c in run.felt.perm_chips():
+				if c.kind == item.kind and c.flaw == item.get("flaw", ""):
+					key = c.bet
+					break
+		if key == "":
+			var B = run.felt.board
+			if Content.CHIPS[item.kind].get("zero_only", false):
+				key = "S0" if not B.zeros.is_empty() else ""
+			elif Content.CHIPS[item.kind].get("even_only", false):
+				key = "RED"
+			elif Content.CHIPS[item.kind].get("black_only", false):
+				for n in range(1, B.numbers + 1):
+					if not B.is_red(n) and run.felt.chips_on(Board.straight_key(n)).is_empty():
+						key = Board.straight_key(n)
+						break
+			elif Content.CHIPS[item.kind].get("column_only", false):
+				key = "COL%d" % (1 + run.felt.perm_chips().size() % 3)
+			elif Content.CHIPS[item.kind].get("line_only", false):
+				var n: int = favourite_numbers(run)[0]
+				for k in ["CO%d" % n, "CO%d" % (n - 1), "SP%d_%d" % [n, n + 3], "ST%d" % (n - (n - 1) % 3)]:
+					if B.has_bet(k):
+						key = k
+						break
+			else:
+				key = Board.straight_key(1 + (run.felt.perm_chips().size() * 7) % B.numbers)
+		if key == "" or not run.place_chip(0, key):
 			run.inventory.remove_at(0)
 
 
+## Cash items first (chips, upgrades), Dealer perks with spare Take, then House Rules only if
+## the Pit Boss's price leaves a healthy stack; never borrow.
 func bot_shop(run) -> void:
-	for i in range(run.shop.stock.size()):
+	var order := []
+	for t in ["chip", "upgrade", "voucher", "favour", "rule"]:
+		for i in range(run.shop.stock.size()):
+			if run.shop.stock[i].type == t:
+				order.append(i)
+	for i in order:
 		var item: Dictionary = run.shop.stock[i]
-		if not item.sold and item.type != "loan" and run.can_afford(item):
+		if item.sold or not run.can_afford(item):
+			continue
+		if item.currency == "stack" and run.stack_spare() - run.price_of(item) < 6:
+			continue
+		if true:
 			run.buy(i)
 			if run.shop.pending_upgrade != "":
 				var t: Array = run.upgrade_targets()

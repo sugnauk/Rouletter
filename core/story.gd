@@ -143,6 +143,18 @@ const TUTORIAL := {
 		{"speaker": "Dolores", "text": "Chips you buy go on the felt for good and score every time they hit. Place them before you leave."}]},
 }
 
+## One-time tips, the first time something new turns up.
+const TIPS := {
+	"flaw": {"id": "tip_flaw", "lines": [
+		{"speaker": "Dolores", "text": "See the red tag on that chip? CRK, HOT or STK. The Fence's goods are cheap because something's wrong with them. Hover to see what."}]},
+	"rarity": {"id": "tip_rarity", "lines": [
+		{"speaker": "Dolores", "text": "A blue frame means rare, gold means legendary. You won't see those every night, sugar."}]},
+	"spare": {"id": "tip_spare", "lines": [
+		{"speaker": "Dolores", "text": "You scored past the payment. That extra is your spare Take: the Dealer takes it as payment, when he's working."}]},
+	"level": {"id": "tip_level", "lines": [
+		{"speaker": "Dolores", "text": "You've already got one of those on the felt. Put this one right on top of it and it levels up instead."}]},
+}
+
 ## The first time a vendor's window opens in the Cage.
 const VENDOR_INTROS := {
 	"cashier": {"id": "meet_cashier", "title": "The Cashier", "lines": [

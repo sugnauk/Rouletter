@@ -42,14 +42,17 @@ var favours: Array = []          ## Dealer favours waiting for the next table
 var vouchers: Array = []         ## run-wide perks from the Dealer
 var best_spin: float = 0.0       ## run summary: the biggest single spin
 var beaten: Array = []           ## run summary: Enforcers beaten this run
+var new_player := false
+var grade: int = 0               ## marker grade (difficulty), see Content.GRADES          ## first runs: vendors open up one at a time (see _vendor_open)
 var total_take: float = 0.0
 var nights_cleared: int = 0
 var message: String = ""
 var last_result: Dictionary = {}
 
 
-func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1) -> void:
+func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1, grade_in: int = 0) -> void:
 	acts = acts_in
+	grade = clampi(grade_in, 0, Content.GRADES.size() - 1)
 	rng = GameRng.new(seed_in)
 	wheel_id = wheel
 	unlocked = unlocked_ids.duplicate() if not unlocked_ids.is_empty() else Profile.default_unlocks()
@@ -59,7 +62,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	inventory = []
 	for k in def.kit:
 		inventory.append(k.duplicate())
-	stack_size = Content.START_STACK
+	stack_size = Content.START_STACK - (5 if graded(1) else 0)
 	stack_buys = 0
 	stack_owed = 0
 	loan_pct = 0.0
@@ -93,7 +96,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
-	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten"]
+	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade"]
 
 
 ## Everything needed to pick the run up again later (only meaningful mid-run).
@@ -152,7 +155,21 @@ func current_target() -> int:
 	var target: int = int(round(Content.targets_for(night)[table_idx] * Wheels.get_def(wheel_id).get("target", 1.0)))
 	if felt.has_rule("rent_control"):
 		target = int(round(target * (1.0 - Content.RENT_CONTROL_CUT)))
+	var gm := 1.0
+	if graded(3):
+		gm *= 1.1
+	if graded(6) and table_idx == 2:
+		gm *= 1.1
+	if graded(8):
+		gm *= 1.1
+	if gm > 1.0:
+		target = int(ceil(target * gm))
 	return target
+
+
+## Is grade `n`'s twist in force? (Grades are cumulative.)
+func graded(n: int) -> bool:
+	return grade >= n
 
 
 ## The Enforcer waiting at this night's boss table.
@@ -168,7 +185,8 @@ func nights_total() -> int:
 # --- The run's marker: what you owe Mr. Vance tonight ------------------------------------
 
 func marker_total() -> int:
-	return Content.MARKER_ACT1 if acts == 1 else Content.MARKER_ACT2
+	var base: int = Content.MARKER_ACT1 if acts == 1 else Content.MARKER_ACT2
+	return int(round(base * (1.0 + Content.MARKER_GRADE_STEP * grade)))
 
 
 ## Each table's share of the marker is its base payment over the whole run's payments.
@@ -236,6 +254,10 @@ func _start_table() -> void:
 	felt.hit_streak = 0
 	felt.last_pocket = -99
 	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else Content.SPINS
+	if graded(5) and table_idx >= 1:
+		spins -= 1
+	if boss and felt.has_rule("patron"):
+		spins += 1
 	if "patience" in vouchers:
 		spins += 1
 	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
@@ -368,8 +390,14 @@ func can_place_chip(kind: String, key: String) -> bool:
 	if not felt.board.has_bet(key):
 		return false
 	var straight := Board.is_straight(key)
-	if kind == "wildcard_zero":
+	if Content.CHIPS.get(kind, {}).get("zero_only", false):
 		return straight and Board.straight_number(key) <= 0
+	if Content.CHIPS.get(kind, {}).get("even_only", false):
+		return key in Content.EVEN_KEYS and can_bet_on(key)
+	if Content.CHIPS.get(kind, {}).get("black_only", false):
+		return straight and Board.straight_number(key) > 0 and not felt.board.is_red(Board.straight_number(key))
+	if Content.CHIPS.get(kind, {}).get("column_only", false):
+		return key.begins_with("COL") and can_bet_on(key)
 	if kind == "perm":
 		return can_bet_on(key) or (straight and not felt.boss_is("no_outside"))
 	if Content.CHIPS.get(kind, {}).get("line_only", false):
@@ -412,6 +440,8 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 		for c in felt.chips:
 			if c.is_bet():
 				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
+	felt.final_spin = table.spins_left <= 1
+	felt.spin_no = table.spins_used + 1
 	var res := Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
 	if res.zero_tax:
@@ -440,9 +470,13 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 func _clear_table() -> void:
 	var t: float = table.take
 	var comps := mini(cash / Content.COMPS_PER, Content.COMPS_MAX)
-	var reward: int = Content.CLEAR_CASH[table_idx] + table.spins_left * Content.CASH_PER_SPIN_LEFT + comps
+	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
 	if "comp_card" in vouchers:
 		reward += Content.COMP_CARD_CASH
+	if felt.has_rule("comped"):
+		reward += Content.COMPED_CASH
+	if felt.has_rule("compound_interest"):
+		reward += cash / 10
 	cash += reward
 	overflow += maxi(0, int(t - table.target))
 	total_take += t
@@ -469,6 +503,16 @@ func _clear_table() -> void:
 	table_cleared.emit(info)
 
 
+## Walk away mid-run: counts as a loss (Markers for nights already cleared are kept).
+func abandon() -> bool:
+	if phase != Phase.TABLE and phase != Phase.SHOP:
+		return false
+	if table.is_empty():
+		table = {"take": 0.0}
+	_lose("You walk away from the table. Mr. Vance keeps what's left of the marker.")
+	return true
+
+
 func _lose(why: String) -> void:
 	total_take += table.take
 	phase = Phase.GAME_OVER
@@ -480,17 +524,30 @@ func _lose(why: String) -> void:
 
 func _open_shop() -> void:
 	phase = Phase.SHOP
-	shop = {"stock": [], "reroll": Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors()}
+	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors()}
 	_restock()
 
 
 ## Who is working the Cage this visit: the Cashier, plus others drawn from the unlocked pool.
 ## They stay for the whole visit (rerolls refresh their stock, not the staff).
+## New players meet the Cage a window at a time: only the Cashier on night 1, the Pit Boss
+## from night 2, the Loan Shark and Dealer once an Enforcer has been beaten.
+func _vendor_open(v: String) -> bool:
+	if not new_player:
+		return true
+	match v:
+		"pit_boss":
+			return night >= 1
+		"loan_shark", "dealer":
+			return not beaten.is_empty()
+	return true
+
+
 func _pick_vendors() -> Array:
 	var vendors := [Content.ALWAYS_VENDOR]
 	var pool := []
 	for v in Content.VENDORS:
-		if v != Content.ALWAYS_VENDOR and (Content.VENDORS[v].unlock == 0 or v in unlocked):
+		if v != Content.ALWAYS_VENDOR and (Content.VENDORS[v].unlock == 0 or v in unlocked) and _vendor_open(v):
 			pool.append(v)
 	pool = rng.shuffle(pool)
 	while vendors.size() < Content.VENDORS_PER_VISIT and not pool.is_empty():
@@ -582,9 +639,12 @@ func price_of(item: Dictionary) -> int:
 		return item.price + Content.PIT_BOSS_STEP * felt.house_rules.size()
 	if item.get("currency", "cash") == "take":
 		return int(ceil(item.price * Content.targets_for(night)[0] / float(Content.NIGHT_BASE[0])))
+	var p: int = item.price
+	if item.get("currency", "cash") == "cash" and graded(2):
+		p += 1
 	if item.get("currency", "cash") == "cash" and "house_credit" in vouchers:
-		return maxi(1, item.price - 1)
-	return item.price
+		p = maxi(1, p - 1)
+	return p
 
 
 ## Chips you could still hand the Pit Boss without dropping below the minimum stack.
@@ -611,6 +671,44 @@ func price_text(item: Dictionary) -> String:
 	if item.get("currency", "cash") == "stack":
 		return "%d CHIPS" % price_of(item)
 	return "$%d" % price_of(item)
+
+
+## "Works with your Porch Light" / "Good against Big Sal": hints for a Cage item.
+func item_hints(item: Dictionary) -> Array:
+	var out := []
+	var tags := Content.tags_of(item.id)
+	if tags.is_empty():
+		return out
+	var owned := {}
+	for c in felt.perm_chips():
+		owned[c.kind] = Content.CHIPS[c.kind].name
+	for r in felt.house_rules:
+		owned[r] = Content.HOUSE_RULES[r].name
+	for u in felt.square_upgrades.values() + felt.bet_upgrades.values():
+		owned[u] = Content.UPGRADES[u].name
+	var friends := []
+	for id in owned:
+		if id == item.id:
+			continue
+		for t in Content.tags_of(id):
+			if t in tags and t != "easy":
+				friends.append(owned[id])
+				break
+	if not friends.is_empty():
+		out.append("Works with your " + ", ".join(friends.slice(0, 3)) + ".")
+	# The next Enforcer (the third table of this night, once we're past the first two).
+	if table_idx == 2:
+		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+		var rules: Array = Content.OWNER_RULES if e.rule == "owner" else [e.rule]
+		for r in rules:
+			var c: Dictionary = Content.COUNTERS.get(r, {})
+			if tags.any(func(t): return t in c.get("bad", [])):
+				out.append("Useless against %s at the next table." % e.name)
+				break
+			if tags.any(func(t): return t in c.get("good", [])):
+				out.append("Good against %s at the next table." % e.name)
+				break
+	return out
 
 
 func item_name(item: Dictionary) -> String:
@@ -695,6 +793,10 @@ func _targets_for(up: String) -> Array:
 		for k in ["COL1", "COL2", "COL3", "DOZ1", "DOZ2", "DOZ3"]:
 			if not felt.bet_upgrades.has(k):
 				out.append(k)
+	elif Content.UPGRADES[up].target == "even":
+		for k in Content.EVEN_KEYS:
+			if not felt.bet_upgrades.has(k):
+				out.append(k)
 	else:
 		for p in felt.board.pockets:
 			if not felt.square_upgrades.has(p):
@@ -706,7 +808,7 @@ func apply_upgrade(target: String) -> bool:
 	if target not in upgrade_targets():
 		return false
 	var up: String = shop.pending_upgrade
-	if Content.UPGRADES[up].target == "outside":
+	if Content.UPGRADES[up].target in ["outside", "even"]:
 		felt.bet_upgrades[target] = up
 	else:
 		felt.square_upgrades[Board.straight_number(target)] = up

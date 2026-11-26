@@ -30,6 +30,8 @@ const FEATS := {
 	"paid_in_full": {"name": "Paid in Full", "desc": "Win a run: pay a whole marker.", "reward": 3, "on": "end"},
 	"french_win": {"name": "Très Bien", "desc": "Win a run on the French wheel.", "reward": 1, "on": "end", "wheel": "french"},
 	"euro_win": {"name": "Continental", "desc": "Win a run on the European wheel.", "reward": 1, "on": "end", "wheel": "european"},
+	"graded": {"name": "Paper Climber", "desc": "Win a run on a Grade 3 marker or higher.", "reward": 2, "on": "end"},
+	"vance_paper": {"name": "Vance's Own", "desc": "Win a run on the Grade 9 marker.", "reward": 5, "on": "end"},
 	"hard_way": {"name": "The Hard Way", "desc": "Win a run on the American, Triple Zero or Cheater's wheel.", "reward": 2, "on": "end"},
 }
 
@@ -77,6 +79,10 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 			return run.overflow >= 50
 		"paid_in_full":
 			return ctx.won
+		"graded":
+			return ctx.won and run.grade >= 2
+		"vance_paper":
+			return ctx.won and run.grade >= 8
 		"hard_way":
 			return ctx.won and run.wheel_id in ["american", "triple_zero", "no_zero"]
 	if f.has("enforcer"):

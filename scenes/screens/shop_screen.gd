@@ -47,17 +47,20 @@ func setup() -> void:
 	add_child(service_box)
 	var dp := Panel.new()
 	dp.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.WOOD, 1))
-	P.place(dp, Vector2(8, 252), Vector2(288, 64))
+	P.place(dp, Vector2(8, 234), Vector2(288, 82))
 	add_child(dp)
 	desc_title = P.label(dp, "", P.FONT, P.GOLD)
 	P.place(desc_title, Vector2(6, 4))
 	desc_body = P.label(dp, "", P.FONT_SMALL, P.CREAM)
 	desc_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(desc_body, Vector2(6, 18), Vector2(276, 44))
+	desc_body.add_theme_constant_override("line_spacing", -1)
+	P.place(desc_body, Vector2(6, 18), Vector2(276, 62))
 	next_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
 	next_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(next_lbl, Vector2(8, 320), Vector2(200, 36))
 	var nb := P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
+	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 14), P.FONT_SMALL)
+	P.place(mb, Vector2(594, 6))
 	nb.add_theme_stylebox_override("normal", P.box(Color("#b8862b"), P.BLACK, 1))
 	nb.add_theme_stylebox_override("hover", P.box(Color("#d9a63c"), P.CREAM, 1))
 	for s in ["font_color", "font_hover_color", "font_pressed_color"]:
@@ -316,6 +319,8 @@ func _build_windows(run) -> void:
 					tag = rar.to_upper() + " " + tag
 				if item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", "")):
 					body += "\nYou own one: stack this on it to level it up."
+				for h in run.item_hints(item):
+					body += "\n" + h
 				_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
 			tok.pressed.connect(_buy.bind(i))
 			row.add_child(tok)
@@ -328,7 +333,7 @@ func _token_pos(i: int) -> Vector2:
 		for tok in row.get_children():
 			if tok is Button:
 				if n == i:
-					return tok.global_position + tok.size / 2.0
+					return main.fx.local(tok.global_position + tok.size / 2.0)
 				n += 1
 	return CAGE.get_center()
 
@@ -364,8 +369,11 @@ func _select(i: int) -> void:
 func _buy(i: int) -> void:
 	var run = main.run
 	var item: Dictionary = run.shop.stock[i]
+	var owned_twin: bool = item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", ""))
 	if run.buy(i):
 		main.profile.note_used(item.id)
+		if owned_twin:
+			main.tip("level", true)
 		Sfx.play("buy")
 		var tp := _token_pos(i)
 		main.fx.burst(tp, 22, [P.GOLD, P.CREAM, P.chip_color(item.id)], 130.0)
@@ -394,14 +402,14 @@ func _on_felt(key: String, button: int) -> void:
 	if run.shop.pending_upgrade != "":
 		if run.apply_upgrade(key):
 			felt_view.flash(key)
-			main.fx.burst(felt_view.global_position + felt_view.key_center(key), 20, [P.CYAN, P.GOLD, P.CREAM])
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 20, [P.CYAN, P.GOLD, P.CREAM])
 			Sfx.play("chip_place")
 		return
 	if selected_item >= 0:
 		if run.place_chip(selected_item, key):
 			selected_item = -1
 			felt_view.pop(key)
-			main.fx.burst(felt_view.global_position + felt_view.key_center(key), 10, [P.GOLD, P.CREAM], 60.0)
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 10, [P.GOLD, P.CREAM], 60.0)
 			Sfx.play("chip_place")
 		else:
 			status_lbl.text = "That chip can't go there."
@@ -415,5 +423,5 @@ func _on_felt(key: String, button: int) -> void:
 		Sfx.play("chip_remove")
 		refresh()
 	elif mode == "sell" and run.sell_chip(mine[0].id):
-		main.fx.burst(felt_view.global_position + felt_view.key_center(key), 12, [P.GOLD])
+		main.fx.burst(main.fx.local(felt_view.key_global(key)), 12, [P.GOLD])
 		Sfx.play("cash")

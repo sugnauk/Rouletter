@@ -36,6 +36,22 @@ static func denom_color(v: int) -> Color:
 	return P.CREAM
 
 
+## Lettered tiles for items drawn as a label rather than a picture: [text, colour].
+const GLYPHS := {
+	"odd_fellow": ["OD", "#e9c46a"], "even_keel": ["EV", "#90e0ef"], "low_roller": ["LO", "#80ed99"],
+	"penthouse": ["HI", "#f4a261"], "dozen_watch": ["DZ", "#cdb4db"], "pillar": ["CL", "#a8dadc"],
+	"night_owl": ["OW", "#b5838d"], "piggy_bank": ["$", "#ffafcc"], "clover": ["4L", "#38b000"],
+	"doorbell": ["DB", "#ffd166"], "prime_time": ["PR", "#e76f51"], "square_deal": ["SQ", "#4cc9f0"],
+	"teen_idol": ["13", "#ff8fab"], "fibonacci": ["FB", "#c77dff"], "nickel": ["5", "#adb5bd"],
+	"seventh_heaven": ["7", "#ffd166"], "last_digit": ["#", "#8ecae6"], "far_side": ["<>", "#f28482"],
+	"seedling": ["SP", "#80ed99"], "golden_goose": ["EG", "#ffd166"], "heart_of_gold": ["<3", "#ef476f"],
+	"spare_key": ["KY", "#2ec4b6"],
+	"zero_tolerance": ["0!", "#2ec46a"], "bankroll": ["+1", "#90be6d"], "compound_interest": ["%", "#ffd166"],
+	"double_down": ["x2", "#f4a261"], "corner_office": ["CO", "#cdb4db"], "big_spender": ["$$", "#57cc99"],
+	"patron": ["VP", "#c77dff"], "late_bloomer": ["4+", "#ff8fab"], "veterans": ["L3", "#e9c46a"],
+}
+
+
 ## A small pixel icon (12x12 at scale 1). `tiny` = draw a 6x6 glyph for inside chips.
 static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool = false) -> void:
 	c = c.round()
@@ -167,6 +183,162 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 				R.call(1 + i * 4, 3, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(2 + i * 4, 5, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(1 + i * 4, 7, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+		"street_light":
+			R.call(5, 2, 2, 9, P.DIM)
+			R.call(3, 1, 6, 2, P.DIM)
+			R.call(3, 3, 2, 2, P.GOLD)
+			R.call(1, 5, 4, 1, Color(P.GOLD, 0.5))
+			R.call(3, 10, 6, 1, P.DIM)
+		"red_herring":
+			R.call(2, 4, 7, 4, P.RED)
+			R.call(9, 3, 2, 6, P.RED.darkened(0.2))
+			R.call(3, 5, 1, 1, P.CREAM)
+		"jar":
+			R.call(3, 2, 6, 1, P.WOOD)
+			R.call(2, 3, 8, 8, Color("#6fa8c8"))
+			R.call(3, 7, 6, 3, P.GOLD)
+			R.call(3, 4, 1, 5, Color(1, 1, 1, 0.5))
+		"hedge":
+			for x in [1, 4, 7]:
+				R.call(x, 3, 4, 7, P.GOOD.darkened(0.3))
+			R.call(1, 9, 10, 2, P.WOOD)
+		"wheel_spoke":
+			ci.draw_arc(c, 4.5 * s, 0, TAU, 16, P.CREAM, 1.0 * s, false)
+			R.call(5, 1, 2, 10, P.CREAM)
+			R.call(1, 5, 10, 2, P.CREAM)
+			R.call(5, 5, 2, 2, P.GOLD)
+		"echo":
+			for i in range(3):
+				ci.draw_arc(c, (1.5 + i * 1.8) * s, 0, TAU, 14, Color(P.CYAN, 1.0 - i * 0.3), 1.0 * s, false)
+		"ace":
+			R.call(2, 1, 8, 10, P.CREAM)
+			R.call(5, 3, 2, 2, P.BLACK)
+			R.call(4, 5, 4, 2, P.BLACK)
+			R.call(5, 7, 2, 2, P.BLACK)
+			R.call(3, 2, 1, 1, P.BLACK)
+		"tip_jar":
+			R.call(3, 4, 6, 7, Color("#6fa8c8"))
+			R.call(3, 3, 6, 1, P.WOOD)
+			R.call(4, 7, 2, 2, P.GOLD)
+			R.call(6, 8, 2, 2, P.GOLD.darkened(0.2))
+			R.call(4, 1, 4, 2, P.GOOD)
+		"green_thumb":
+			R.call(5, 5, 2, 6, P.GOOD.darkened(0.3))
+			R.call(2, 3, 4, 3, P.GOOD)
+			R.call(6, 2, 4, 3, P.GOOD)
+		"signpost":
+			R.call(5, 3, 2, 8, P.WOOD)
+			R.call(1, 2, 8, 2, P.GOLD.darkened(0.2))
+			R.call(4, 5, 7, 2, P.GOLD.darkened(0.4))
+		"diamond":
+			R.call(5, 1, 2, 2, Color("#9ad7ff"))
+			R.call(3, 3, 6, 2, Color("#9ad7ff"))
+			R.call(2, 5, 8, 2, Color("#6cb6e8"))
+			R.call(4, 7, 4, 2, Color("#4a90c8"))
+			R.call(5, 9, 2, 2, Color("#4a90c8"))
+		"magnetized":
+			R.call(1, 1, 10, 10, P.FELT.lightened(0.2))
+			R.call(3, 3, 2, 5, P.RED)
+			R.call(7, 3, 2, 5, P.RED)
+			R.call(3, 7, 6, 2, P.RED)
+		"twin_square":
+			R.call(1, 3, 4, 6, P.RED)
+			R.call(7, 3, 4, 6, P.RED)
+			R.call(5, 5, 2, 2, P.GOLD)
+		"spoke":
+			R.call(1, 1, 10, 10, P.FELT.lightened(0.2))
+			ci.draw_arc(c, 3.5 * s, 0, TAU, 12, P.GOLD, 1.0 * s, false)
+			R.call(5, 2, 2, 8, P.GOLD.darkened(0.3))
+		"gold_trim":
+			R.call(1, 3, 10, 6, P.FELT)
+			ci.draw_rect(Rect2(o + Vector2(1, 3) * s, Vector2(10, 6) * s), P.GOLD, false, 1.0 * s)
+		"fat_box":
+			R.call(1, 2, 10, 8, P.FELT)
+			R.call(3, 4, 6, 4, P.GOLD)
+		"repeat_box":
+			R.call(1, 3, 10, 6, P.FELT)
+			R.call(3, 5, 2, 2, P.CREAM)
+			R.call(7, 5, 2, 2, P.CREAM)
+		"lucky_colour":
+			R.call(1, 3, 5, 6, P.RED)
+			R.call(6, 3, 5, 6, P.BLACK.lightened(0.3))
+			R.call(5, 1, 2, 2, P.GOLD)
+		"black_cat":
+			# A sitting black cat with gold eyes.
+			R.call(3, 4, 6, 7, Color("#141418"))
+			R.call(3, 2, 2, 2, Color("#141418"))
+			R.call(7, 2, 2, 2, Color("#141418"))
+			R.call(4, 5, 1, 1, P.GOLD)
+			R.call(7, 5, 1, 1, P.GOLD)
+			R.call(9, 8, 2, 1, Color("#141418"))
+			R.call(10, 6, 1, 2, Color("#141418"))
+		"penny":
+			ci.draw_circle(c, 4.5 * s, Color("#b87333"), true, -1.0, false)
+			ci.draw_circle(c, 3.0 * s, Color("#d08a4a"), true, -1.0, false)
+			R.call(5, 4, 2, 4, Color("#7a4a20"))
+		"snowball":
+			ci.draw_circle(c + Vector2(0, 1) * s, 4.5 * s, P.CREAM, true, -1.0, false)
+			R.call(4, 4, 2, 1, Color.WHITE)
+			R.call(3, 9, 6, 1, P.CYAN.darkened(0.3))
+		"sentinel":
+			# A shield with a zero on it.
+			R.call(3, 2, 6, 6, P.GREEN)
+			R.call(4, 8, 4, 2, P.GREEN)
+			R.call(5, 10, 2, 1, P.GREEN)
+			R.call(5, 4, 2, 3, P.CREAM)
+			R.call(5, 5, 2, 1, P.GREEN)
+		"crown":
+			R.call(1, 7, 10, 3, P.GOLD)
+			R.call(1, 4, 2, 3, P.GOLD)
+			R.call(5, 3, 2, 4, P.GOLD)
+			R.call(9, 4, 2, 3, P.GOLD)
+			R.call(2, 9, 8, 1, P.CYAN)
+		"lamp":
+			R.call(4, 1, 4, 1, P.WOOD)
+			R.call(3, 2, 6, 4, P.GOLD.lightened(0.2))
+			R.call(5, 6, 2, 4, P.WOOD)
+			R.call(3, 10, 6, 1, P.WOOD)
+			R.call(1, 7, 1, 1, P.GOLD)
+			R.call(10, 7, 1, 1, P.GOLD)
+		"silk":
+			for i in range(4):
+				R.call(1 + i * 3, 2 + (i % 2), 2, 8, Color("#c08ad8").lightened(0.1 * i))
+		"sweet_spot":
+			ci.draw_circle(c, 5 * s, P.RED.lightened(0.2), false, 1.0 * s, false)
+			ci.draw_circle(c, 3 * s, P.GOLD, false, 1.0 * s, false)
+			R.call(5, 5, 2, 2, P.CREAM)
+		"last_call":
+			# A clock nearly at midnight.
+			ci.draw_circle(c, 5 * s, P.CREAM, true, -1.0, false)
+			ci.draw_circle(c, 4 * s, P.PANEL, true, -1.0, false)
+			R.call(5, 2, 2, 4, P.CREAM)
+			R.call(6, 5, 3, 1, P.RED)
+		"comped":
+			# A cocktail glass.
+			R.call(1, 2, 10, 1, P.CREAM)
+			R.call(2, 3, 8, 1, P.CYAN.darkened(0.2))
+			R.call(3, 4, 6, 1, P.CYAN.darkened(0.2))
+			R.call(4, 5, 4, 1, P.CYAN.darkened(0.2))
+			R.call(5, 6, 2, 4, P.CREAM)
+			R.call(3, 10, 6, 1, P.CREAM)
+			R.call(8, 1, 2, 2, P.RED)
+		"insurance":
+			# An umbrella.
+			R.call(2, 3, 8, 2, P.GOOD)
+			R.call(1, 5, 10, 1, P.GOOD)
+			R.call(5, 5, 1, 5, P.CREAM)
+			R.call(4, 9, 1, 1, P.CREAM)
+		"high_society":
+			# A top hat.
+			R.call(3, 2, 6, 6, Color("#141418"))
+			R.call(3, 6, 6, 1, P.RED)
+			R.call(1, 8, 10, 2, Color("#141418"))
+		"black_tie":
+			# A bow tie.
+			R.call(1, 4, 4, 4, Color("#141418"))
+			R.call(7, 4, 4, 4, Color("#141418"))
+			R.call(5, 5, 2, 2, Color("#2a2a33"))
+			R.call(2, 5, 1, 1, P.CREAM.darkened(0.4))
 		"mirror":
 			# A hand mirror: two halves of one number.
 			R.call(2, 2, 8, 8, P.CYAN.darkened(0.2))
@@ -223,7 +395,17 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 			ci.draw_circle(c, 4 * s, P.CREAM, true, -1.0, false)
 			ci.draw_circle(c - Vector2(1, 1) * s, 1.5 * s, Color.WHITE, true, -1.0, false)
 		_:
-			ci.draw_circle(c, 5 * s, P.CREAM, true, -1.0, false)
+			if GLYPHS.has(id):
+				# Lettered tile: a felt square with a short label, framed in the item's colour.
+				var g: Array = GLYPHS[id]
+				R.call(0, 1, 12, 10, Color(g[1]).darkened(0.55))
+				ci.draw_rect(Rect2(o + Vector2(0, 1) * s, Vector2(12, 10) * s), Color(g[1]), false, 1.0)
+				var gf := P.font()
+				var gs: int = 8 * s
+				var gw := gf.get_string_size(g[0], HORIZONTAL_ALIGNMENT_LEFT, -1, gs).x
+				ci.draw_string(gf, (c + Vector2(-gw / 2.0, 3 * s)).round(), g[0], HORIZONTAL_ALIGNMENT_LEFT, -1, gs, Color(g[1]).lightened(0.4))
+			else:
+				ci.draw_circle(c, 5 * s, P.CREAM, true, -1.0, false)
 
 
 static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
@@ -247,6 +429,37 @@ static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
 			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
 		"bridge":
 			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"street_light", "wheel_spoke":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 1)), col)
+		"red_herring", "hedge":
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"jar", "tip_jar":
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 3)), col)
+		"echo":
+			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
+		"ace":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 1)), col)
+		"green_thumb", "signpost":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(2, 0), Vector2(2, 1)), col)
+		"black_cat":
+			ci.draw_rect(Rect2(o + Vector2(0, 0), Vector2(1, 1)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 1)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 3)), col)
+		"penny":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
+		"snowball":
+			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 2)), col)
+		"sentinel":
+			ci.draw_rect(Rect2(o, Vector2(4, 3)), col)
+			ci.draw_rect(Rect2(o + Vector2(1, 3), Vector2(2, 1)), col)
+		"crown":
+			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 0), Vector2(1, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 1)), col)
 		"mirror":
 			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
 			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
