@@ -8,6 +8,7 @@ All scenes live in `core/story.gd` with an id and a Journal title; `profile.seen
 
 ## Run loop
 - **4 Nights × 3 tables:** Floor, then High Roller, then Enforcer. Clearing Night 4 wins the run.
+- **Act II, the Floor Above** (opens once Act I's $1M marker is paid): pick ACT II on the wheel screen and the run carries on upstairs for nights 5-8 (Private Room, Velvet Room, Enforcer), against three new Enforcers and finally the Owner, Mr. Vance, at his own table. Take pays Act I's marker first, then Act II's $5M marker.
 - **Table:** reach the **Take** target within **6 spins**. Each table hands you a **betting stack** (25 chips, which you can upgrade).
   - Winning bets score `value × payout` and the stake returns to your stack.
   - Losing bets are gone, and **their value comes off that spin's Take** (floored at 0). A spin scores what it paid minus what it cost, so hedging (red + black, or covering the board) scores nothing.
@@ -36,6 +37,8 @@ Payout formula: `numbers / numbers covered − 1`, so every plain bet loses exac
 | American | 38 | 5.3% | 00 is a second zero square; +$4 | 3 Markers |
 | Mini | 13 (3×4 felt) | 7.7% | Small payouts, frequent hits, payments ×1.3 | 4 Markers |
 | Triple Zero | 39 | 7.7% | Starts with a Wildcard Zero; zero chips trigger 3× as often | 6 Markers |
+| Sunrise | 37 | 2.7% | Momentum built in, starts with a Kingmaker; payments ×1.15 | 5 Markers |
+| Cheater's | 36 | 0% | No zero at all; payments ×1.35 | 8 Markers |
 
 ## Content
 Every entry has an originality `note` in `core/content.gd`.
@@ -49,6 +52,7 @@ Every entry has an originality `note` in `core/content.gd`.
   - Madame Oro: each zero costs 10% of your Take.
   - Vic "The Rake": your biggest chip is frozen.
   - Big Sal: every 3rd spin is called, so no new bets on it.
+  - Act II: The Inspector (no inside bets), Velvet (each spin costs 2 stack chips), Mr. Kline (4 spins only), and the Owner (zero tax + called spins).
 
 \* Unlocked with Markers at the **Pawn Shop**. You earn 1 Marker per night cleared, plus 3 for a win.
 
@@ -85,7 +89,7 @@ Full-run win rate: French 11%, European 13%, American 8%, Mini 11%, Triple Zero 
 1. Done: vendor Cage (Cashier, Pit Boss), title card and loading cards, Undo and touch controls, branch CI.
 2. Done: story cast (Dolores, Lucky Lou, Abe, Big Sal, the vendors), milestone beats (first Enforcer, third run, first win, six runs without a win), interludes before nights 2-4, vendor introductions, a Journal screen that replays every scene, and the Act I epilogue when the marker is paid.
 3. Done: Loan Shark, Fence and flaws; inside-bet content (Bridge chip, Cornerstone upgrade, Split Decision rule); multipliers (Kingmaker chip x1.5, Momentum rule +25% per scoring spin in a row).
-4. Act 2: nights 5-8 upstairs, the Owner, new Enforcers and wheels.
+4. Done: Act II (nights 5-8 upstairs, the Owner), three new Enforcers, Sunrise and Cheater's wheels, Act II story beats and interludes, `tools/sim.gd -- act=2`.
 5. Vouchers, Dealer favours, run saves, endless mode, onboarding and accessibility.
 
 CI: `.github/workflows/test-branch.yml` runs the tests and the smoke screenshots on every non-main push and PR (screenshots are the run's artifact); `deploy-web.yml` publishes `main` to Pages.

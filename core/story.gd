@@ -63,11 +63,47 @@ const BEATS := [
 		{"speaker": "Dolores", "text": "They go home. ...You're not going home, are you."},
 		{"speaker": "Mr. Vance", "text": "There's a room upstairs. Better wheels. Bigger markers. The kind of game a free man can afford."},
 		{"speaker": "Narrator", "text": "END OF ACT I. The elevator to the Floor Above has one button, and it is already lit."}]},
+	# --- Act II: the Floor Above ---
+	{"id": "upstairs_first", "title": "The Floor Above", "act2_runs": 1, "lines": [
+		{"speaker": "Narrator", "text": "Upstairs the carpet is thicker and the voices are quieter. Nobody here is playing for rent."},
+		{"speaker": "Mr. Vance", "text": "A new marker, for a new floor. Five million. Don't look at me like that. You signed it on the way up."}]},
+	{"id": "owner_beaten", "title": "Across the Table", "act2_wins": 1, "lines": [
+		{"speaker": "Mr. Vance", "text": "Nobody has beaten me at my own table since 1959. I want you to know I remember his name."},
+		{"speaker": "Mr. Vance", "text": "I'm going to remember yours too. That isn't a compliment."},
+		{"speaker": "Dolores", "text": "He poured you a drink. He doesn't pour drinks. I've worked here eleven years."}]},
+	{"id": "act2_half", "title": "Half the Floor", "debt2": 2500000, "lines": [
+		{"speaker": "Lucky Lou", "text": "They let me up here once. I lasted four spins. You're making it look like a job."},
+		{"speaker": "Lucky Lou", "text": "Careful. In this building, when it looks like a job, it usually is one."}]},
+	{"id": "act2_free", "title": "Act II: The House", "debt2": 0, "lines": [
+		{"speaker": "Narrator", "text": "The second marker burns in an ashtray on Vance's desk. He watches it the whole way down."},
+		{"speaker": "Mr. Vance", "text": "You know what you are now? You're the house. Everyone who sits at that wheel is playing against you."},
+		{"speaker": "Mr. Vance", "text": "The wheel is honest. I insisted on it. Now you get to find out why."},
+		{"speaker": "Narrator", "text": "END OF ACT II. The neon outside flickers, and for a second it spells your name."}]},
 ]
 
-## Before nights 2, 3 and 4 of a run (key = the night about to start, 1-based). Unseen
+## Before nights 2-8 of a run (5-8 are Act II only) (key = the night about to start, 1-based). Unseen
 ## variants play first; once all have been seen they rotate by run count.
 const INTERLUDES := {
+	5: [
+		{"id": "n5_elevator", "title": "Night 5: The Elevator", "lines": [
+			{"speaker": "Narrator", "text": "The elevator has velvet walls and one button. The operator doesn't look at you. He's paid not to."},
+			{"speaker": "Dolores", "text": "Nobody sells cigarettes upstairs. They have people who light them for you."}]},
+	],
+	6: [
+		{"id": "n6_lou", "title": "Night 6: Lou's Warning", "lines": [
+			{"speaker": "Lucky Lou", "text": "The private rooms don't care about your stack. They care how long you last."},
+			{"speaker": "Lucky Lou", "text": "Lasting is the only edge a player ever gets up here."}]},
+	],
+	7: [
+		{"id": "n7_abe", "title": "Night 7: The Pawn Ticket", "lines": [
+			{"speaker": "Abe", "text": "I came up here myself, can you believe it. Brought you your coin back. Felt wrong, selling it."},
+			{"speaker": "Abe", "text": "Don't thank me. Win, and buy something expensive from me after."}]},
+	],
+	8: [
+		{"id": "n8_vance", "title": "Night 8: The Owner's Table", "lines": [
+			{"speaker": "Mr. Vance", "text": "Every night for twenty years, somebody sits across from me and thinks the wheel will save them."},
+			{"speaker": "Mr. Vance", "text": "It won't. It's honest. Honest things don't save anybody. Shall we?"}]},
+	],
 	2: [
 		{"id": "n2_dolores", "title": "Night 2: Smoke Break", "lines": [
 			{"speaker": "Dolores", "text": "Smoke? On the house. Well. On Vance's house."},
@@ -122,6 +158,12 @@ static func _holds(b: Dictionary, profile) -> bool:
 		return false
 	if b.has("max_wins") and profile.wins > b.max_wins:
 		return false
+	if profile.debt2 > b.get("debt2", 1 << 40):
+		return false
+	if profile.act2_wins < b.get("act2_wins", 0):
+		return false
+	if profile.act2_runs < b.get("act2_runs", 0):
+		return false
 	return true
 
 
@@ -152,6 +194,8 @@ static func all_scenes() -> Array:
 	out.append_array(BEATS)
 	for v in VENDOR_INTROS:
 		out.append(VENDOR_INTROS[v])
-	for n in INTERLUDES:
+	var nights: Array = INTERLUDES.keys()
+	nights.sort()
+	for n in nights:
 		out.append_array(INTERLUDES[n])
 	return out

@@ -134,7 +134,9 @@ func _flush_lines() -> void:
 func table_card() -> Array:
 	if run.table.boss:
 		var e: Dictionary = Content.ENFORCERS[run.table.enforcer]
-		return ["NIGHT %d" % (run.night + 1), "%s  -  %s" % [e.name, e.desc], P.DANGER]
+		return ["NIGHT %d" % (run.night + 1), "%s  -  %s" % [e.name, e.desc], P.DANGER if not e.get("final", false) else P.GOLD]
+	if run.upstairs() and run.table_idx == 0:
+		return ["NIGHT %d" % (run.night + 1), "The Floor Above  -  %s  -  pay %d" % [run.table_name(), run.table.target], P.VIOLET]
 	return ["NIGHT %d" % (run.night + 1), "%s table  -  pay %d" % [run.table_name(), run.table.target], P.GOLD]
 
 
@@ -154,7 +156,7 @@ func route() -> void:
 			go("shop", "THE CAGE", " and ".join(names) + " are open", P.GOLD)
 		_:
 			if run.phase == RunState.Phase.VICTORY:
-				go("end", "PAID IN FULL", "Mr. Vance almost smiles", P.GOOD)
+				go("end", "THE OWNER FALLS" if run.acts == 2 else "PAID IN FULL", "The Floor Above is yours, for tonight" if run.acts == 2 else "Mr. Vance almost smiles", P.GOOD)
 			else:
 				go("end", "LAST CALL", "The marker stays on the books", P.DANGER)
 
@@ -169,8 +171,8 @@ func begin_flow() -> void:
 		show_screen("select")
 
 
-func start_run(wheel: String) -> void:
-	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked)
+func start_run(wheel: String, acts: int = 1) -> void:
+	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts)
 	Sfx.play("click")
 	var card := table_card()
 	go("table", card[0], card[1], card[2])
@@ -195,7 +197,7 @@ func _queue_scene(scene: Dictionary) -> void:
 
 
 func _on_run_ended(won: bool) -> void:
-	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won)
+	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
 		"paid": res.paid, "markers": res.markers}
 	save_profile()

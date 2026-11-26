@@ -14,6 +14,9 @@ var seen_beats: Array = []
 var runs: int = 0
 var wins: int = 0
 var best_night: int = 0
+var debt2: int = Content.ACT2_DEBT      ## Act II marker (the Floor Above)
+var act2_runs: int = 0
+var act2_wins: int = 0
 var save_path: String = DEFAULT_PATH
 
 
@@ -61,11 +64,23 @@ func buy_unlock(id: String) -> bool:
 	return false
 
 
-## Called once when a run ends.
-func record_run(nights_cleared: int, total_take: float, won: bool) -> Dictionary:
+## Act II opens once Act I's marker is paid (or its epilogue has played).
+func act2_unlocked() -> bool:
+	return debt <= 0 or "free" in seen_beats
+
+
+## Called once when a run ends. Take pays Act I's marker first, then Act II's.
+func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1) -> Dictionary:
 	runs += 1
+	if acts == 2:
+		act2_runs += 1
+		if won:
+			act2_wins += 1
 	var paid := int(total_take) * Content.DEBT_PER_TAKE
-	debt = maxi(0, debt - paid)
+	var to_first := mini(paid, debt)
+	debt -= to_first
+	if paid > to_first and act2_unlocked():
+		debt2 = maxi(0, debt2 - (paid - to_first))
 	var earned := nights_cleared * Content.MARKERS_PER_NIGHT + (Content.MARKERS_VICTORY if won else 0)
 	markers += earned
 	if won:
@@ -76,7 +91,8 @@ func record_run(nights_cleared: int, total_take: float, won: bool) -> Dictionary
 
 func to_dict() -> Dictionary:
 	return {"debt": debt, "markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
-		"runs": runs, "wins": wins, "best_night": best_night}
+		"runs": runs, "wins": wins, "best_night": best_night,
+		"debt2": debt2, "act2_runs": act2_runs, "act2_wins": act2_wins}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -90,6 +106,9 @@ func from_dict(d: Dictionary) -> void:
 	runs = int(d.get("runs", 0))
 	wins = int(d.get("wins", 0))
 	best_night = int(d.get("best_night", 0))
+	debt2 = int(d.get("debt2", Content.ACT2_DEBT))
+	act2_runs = int(d.get("act2_runs", 0))
+	act2_wins = int(d.get("act2_wins", 0))
 
 
 func save(path: String = "") -> bool:

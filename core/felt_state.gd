@@ -4,6 +4,7 @@ extends RefCounted
 
 const Board := preload("res://core/board.gd")
 const Chip := preload("res://core/chip.gd")
+const Content := preload("res://core/content.gd")
 
 var board
 var chips: Array = []
@@ -39,6 +40,11 @@ func copy():
 	f.last_pocket = last_pocket
 	f.next_id = next_id
 	return f
+
+
+## Is this Enforcer twist in force? (The Owner's table combines several.)
+func boss_is(rule: String) -> bool:
+	return boss_rule == rule or (boss_rule == "owner" and rule in Content.OWNER_RULES)
 
 
 func has_rule(id: String) -> bool:

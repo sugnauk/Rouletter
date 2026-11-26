@@ -7,7 +7,10 @@ extends RefCounted
 # --- Run structure ------------------------------------------------------------------
 const NIGHTS := 4
 const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
-const NIGHT_BASE := [8, 20, 45, 80]     ## Take target of each night's Floor table
+const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
+const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
+## Take target of each night's first table (nights 5-8 are Act II only).
+const NIGHT_BASE := [8, 20, 45, 80, 120, 170, 230, 300]
 const TABLE_MULT := [1.0, 1.4, 1.8]      ## Floor / High Roller / Enforcer
 const SPINS := 6
 const START_STACK := 25                 ## betting chips handed out at each table
@@ -70,6 +73,7 @@ const MOMENTUM_STEP := 0.25               ## Momentum: +25% per scoring spin in 
 
 # --- Meta ------------------------------------------------------------------------------
 const DEBT_START := 1000000
+const ACT2_DEBT := 5000000               ## the Floor Above's marker, opened when Act I is paid
 const DEBT_PER_TAKE := 100               ## each point of Take pays $100 of the marker
 const MARKERS_PER_NIGHT := 1
 const MARKERS_VICTORY := 3
@@ -175,7 +179,28 @@ const ENFORCERS := {
 		"desc": "Every 3rd spin is called: you can't place new bets on it.",
 		"intro": "I call the spins at my table. You just watch.",
 		"defeat": "Huh. Didn't call that one."},
+	# Act II: the Floor Above (nights 5-7), then the Owner on night 8.
+	"inspector": {"name": "The Inspector", "rule": "no_inside", "act": 2,
+		"desc": "Inside bets are under review: no splits, streets, corners or lines, and those chips don't pay.",
+		"intro": "Gaming commission. Routine check. Keep your chips in the middle of the squares, please.",
+		"defeat": "Everything appears to be... in order. How irritating."},
+	"velvet": {"name": "Velvet", "rule": "drain", "act": 2,
+		"desc": "The room has a minimum: every spin costs 2 chips from your stack.",
+		"intro": "Upstairs, darling, we don't count chips. We just watch them leave.",
+		"defeat": "You kept some. How quaint."},
+	"kline": {"name": "Mr. Kline", "rule": "short", "act": 2,
+		"desc": "A short table: only 4 spins to make the payment.",
+		"intro": "I'm a busy man. Four spins. Make them count or make them your last.",
+		"defeat": "...Fine. Next."},
+	"owner": {"name": "Mr. Vance", "rule": "owner", "act": 2, "final": true,
+		"desc": "The Owner's table: every zero costs 10% of your Take, and every 3rd spin is called.",
+		"intro": "My wheel. My felt. My rules. Sit down. You've earned the chair, if not the room.",
+		"defeat": "...Well played. I'll have the marker drawn up in your favour. Don't spend it all downstairs."},
 }
+## The Owner's table combines these Enforcer rules.
+const OWNER_RULES := ["zero_tax", "called"]
+const DRAIN_PER_SPIN := 2
+const SHORT_SPINS := 4
 
 
 static func targets_for(night: int) -> Array:

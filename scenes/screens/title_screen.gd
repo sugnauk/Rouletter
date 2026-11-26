@@ -36,4 +36,6 @@ func setup() -> void:
 func refresh() -> void:
 	var p = main.profile
 	debt_lbl.text = "Marker owed to Mr. Vance: $%s" % P.money(p.debt)
+	if p.act2_unlocked():
+		debt_lbl.text += "   Floor Above: $%s" % P.money(p.debt2)
 	info_lbl.text = "Markers %d    Runs %d    Wins %d    Best night %d" % [p.markers, p.runs, p.wins, p.best_night]

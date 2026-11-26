@@ -23,7 +23,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -53,7 +53,7 @@ func felt(wheel: String, chips: Array):
 # --- Wheels & board -------------------------------------------------------------------
 
 func test_wheels_shape() -> void:
-	var sizes := {"french": 37, "european": 37, "american": 38, "mini": 13, "triple_zero": 39}
+	var sizes := {"french": 37, "european": 37, "american": 38, "mini": 13, "triple_zero": 39, "sunrise": 37, "no_zero": 36}
 	for id in sizes:
 		var b = Board.new(id)
 		check(b.pockets.size() == sizes[id], "%s pocket count" % id)
@@ -66,7 +66,7 @@ func test_wheels_shape() -> void:
 		var sec := 0
 		for k in ["VOI", "TIE", "ORP"]:
 			sec += b.bet(k).numbers.size()
-		check(sec == b.pockets.size() - (b.zeros.size() - 1), "%s call bets cover the wheel" % id)
+		check(sec == b.pockets.size() - maxi(0, b.zeros.size() - 1), "%s call bets cover the wheel" % id)
 		check(b.bet("RED").numbers.size() == b.numbers / 2, "%s half red" % id)
 	check(Wheels.label(-1) == "00" and Wheels.label(-2) == "000", "zero labels")
 	var m = Board.new("mini")
@@ -429,6 +429,56 @@ func test_inside_content() -> void:
 	check(not run.place_chip(bi, "S5") and run.place_chip(bi, "CO1"), "Bridge only sits on line bets")
 
 
+func test_act2() -> void:
+	var run = RunState.new()
+	run.start_run(7, "european", Profile.default_unlocks(), 2)
+	check(run.nights_total() == 8 and run.enforcer_order.size() == 8 and run.enforcer_order[7] == "owner", "Act II: 8 nights, the Owner last")
+	for i in range(4):
+		check(Content.ENFORCERS[run.enforcer_order[i]].get("act", 1) == 1, "Act I Enforcers first")
+	# Jump to night 5's boss table: the Act II Enforcers, upstairs names.
+	run.night = 4
+	run.table_idx = 1
+	check(run.upstairs() and run.table_name() == "Velvet Room", "upstairs table names")
+	run.night = 7
+	run.table_idx = 2
+	run._start_table()
+	check(run.felt.boss_rule == "owner" and run.felt.boss_is("zero_tax") and run.felt.boss_is("called") and not run.felt.boss_is("frozen"), "the Owner combines two rules")
+	run.table.take = run.table.target - 1
+	run.place_bet("S17", 1)
+	run.spin(17)
+	check(run.phase == RunState.Phase.VICTORY, "beating the Owner wins Act II")
+	# Act I still ends after night 4.
+	var a1 = new_run()
+	a1.night = 3
+	a1.table_idx = 2
+	a1._start_table()
+	a1.table.take = a1.table.target
+	a1.place_bet("S17", 1)
+	a1.spin(17)
+	check(a1.phase == RunState.Phase.VICTORY and a1.nights_total() == 4, "Act I ends after night 4")
+	# New Enforcer twists.
+	var r = new_run()
+	r.felt.boss_rule = "no_inside"
+	check(not r.can_bet_on("SP1_4") and r.can_bet_on("S1") and r.can_bet_on("RED"), "the Inspector closes inside bets")
+	r.enforcer_order = ["kline", "kline", "kline", "kline"]
+	r.table_idx = 2
+	r._start_table()
+	check(r.felt.boss_rule == "short" and r.table.spins_left == Content.SHORT_SPINS, "Mr. Kline: four spins")
+	var v = new_run()
+	v.felt.boss_rule = "drain"
+	var st: int = v.table.stack
+	v.spin(5)
+	check(v.table.stack == st - Content.DRAIN_PER_SPIN, "Velvet drains 2 chips a spin")
+	# Profile: Act II opens when Act I's marker is paid; take overflows into the new marker.
+	var p = Profile.new()
+	check(not p.act2_unlocked(), "Act II locked at first")
+	p.debt = 1000
+	p.record_run(4, 50.0, true, 1)
+	check(p.debt == 0 and p.act2_unlocked() and p.debt2 == Content.ACT2_DEBT - 4000, "overflow pays the Act II marker")
+	p.record_run(8, 10.0, true, 2)
+	check(p.act2_runs == 1 and p.act2_wins == 1, "Act II runs counted")
+
+
 func test_shop() -> void:
 	var run = new_run()
 	run.place_bet("S17", 1)
@@ -581,7 +631,7 @@ func test_story_beats() -> void:
 	p.seen_beats.append("n2_dolores")
 	check(Story.interlude(2, p).id == "n2_lou", "next unseen interlude")
 	p.seen_beats.append("n2_lou")
-	check(not Story.interlude(2, p).is_empty() and Story.interlude(1, p).is_empty() and Story.interlude(5, p).is_empty(), "interludes rotate once seen, only before nights 2-4")
+	check(not Story.interlude(2, p).is_empty() and Story.interlude(1, p).is_empty() and Story.interlude(9, p).is_empty(), "interludes rotate once seen, only before nights 2-8")
 	var ids_all := {}
 	for sc in Story.all_scenes():
 		check(not ids_all.has(sc.id) and sc.title != "" and not sc.lines.is_empty(), "scene %s is unique and complete" % sc.id)

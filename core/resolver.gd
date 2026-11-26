@@ -52,7 +52,8 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		var b: Dictionary = B.bet(c.bet)
 		var covers: bool = pocket in b.numbers
 		var outside: bool = B.is_outside(c.bet)
-		var dead: bool = (w.boss_rule == "no_outside" and outside) or c.id == w.frozen_id
+		var dead: bool = (w.boss_is("no_outside") and outside) or (w.boss_is("no_inside") and B.is_line_bet(c.bet)) \
+				or c.id == w.frozen_id
 		if c.is_bet():
 			if covers and not dead:
 				var amt := _score(w, c, b, pocket, res)
@@ -190,7 +191,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			res.hit_streak = felt.hit_streak + 1
 		else:
 			res.hit_streak = 0
-	if zero_hit and w.boss_rule == "zero_tax":
+	if zero_hit and w.boss_is("zero_tax"):
 		res.zero_tax = true
 		res.log.rules.append("Madame Oro takes her cut")
 
