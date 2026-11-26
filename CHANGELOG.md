@@ -3,8 +3,11 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.10
+- Desktop builds: Windows, Linux and macOS exports. Every version bump that reaches `main` publishes a GitHub Release with all three zips and these notes (`.github/workflows/desktop.yml`).
+
 ## 0.0.9
-- 14 new things to buy:
+- 13 new things to buy:
   - Chips: Black Cat (+Take on any black hit), Lucky Penny (+$2 when it hits), Snowball (grows 2 levels per hit), Sentinel (zero chip: +8 on any zero), Column Crown (sits on a column: x1.25 spin when it hits).
   - Felt upgrades: Lucky Lamp (+$3 when its number hits), Silk Box (losing bets on that column/dozen go back to your stack), Sweet Spot (every bet covering that number x1.5).
   - House Rules: Last Call (final spin of each table doubles), Comped Drinks (+$3 per clear), Insurance (your biggest losing bet each spin is forgiven), High Society (columns and dozens pay +1x), Black Tie (black straight-ups x1.5).
