@@ -440,6 +440,7 @@ const CHALLENGES := {
 	"shoestring": {"name": "Shoestring", "wheel": "european",
 		"desc": "A 12-chip stack, and no Pit Boss or Loan Shark to lean on."},
 }
+const CHALLENGE_LEVELS := 3            ## each level adds two marker grades (I: base, II: grade 3, III: grade 5)
 const SHOESTRING_STACK := 12
 const FENCE_RUN_CASH := 10
 ## Alternative starting kits, bought at the Pawn Shop and picked on the wheel screen.

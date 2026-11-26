@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1370,6 +1370,37 @@ func test_bosses_and_grades() -> void:
 	g._start_table()
 	check(g.felt.perm_chips().any(func(c): return c.flaw == "cracked"), "Cracked Luck cracks a chip each night")
 	check(g._pick_vendors() == ["cashier"], "One Window: only the Cashier")
+
+
+func test_meta() -> void:
+	# Money log.
+	var run = new_run()
+	run.place_bet("S17", 1)
+	run.spin(17)
+	var src: Array = run.cash_sources()
+	check(src.any(func(x): return x[0] == "Base pay") and src.any(func(x): return x[0] == "Starting cash"), "the money log names its sources")
+	var sum := 0
+	for x in src:
+		sum += x[1]
+	check(sum >= run.cash, "every dollar is accounted for (%d logged, %d held)" % [sum, run.cash])
+	# Pawn Shop tree: each unlock needs the one above it.
+	var p = Profile.new()
+	p.markers = 100
+	var lanes := Profile.tree()
+	check(lanes.size() >= 5 and lanes.all(func(l): return l.ids.size() <= 6), "the Pawn Shop is a tree of short lanes")
+	var lane: Array = lanes[0].ids
+	check(not p.buy_unlock(lane[1]) and p.buy_unlock(lane[0]) and p.buy_unlock(lane[1]), "unlocks open top to bottom")
+	check(p.next_unlock().is_empty() or p.can_unlock(p.next_unlock().id), "the next unlock is always buyable")
+	# Challenge ladder.
+	var c = RunState.new()
+	c.start_run(4, "european", Profile.default_unlocks(), 1, 4, {"challenge": "shoestring"})
+	check(c.grade == 4 and c.challenge == "shoestring", "challenge level III runs on grade 5")
+	check(Feats.check("end", {"won": true, "run": c}, []).has("ch_master"), "Hard Way Round for a level III win")
+	# Weekly share codes.
+	var code := RunState.share_code("W2917", 3, 1234, false)
+	var back := RunState.read_share_code(code)
+	check(back.nights == 3 and back.take == 1234 and not back.won and back.week == "W2917", "a share code reads back")
+	check(RunState.read_share_code(code.replace("T1234", "T9999")).is_empty(), "an edited code doesn't check out")
 
 
 func test_new_rules() -> void:

@@ -3,6 +3,17 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.30
+- Where the money came from: every dollar in a run is logged by source (starting cash, base pay, balls left, comps, side jobs, chips like Mint, Dealer favours, loans and more).
+  - The end screen has a MONEY tab beside YOUR BUILD.
+  - The pause menu shows your top three sources so far.
+- The Pawn Shop is now a tree: seven lanes (Wheels, Chips I/II, Felt, Rules I/II, Extras), cheapest at the top. Each unlock needs the one above it in its lane. The lines light up as you climb.
+- Challenge ladder: win a challenge to open its next level. Level II runs on a Grade 3 marker, Level III on Grade 5. Pick the level on the wheel screen. Winning any challenge at Level III earns the Hard Way Round Feat.
+- Weekly sharing: finishing a weekly run copies a share code (like RLT-W2917-N3-T1234-L-1A2B) to your clipboard and shows it on the end screen.
+  - Paste a friend's code into the CODE box in Weekly mode to compare.
+  - Your best weekly runs this week are listed there too.
+  - An online leaderboard would need a server; codes work today without one.
+
 ## 0.0.29
 - Three new Act II Enforcers. Each Act II run now meets three of the six before the Owner:
   - The Auditor: your House Rules are suspended (the wheel's own still apply).

@@ -236,11 +236,14 @@ func begin_flow() -> void:
 
 
 ## opts: {seed (0 = random), challenge, starter, weekly}
+var last_share_code := ""   ## the weekly run just finished, as a code to share
+
+
 func start_run(wheel: String, acts: int = 1, grade: int = 0, opts: Dictionary = {}) -> void:
 	var seed_v: int = opts.get("seed", 0)
 	if seed_v == 0:
 		seed_v = (int(Time.get_unix_time_from_system()) ^ randi()) % 1000000000
-	var g: int = grade if opts.get("weekly", "") != "" else mini(grade, profile.max_grade())
+	var g: int = grade if opts.get("weekly", "") != "" or opts.get("challenge", "") != "" else mini(grade, profile.max_grade())
 	opts = opts.duplicate()
 	opts.new_player = profile.best_night == 0 and profile.wins == 0
 	run.start_run(seed_v, wheel, profile.unlocked, acts, g, opts)
@@ -304,6 +307,17 @@ func _queue_scene(scene: Dictionary) -> void:
 func _on_run_ended(won: bool) -> void:
 	delete_saved_run()
 	check_feats("end", {"won": won, "wheels_won": profile.wheels_won})
+	if won and run.challenge != "":
+		var lvl: int = run.grade / 2 + 1
+		profile.challenge_level[run.challenge] = maxi(int(profile.challenge_level.get(run.challenge, 0)), lvl)
+	if run.weekly != "":
+		var code: String = RunState.share_code(run.weekly, run.nights_cleared, int(run.total_take), won)
+		profile.weekly_runs = profile.weekly_runs.filter(func(r): return r.id == run.weekly)
+		profile.weekly_runs.append({"id": run.weekly, "nights": run.nights_cleared, "take": int(run.total_take), "won": won, "code": code})
+		profile.weekly_runs.sort_custom(func(a, b): return [a.won, a.nights, a.take] > [b.won, b.nights, b.take])
+		profile.weekly_runs = profile.weekly_runs.slice(0, 5)
+		last_share_code = code
+		DisplayServer.clipboard_set(code)
 	if won and not run.wheel_id in profile.wheels_won:
 		profile.wheels_won.append(run.wheel_id)
 	var paid: int = run.marker_paid()

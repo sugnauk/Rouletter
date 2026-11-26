@@ -26,6 +26,7 @@ var phase: int = Phase.TABLE
 var unlocked: Array = []
 var cash: int = 0
 var inventory: Array = []        ## unplaced permanent chips: {kind, value}
+var cash_log: Dictionary = {}    ## run summary: where the money came from (source -> dollars)
 var contrib: Dictionary = {}     ## run summary: Take scored per chip kind ("bet" for betting chips)
 var best_spin_info: Dictionary = {}   ## run summary: the biggest spin's breakdown
 var table_offer: Array = []      ## the free pick-1-of-3 special chip waiting at this table
@@ -66,7 +67,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	weekly = opts.get("weekly", "")
 	if challenge != "":
 		acts_in = 1
-		grade_in = 0
+		grade_in = clampi(grade_in, 0, (Content.CHALLENGE_LEVELS - 1) * 2)
 	acts = acts_in
 	grade = clampi(grade_in, 0, Content.GRADES.size() - 1)
 	rng = GameRng.new(seed_in)
@@ -93,6 +94,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	if challenge == "fence_run":
 		inventory = [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}]
 		cash += Content.FENCE_RUN_CASH
+	cash_log = {"Starting cash": cash}
 	for r in def.get("house", []):
 		felt.house_rules.append(r)
 	stack_size = Content.START_STACK - (5 if graded(1) else 0)
@@ -144,6 +146,24 @@ static func weekly_preset(unix: int) -> Dictionary:
 		"grade": 1, "monday": Time.get_date_string_from_unix_time(monday)}
 
 
+## A short code for a weekly result, so friends can compare: RLT-W2917-N4-T1234-W-<check>.
+## The check stops casual typos and edits; it isn't meant to be tamper-proof.
+static func share_code(week: String, nights: int, take: int, won: bool) -> String:
+	var body := "%s-N%d-T%d-%s" % [week, nights, take, "W" if won else "L"]
+	return "RLT-%s-%s" % [body, ("%x" % (absi((body + "gilded-ace").hash()) % 0xFFFF)).to_upper()]
+
+
+## Read a share code back: {week, nights, take, won} or {} if it doesn't check out.
+static func read_share_code(code: String) -> Dictionary:
+	var parts := code.strip_edges().to_upper().split("-")
+	if parts.size() != 6 or parts[0] != "RLT":
+		return {}
+	var body := "-".join(parts.slice(1, 5))
+	if share_code(parts[1], parts[2].substr(1).to_int(), parts[3].substr(1).to_int(), parts[4] == "W") != code.strip_edges().to_upper():
+		return {}
+	return {"week": parts[1], "nights": parts[2].substr(1).to_int(), "take": parts[3].substr(1).to_int(), "won": parts[4] == "W", "body": body}
+
+
 ## A seed typed by a player: digits are used as-is, anything else is hashed.
 static func parse_seed(text: String) -> int:
 	var t := text.strip_edges()
@@ -156,7 +176,7 @@ static func parse_seed(text: String) -> int:
 
 ## Saved too, but optional, so saves from before they existed still load.
 const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [],
-	"contrib": {}, "best_spin_info": {}}
+	"contrib": {}, "best_spin_info": {}, "cash_log": {}}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
 	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade", "used_outside"]
@@ -615,6 +635,15 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 		table.stack -= d
 		res.log.rules.append("Velvet's minimum: -%d chips from your stack" % d)
 	cash += res.cash
+	if res.cash > 0:
+		var from_events := 0
+		for e in res.events:
+			if e.kind == "cash":
+				var src: String = Content.CHIPS[e.chip].name if Content.CHIPS.has(e.get("chip", "")) else e.label.capitalize()
+				log_cash(src, int(e.amount))
+				from_events += int(e.amount)
+		if res.cash > from_events:
+			log_cash("Felt upgrades", res.cash - from_events)
 	table.spins_used += 1
 	table.spins_left += res.respins - 1
 	last_result = res
@@ -638,12 +667,19 @@ func _clear_table() -> void:
 	# Cleared with balls to spare: the balls-left cash becomes one option of a bonus pick.
 	var pick: bool = table.spins_left >= Content.EARLY_CLEAR_SPINS
 	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if pick else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
+	log_cash("Base pay", Content.CLEAR_CASH[table_idx])
+	if not pick:
+		log_cash("Balls left", table.spins_left * Content.CASH_PER_SPIN_LEFT)
+	log_cash("Comps", comps)
 	if "comp_card" in vouchers:
 		reward += Content.COMP_CARD_CASH
+		log_cash("Comp Card", Content.COMP_CARD_CASH)
 	if felt.has_rule("comped"):
 		reward += Content.COMPED_CASH
+		log_cash("Comped", Content.COMPED_CASH)
 	if felt.has_rule("compound_interest"):
 		reward += cash / 10
+		log_cash("Compound Interest", cash / 10)
 	var extras := []   # [label, cash]: conditions, routes, objectives and side bets
 	match table.get("condition", ""):
 		"early":
@@ -660,6 +696,7 @@ func _clear_table() -> void:
 		extras.append(["LOU'S SIDE BET", Content.LOU_PAYOUT])
 	for x in extras:
 		reward += x[1]
+		log_cash("Side jobs" if x[0] in Content.OBJECTIVES.values().map(func(o): return o.name.to_upper()) else x[0].capitalize(), x[1])
 	cash += reward
 	overflow += maxi(0, int(t - table.target))
 	total_take += t
@@ -685,6 +722,18 @@ func _clear_table() -> void:
 	message = "Paid! +$%d (%d base, %d spins left, %d comps)." % [reward, Content.CLEAR_CASH[info.table], info.spins_left, comps]
 	_open_shop(info)
 	table_cleared.emit(info)
+
+
+func log_cash(source: String, amount: int) -> void:
+	if amount > 0:
+		cash_log[source] = cash_log.get(source, 0) + amount
+
+
+## Where the run's money came from, biggest first: [[source, dollars], ...].
+func cash_sources() -> Array:
+	var ks: Array = cash_log.keys()
+	ks.sort_custom(func(a, b): return cash_log[a] > cash_log[b])
+	return ks.map(func(k): return [k, cash_log[k]])
 
 
 ## The biggest parts of a spin, for the run summary: {take, pocket, parts: [[label, text]]}.
@@ -965,6 +1014,7 @@ func answer_event(opt: int) -> String:
 			out = "+1 ball at the next table."
 		["dolores_tip", 1]:
 			cash += 2
+			log_cash("Dolores", 2)
 			out = "+$2."
 		["lou_bet", 0]:
 			if cash < Content.LOU_STAKE:
@@ -992,6 +1042,7 @@ func take_bonus(i: int) -> bool:
 	match b.type:
 		"cash":
 			cash += b.amount
+			log_cash("Balls left", b.amount)
 		"favour":
 			favours.append(b.id)
 		"reroll":
@@ -1307,6 +1358,7 @@ func buy(i: int) -> bool:
 			stack_owed += price_of(item)
 		"loan":
 			cash += item.price
+			log_cash("Loan Shark", item.price)
 			loan_pct += item.pct
 		"take":
 			overflow -= price_of(item)
@@ -1400,7 +1452,9 @@ func sell_chip(chip_id: int) -> bool:
 	var c = felt.find(chip_id)
 	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky":
 		return false
-	cash += int(Content.CHIPS[c.kind].price * c.copies * Content.SELL_SHARE * (Content.FENCE_SHARE if c.flaw != "" else 1.0))
+	var got := int(Content.CHIPS[c.kind].price * c.copies * Content.SELL_SHARE * (Content.FENCE_SHARE if c.flaw != "" else 1.0))
+	cash += got
+	log_cash("Sold chips", got)
 	felt.remove(chip_id)
 	changed.emit()
 	return true

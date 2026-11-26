@@ -127,69 +127,71 @@ func _process(delta: float) -> void:
 			run.spin(_empty_pocket(run))
 			main.route()],
 		[16.8, func(): shot("09_game_over")],
-		[16.9, func(): main.show_screen("pawn")],
-		[17.2, func(): shot("10_pawn")],
-		[17.4, func(): main.show_screen("journal")],
-		[17.6, func(): shot("10b_journal")],
-		[17.7, func(): main.show_screen("options")],
-		[17.9, func(): shot("10c_options")],
-		[18.1, func():
+		[16.9, func(): main.screens.end.tab_btn.emit_signal("pressed")],
+		[17.05, func(): shot("09b_money")],
+		[17.2, func(): main.show_screen("pawn")],
+		[17.5, func(): shot("10_pawn")],
+		[17.7, func(): main.show_screen("journal")],
+		[17.9, func(): shot("10b_journal")],
+		[18, func(): main.show_screen("options")],
+		[18.2, func(): shot("10c_options")],
+		[18.4, func():
 			main.fast_ui = false
 			main.show_screen("card")],
-		[20.8, func(): shot("11_title_card")],
-		[20.9, func():
+		[21.1, func(): shot("11_title_card")],
+		[21.2, func():
 			main.screens.card.done = true
 			main.go("title", "NIGHT 2", "High Roller table  -  pay 28")],
-		[21.5, func(): shot("12_loading_card")],
-		[22.8, func():
+		[21.8, func(): shot("12_loading_card")],
+		[23.1, func():
 			main.profile.feats = ["straight_up", "jackpot", "beat_sal"]
 			main.show_screen("feats")
 			main.fx.toast("FEAT: STRAIGHT UP", "+1 Marker")],
-		[23.2, func(): shot("13_feats")],
-		[23.4, func():
+		[23.5, func(): shot("13_feats")],
+		[23.7, func():
 			main.profile.seen_items = ["perm", "magnet", "gilded", "la_partage", "patience"]
 			main.profile.used_items = ["perm"]
 			main.screens.feats.tab = "almanac"
 			main.screens.feats.refresh()],
-		[23.7, func(): shot("14_almanac")],
-		[23.9, func():
+		[24, func(): shot("14_almanac")],
+		[24.2, func():
 			main.show_screen("title")
 			main.say([{"speaker": "Mr. Vance", "text": "Portrait check."}])],
-		[24.2, func(): shot("15_portrait_vance")],
-		[24.3, func():
+		[24.5, func(): shot("15_portrait_vance")],
+		[24.6, func():
 			main.dialogue.lines = [{"speaker": "Dolores", "text": "Portrait check."}]
 			main.dialogue.idx = 0
 			main.dialogue._show_line()],
-		[24.6, func(): shot("16_portrait_dolores")],
-		[24.7, func():
+		[24.9, func(): shot("16_portrait_dolores")],
+		[25, func():
 			main.dialogue.lines = [{"speaker": "Madame Oro", "text": "Portrait check."}]
 			main.dialogue._show_line()],
-		[25, func(): shot("17_portrait_oro")],
-		[25.2, func():
+		[25.3, func(): shot("17_portrait_oro")],
+		[25.5, func():
 			main.dialogue.visible = false
 			main.show_screen("credits")],
-		[25.5, func(): shot("18_credits")],
-		[25.6, func():
+		[25.8, func(): shot("18_credits")],
+		[25.9, func():
 			main.profile.add_history({"wheel": "european", "acts": 1, "nights": 2, "take": 140, "best_spin": 60, "won": false})
 			main.profile.add_history({"wheel": "french", "acts": 1, "nights": 4, "take": 520, "best_spin": 210, "won": true})
 			main.show_screen("feats")
 			main.screens.feats.tab = "history"
 			main.screens.feats.refresh()],
-		[25.9, func(): shot("19_history")],
-		[26, func(): main.pause.open()],
-		[26.2, func(): shot("20_pause")],
-		[26.4, func():
+		[26.2, func(): shot("19_history")],
+		[26.3, func(): main.pause.open()],
+		[26.5, func(): shot("20_pause")],
+		[26.7, func():
 			main.pause.close()
 			main.profile.seen_items = Content.CHIPS.keys() + Content.UPGRADES.keys() + Content.HOUSE_RULES.keys()
 			main.show_screen("feats")
 			main.screens.feats.tab = "almanac"
 			main.screens.feats.refresh()],
-		[26.7, func(): main.screens.feats.list.get_parent().scroll_vertical = 330],
-		[26.95, func(): shot("21_almanac_chips")],
-		[27.05, func(): main.screens.feats.list.get_parent().scroll_vertical = 990],
-		[27.3, func(): shot("22_almanac_upgrades")],
-		[27.5, func(): main.start_run("european")],
-		[28.6, func():
+		[27, func(): main.screens.feats.list.get_parent().scroll_vertical = 330],
+		[27.25, func(): shot("21_almanac_chips")],
+		[27.35, func(): main.screens.feats.list.get_parent().scroll_vertical = 990],
+		[27.6, func(): shot("22_almanac_upgrades")],
+		[27.8, func(): main.start_run("european")],
+		[28.9, func():
 			_close_dialogue()
 			var r = main.run
 			r.night = 1
@@ -200,17 +202,17 @@ func _process(delta: float) -> void:
 			r.place_bet("S17", 3)
 			r.place_bet("RED", 2)
 			main.screens.table.refresh()],
-		[28.9, func(): shot("23_table_job")],
-		[29, func():
+		[29.2, func(): shot("23_table_job")],
+		[29.3, func():
 			for k in preload("res://core/story.gd").TIPS:
 				main.profile.seen_beats.append(preload("res://core/story.gd").TIPS[k].id)
 			_close_dialogue()
 			main.run.table_offer = []
 			main.screens.table.refresh()
 			main.screens.table._on_bet_held("RED")],
-		[29.2, func(): shot("23m_touch_menu")],
-		[29.25, func(): main.screens.table._close_bet_menu()],
-		[29.3, func():
+		[29.5, func(): shot("23m_touch_menu")],
+		[29.55, func(): main.screens.table._close_bet_menu()],
+		[29.6, func():
 			var r = main.run
 			var guard := 0
 			while r.phase == 0 and guard < 20:
@@ -221,41 +223,41 @@ func _process(delta: float) -> void:
 			r.shop.bonus = []
 			r.shop.event = "lou_bet"
 			main.route()],
-		[30.7, func():
+		[31, func():
 			_close_dialogue()
 			main.screens.shop.refresh()],
-		[30.9, func(): shot("24_shop_event")],
-		[31, func():
+		[31.2, func(): shot("24_shop_event")],
+		[31.3, func():
 			main.run.shop.event = ""
 			main.run.shop.routes = Content.ROUTES.keys()
 			main.screens.shop.refresh()],
-		[31.2, func(): shot("25_shop_routes")],
-		[31.3, func():
+		[31.5, func(): shot("25_shop_routes")],
+		[31.6, func():
 			main.run.shop.routes = []
 			main.run.shop.stash = main.run._enforcer_stash("sal")
 			main.screens.shop.refresh()],
-		[31.5, func(): shot("25b_shop_stash")],
-		[31.55, func():
+		[31.8, func(): shot("25b_shop_stash")],
+		[31.85, func():
 			main.run.shop.stash = []
 			main.screens.shop.refresh()],
-		[31.7, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
-		[32, func(): shot("26_portrait_duchess")],
-		[32.2, func():
+		[32, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
+		[32.3, func(): shot("26_portrait_duchess")],
+		[32.5, func():
 			main.dialogue.visible = false
 			main.show_screen("select")
 			main.screens.select.mode = "weekly"
 			main.screens.select._cycle_mode(0)],
-		[32.5, func(): shot("27_select_weekly")],
-		[32.6, func():
+		[32.8, func(): shot("27_select_weekly")],
+		[32.9, func():
 			main.screens.select.mode = "gauntlet"
 			main.screens.select._cycle_mode(0)],
-		[32.8, func(): shot("28_select_challenge")],
-		[32.9, func():
+		[33.1, func(): shot("28_select_challenge")],
+		[33.2, func():
 			main.run.run_seed = 424242
 			main.save_run()
 			main.show_screen("title")],
-		[33.2, func(): shot("29_title_continue")],
-		[33.4, func(): get_tree().quit()],
+		[33.5, func(): shot("29_title_continue")],
+		[33.7, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

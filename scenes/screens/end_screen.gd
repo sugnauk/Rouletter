@@ -18,6 +18,8 @@ var felt_view
 var build_lbl: Label
 var build_canvas: Control
 var share_lbl: Label
+var show_money := false
+var tab_btn: Button
 
 
 func setup() -> void:
@@ -42,6 +44,15 @@ func setup() -> void:
 	add_child(build_panel)
 	var bt := P.label(build_panel, "YOUR BUILD", P.FONT_SMALL, P.GOLD)
 	P.place(bt, Vector2(6, 4))
+	tab_btn = P.button(build_panel, "MONEY >", func():
+		show_money = not show_money
+		bt.text = "WHERE THE MONEY CAME FROM" if show_money else "YOUR BUILD"
+		tab_btn.text = "< BUILD" if show_money else "MONEY >"
+		felt_view.visible = not show_money
+		build_canvas.position.y = 16 if show_money else 96
+		build_canvas.queue_redraw()
+		Sfx.play("click"), Vector2(56, 12), P.FONT_SMALL)
+	P.place(tab_btn, Vector2(180, 2))
 	felt_view = FeltView.new()
 	felt_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	felt_view.scale = Vector2(0.68, 0.68)
@@ -71,7 +82,13 @@ func refresh() -> void:
 	felt_view.layout()
 	felt_view.queue_redraw()
 	build_canvas.queue_redraw()
+	show_money = false
+	tab_btn.text = "MONEY >"
+	felt_view.visible = true
+	build_canvas.position.y = 96
 	share_lbl.text = "Seed %d%s" % [main.run.run_seed, ("  -  " + Content.CHALLENGES[main.run.challenge].name) if main.run.challenge != "" else ("  -  weekly " + main.run.weekly if main.run.weekly != "" else "")]
+	if main.run.weekly != "" and main.last_share_code != "":
+		share_lbl.text = "Weekly code (copied): %s" % main.last_share_code
 	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Best spin", "Marker paid", "Left unpaid", "Enforcers beaten", "Markers earned", "Feats", "Next unlock"])
 	values_lbl.text = "\n".join([
 		main.run.felt.board.def.name,
@@ -91,6 +108,19 @@ func _draw_build() -> void:
 	var c := build_canvas
 	var run = main.run
 	var font := P.font()
+	if show_money:
+		var src: Array = run.cash_sources()
+		var total := 0
+		for x in src:
+			total += x[1]
+		Art.text(c, font, Vector2(0, 8), "EARNED $%d IN ALL" % total, 8, P.DIM)
+		var top: float = maxf(1.0, src[0][1]) if not src.is_empty() else 1.0
+		for i in range(mini(src.size(), 12)):
+			var y := 14 + i * 14
+			Art.text(c, font, Vector2(0, y + 9), src[i][0], 8, P.CREAM)
+			c.draw_rect(Rect2(110, y + 3, 70.0 * src[i][1] / top, 5), P.GOOD.darkened(0.2))
+			Art.text(c, font, Vector2(186, y + 9), "$%d" % src[i][1], 8, P.GOOD)
+		return
 	Art.text(c, font, Vector2(0, 8), "TOP CHIPS", 8, P.DIM)
 	var top: Array = run.top_contributors(3)
 	if top.is_empty():
