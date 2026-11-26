@@ -14,6 +14,7 @@ const RunState := preload("res://core/run_state.gd")
 const FeltView := preload("res://scenes/ui/felt_view.gd")
 const WheelView := preload("res://scenes/ui/wheel_view.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
+const TableCount := preload("res://scenes/screens/table_count.gd")
 
 const LEFT_W := 180
 const MID_X := 188
@@ -61,11 +62,19 @@ var shown_cash := -1.0           ## HUD cash, counted up toward run.cash
 var zoom_bg: ColorRect            ## dims the table while the felt is zoomed for touch betting
 var zoomed := false
 const ZOOM := 1.8
+var count                        ## the spin count-up (table_count.gd)
+var receipt := ""                ## one-line "where the Take came from" under the score
 var chance := 0.0
 var take_per_spin := 0.0
 
 
+## Fast spins (Options): a short wheel spin and a brisk count.
+func fast() -> bool:
+	return main.profile.settings.get("fast_spins", false)
+
+
 func setup() -> void:
+	count = TableCount.new(self)
 	hud = _canvas(Vector2(0, 0), Vector2(640, 24), _draw_hud)
 
 	wheel_view = WheelView.new()
@@ -97,6 +106,11 @@ func setup() -> void:
 	P.place(status_lbl, Vector2(MID_X, 150), Vector2(330, 10))
 	history_view = _canvas(Vector2(MID_X, 162), Vector2(330, 18), _draw_history)
 	score_view = _canvas(Vector2(MID_X, 184), Vector2(330, 170), _draw_score)
+	# Clicking the score panel opens the full calculation (the spin log).
+	score_view.mouse_filter = Control.MOUSE_FILTER_STOP
+	score_view.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and receipt != "":
+			log_box.visible = true)
 	log_box = RichTextLabel.new()
 	log_box.bbcode_enabled = true
 	log_box.scroll_following = true
@@ -493,6 +507,11 @@ func _draw_score(c: Control) -> void:
 		var w := font.get_string_size(amt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 		Art.text(c, font, Vector2(c.size.x - 10 - w, y), amt, 8, col)
 		y += 14.0
+	if receipt != "" and not spinning:
+		c.draw_rect(Rect2(4, c.size.y - 26, c.size.x - 8, 1), P.LINE.darkened(0.5))
+		var rw := font.get_string_size(receipt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+		Art.text(c, font, Vector2(165, c.size.y - 15), receipt if rw < c.size.x - 12 else receipt.substr(0, 60) + "...", 8, P.CREAM, true)
+		Art.text(c, font, Vector2(165, c.size.y - 5), "click for the full calculation", 8, P.DIM, true)
 
 
 # --- Input ------------------------------------------------------------------------
@@ -596,20 +615,26 @@ func _on_spin() -> void:
 	score_rows = []
 	spin_score = 0.0
 	spin_score_vis = false
+	receipt = ""
 	var pockets: Array = run.felt.board.pockets
 	var pocket: int = pockets[run.rng.range_i(0, pockets.size() - 1)]
-	wheel_view.spin_to(pocket)
+	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9)
 	await wheel_view.spin_done
 	Sfx.play("ball_drop")
-	var before: float = run.table.take
-	var target: int = run.table.target
-	var staked: int = run.felt.bet_stakes()
+	var ctx := {"before": run.table.take, "target": run.table.target, "spins_before": run.table.spins_left,
+		"stakes": run.felt.bet_stakes(), "layout": run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return [c.bet, c.value])}
 	var res: Dictionary = run.spin(pocket)
-	main.check_feats("spin", {"res": res, "staked": staked, "target": target})
+	main.check_feats("spin", {"res": res, "staked": ctx.stakes, "target": ctx.target})
 	history.append(pocket)
 	history_view.queue_redraw()
-	await _play_count(res, before, target)
+	await count.play(res, ctx)
 	_log(res)
+	var cleared: bool = run.phase == RunState.Phase.SHOP or run.phase == RunState.Phase.VICTORY
+	if cleared and ctx.spins_before <= 1:
+		log_box.append_text("[color=#f2c14e][b]*** PAID ON THE LAST BALL ***[/b][/color]\n")
+		main.pending_lines.append({"speaker": "Dealer", "text": ["Last ball. Paid in full. I've seen grown men faint for less.", "The house hates a finish like that. I love it.", "On the very last ball. Somebody upstairs just spilled his drink."][randi() % 3]})
+	if run.phase == RunState.Phase.GAME_OVER:
+		main.last_layout = {"layout": ctx.layout, "short": maxi(0, int(ceil(run.table.target - run.table.take))), "target": run.table.target, "take": int(run.table.take)}
 	if run.phase != RunState.Phase.TABLE:
 		if run.phase == RunState.Phase.GAME_OVER:
 			main.fx.stamp("BUSTED", P.DANGER, 1.6)
@@ -621,8 +646,8 @@ func _on_spin() -> void:
 			Sfx.play("clear")
 			if not main.fast_ui:
 				await get_tree().create_timer(0.9).timeout
-				_show_tally()
-		await get_tree().create_timer(1.5 if main.fast_ui else 2.8).timeout
+				count.show_tally()
+		await get_tree().create_timer(1.5 if main.fast_ui or fast() else 2.8).timeout
 		spinning = false
 		main.route()
 	else:
@@ -631,162 +656,6 @@ func _on_spin() -> void:
 			Sfx.play("chip_place")
 		main.save_run()
 		refresh()
-
-
-func _play_count(res: Dictionary, before: float, target: int) -> void:
-	var run = main.run
-	var B = run.felt.board
-	var fx = main.fx
-	var pkey := Board.straight_key(res.pocket)
-	var pocket_pos: Vector2 = main.fx.local(felt_view.key_global(pkey))
-	felt_view.flash(pkey, 1.2)
-	var straight_hit := false
-	for e in res.events:
-		if e.kind == "win" and e.label == "straight":
-			straight_hit = true
-	if B.is_zero(res.pocket):
-		fx.banner("ZERO!", P.GOOD, 1.0, 112)
-	elif straight_hit:
-		fx.banner("STRAIGHT UP!", P.GOLD, 1.1, 112)
-		fx.burst(pocket_pos, 26, [P.GOLD, P.CREAM, P.RED])
-	if res.zero_tax:
-		fx.banner("ORO TAKES 10%", P.DANGER, 1.2, 140, 8)
-		before *= 1.0 - Content.ZERO_TAX
-	spin_score_vis = true
-	var gross := 0.0
-	var lost := 0.0
-	var delay := 0.24
-	var combo := 0
-	hits = 0
-	var meter_at := Vector2(MID_X + 150, 12)
-	# Build up first: wins and bonuses, then multipliers, then the losses tick off.
-	var order := {"win": 0, "bonus": 1, "cash": 2, "push": 3, "mult": 4, "loss": 5}
-	var events: Array = res.events.duplicate()
-	events.sort_custom(func(a, b): return order[a.kind] < order[b.kind])
-	for e in events:
-		var key: String = e.key
-		var at: Vector2 = main.fx.local(felt_view.key_global(key)) if key != "" else Vector2(353, 120)
-		var name: String = _bet_name(key)
-		match e.kind:
-			"win":
-				gross += e.amount
-				felt_view.flash(key, 0.6)
-				felt_view.pop(key)
-				felt_view.float_text(key, "+%d" % int(e.amount), P.GOLD)
-				fx.burst(at, 6 + mini(20, int(e.amount / 4.0)), [P.GOLD, P.CREAM])
-				fx.fly(at, meter_at, P.GOLD, 2 + mini(6, int(e.amount / 6.0)))
-				hits += 1
-				score_rows.append({"kind": "win", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": _chip_icon(key)})
-				Sfx.play("win", 1.0 + 0.09 * combo)
-				combo += 1
-			"bonus":
-				gross += e.amount
-				felt_view.float_text(key, "+%d" % int(e.amount), P.CYAN)
-				fx.burst(at, 8, [P.CYAN, P.CREAM])
-				fx.fly(at, meter_at, P.CYAN, 2)
-				hits += 1
-				score_rows.append({"kind": "bonus", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": _chip_icon(key)})
-				Sfx.play("win", 1.0 + 0.09 * combo)
-				combo += 1
-			"loss":
-				lost += -e.amount
-				felt_view.float_text(key, "%d" % int(e.amount), P.DANGER)
-				score_rows.append({"kind": "loss", "text": "%s  LOST%s" % [name, (" (" + e.label + ")") if e.label != "" else ""], "amount": "%d" % int(e.amount), "icon": ""})
-				Sfx.play("lose")
-			"mult":
-				gross *= e.amount
-				fx.banner("x%s %s" % [_fmt(e.amount), e.label.to_upper()], P.VIOLET, 0.9, 140, 8)
-				score_rows.append({"kind": "mult", "text": e.label.to_upper(), "amount": "x" + _fmt(e.amount), "icon": "red_streak" if e.label == "Red Streak" else ("hot_hand" if e.label == "Hot Hand" else "dealer_signature")})
-				main.shake(2.0, 0.15)
-				Sfx.play("mult")
-			"cash":
-				felt_view.float_text(key, "+$%d" % int(e.amount), P.GOOD)
-				score_rows.append({"kind": "cash", "text": "%s  MINT" % name, "amount": "+$%d" % int(e.amount), "icon": "mint"})
-				Sfx.play("cash")
-			"push":
-				felt_view.float_text(key, e.label.to_upper(), P.DIM)
-				score_rows.append({"kind": "push", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "0", "icon": ""})
-		spin_score = maxf(0.0, gross - lost)
-		score_pop = 1.0
-		score_view.queue_redraw()
-		await get_tree().create_timer(delay).timeout
-		delay = maxf(0.08, delay * 0.82)
-	if res.respins > 0:
-		fx.banner("+%d SPIN" % res.respins, P.CYAN, 0.9, 140, 8)
-	spin_score = res.take
-	score_pop = 1.0
-	if res.events.is_empty():
-		score_rows.append({"kind": "push", "text": "%s %s - nothing on it" % [B.label(res.pocket), B.colour_name(res.pocket).to_upper()], "amount": "0", "icon": ""})
-	score_view.queue_redraw()
-	# Slam the spin's Take into the meter.
-	var after: float = before + res.take
-	if res.take > 0.0:
-		var ratio: float = res.take / maxf(1.0, target)
-		meter_pulse = 1.0
-		if ratio >= 1.0:
-			# One spin paid the whole table: the full jackpot treatment.
-			fx.banner("JACKPOT!", P.GOLD, 1.6, 100, 24)
-			fx.flash(0.7)
-			main.shake(6.0, 0.5)
-			fx.coin_rain(60)
-			fx.burst(meter_at, 60, [P.GOLD, P.CREAM, P.GOOD, P.CYAN], 170.0)
-			Sfx.play("jackpot")
-			Engine.time_scale = 0.45
-			await get_tree().create_timer(0.35, true, false, true).timeout
-			Engine.time_scale = 1.0
-		elif ratio >= 0.4:
-			fx.banner("BIG WIN", P.GOLD, 1.2, 100, 16)
-			fx.flash(0.3)
-			main.shake(4.0, 0.35)
-			fx.burst(meter_at, 40, [P.GOLD, P.CREAM, P.GOOD], 140.0)
-			Sfx.play("big_win")
-		elif ratio >= 0.15:
-			fx.banner("NICE", P.GOOD, 0.8, 100, 8)
-		var tw := create_tween()
-		tw.tween_method(func(v: float): shown_take = v, before, after, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		await tw.finished
-	else:
-		shown_take = after
-		_near_miss(res)
-	await get_tree().create_timer(0.25).timeout
-
-
-## The reward breakdown after a table is paid.
-func _show_tally() -> void:
-	var run = main.run
-	var info: Dictionary = main.last_clear
-	if info.is_empty():
-		return
-	var rows := [
-		["PAYMENT", "%d / %d" % [int(info.take), info.target], P.CREAM],
-		["BASE PAY", "+$%d" % Content.CLEAR_CASH[info.table], P.GOLD],
-	]
-	if info.spins_left > 0:
-		rows.append(["%d SPIN%s LEFT" % [info.spins_left, "" if info.spins_left == 1 else "S"], "+$%d" % (info.spins_left * Content.CASH_PER_SPIN_LEFT), P.GOLD])
-	if info.comps > 0:
-		rows.append(["COMPS", "+$%d" % info.comps, P.GOLD])
-	var spare: int = maxi(0, int(info.take - info.target))
-	if spare > 0:
-		rows.append(["SPARE TAKE", "+%d" % spare, P.VIOLET])
-	rows.append(["MARKER LEFT", "$" + P.money(run.marker_left()) if run.marker_left() > 0 else "PAID IN FULL", P.DANGER if run.marker_left() > 0 else P.GOOD])
-	main.fx.show_tally("TABLE CLEARED  +$%d" % info.reward, rows)
-
-
-## The ball landed right next to one of your numbers: let the player feel it.
-func _near_miss(res: Dictionary) -> void:
-	var run = main.run
-	var B = run.felt.board
-	for c in run.felt.chips:
-		if not Board.is_straight(c.bet):
-			continue
-		var n := Board.straight_number(c.bet)
-		if n == res.pocket:
-			continue
-		if B.wheel_distance(n, res.pocket) == 1 or res.pocket in B.neighbours(n):
-			felt_view.near(c.bet)
-			main.fx.pop_text(main.fx.local(felt_view.key_global(c.bet)) - Vector2(0, 8), "SO CLOSE", P.CREAM)
-			Sfx.play("near")
-			return
 
 
 func _bet_name(key: String) -> String:

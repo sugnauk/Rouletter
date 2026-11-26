@@ -157,6 +157,13 @@ static func synth(cue: String) -> AudioStreamWAV:
 				_tone(s, 0.4, 0.9, f, 0.18, "square")
 			for i in range(10):
 				_tone(s, 0.45 + i * 0.07, 0.08, 2600.0 + (i % 3) * 400.0, 0.12, "sine")
+		"sting":
+			# A brassy two-chord stab for exceptional moments.
+			for f in [523.3, 659.3, 784.0]:
+				_tone(s, 0.0, 0.18, f, 0.2, "square")
+			for f in [698.5, 880.0, 1046.5, 1396.9]:
+				_tone(s, 0.16, 0.7, f, 0.18, "square")
+			_noise(s, 0.16, 0.12, 0.25)
 		"feat":
 			# A bright two-bell chime.
 			_tone(s, 0.0, 0.5, 1568.0, 0.3, "sine")

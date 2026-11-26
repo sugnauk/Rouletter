@@ -7,6 +7,7 @@ const P := preload("res://scenes/ui/palette.gd")
 
 var main
 var abandon_btn: Button
+var fast_btn: Button
 var confirm := false
 
 
@@ -22,7 +23,7 @@ func _ready() -> void:
 	add_child(shade)
 	var panel := Panel.new()
 	panel.add_theme_stylebox_override("panel", P.box(P.PANEL, P.GOLD, 2))
-	P.place(panel, Vector2(220, 92), Vector2(200, 176))
+	P.place(panel, Vector2(220, 80), Vector2(200, 204))
 	add_child(panel)
 	var t := P.label(panel, "PAUSED", P.FONT_BIG, P.GOLD)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -35,13 +36,21 @@ func _ready() -> void:
 	P.button(box, "Options", func():
 		close()
 		main.open_options(true), Vector2(140, 22))
+	fast_btn = P.button(box, "", func():
+		main.set_option("fast_spins", not main.profile.settings.get("fast_spins", false))
+		_label_fast(), Vector2(140, 22))
 	abandon_btn = P.button(box, "Abandon run", _abandon, Vector2(140, 22))
 	P.button(box, "Quit to title", func():
 		close()
 		main.quit_to_title(), Vector2(140, 22))
 
 
+func _label_fast() -> void:
+	fast_btn.text = "Fast spins: %s" % ("ON" if main.profile.settings.get("fast_spins", false) else "OFF")
+
+
 func open() -> void:
+	_label_fast()
 	confirm = false
 	abandon_btn.text = "Abandon run"
 	visible = true

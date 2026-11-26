@@ -3,6 +3,17 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.15
+- Spins now play out in three beats:
+  - The pocket is revealed and lights up.
+  - Each winning bet and triggered chip lights up in turn.
+  - The Take counts into the payment.
+- Exceptional spins get their own beat and a new musical sting: a final-ball clear ("ON THE LAST BALL!", a dealer line and a gold log entry), a one-spin jackpot, a personal-best spin, or a 5+ hit combo. Ordinary spins stay brisk.
+- Spin receipt: a one-line summary under the score (bets, chips, multipliers, losses, cash = total). Click the panel for the full calculation.
+- Missed a payment? The end screen now says how far short you were and lists the layout you had down.
+- Fast spins (Options and the pause menu): a short wheel spin and a brisk count, remembered between runs.
+- Code: the count moved to `scenes/screens/table_count.gd`.
+
 ## 0.0.14
 - **50 chips.** 22 new ones, sorted in the Almanac as Pattern, Watch, Growth and Cash chips:
   - Pattern: Odd Fellow, Even Keel, Low Roller, Penthouse, Prime Time, Square Deal, Teen Idol, Fibonacci, Nickel, Seventh Heaven, Last Digit.

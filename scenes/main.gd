@@ -46,6 +46,7 @@ var shake_amt := 0.0
 var pending_lines: Array = []
 var last_summary: Dictionary = {}
 var last_clear: Dictionary = {}    ## the last table_cleared info, for the reward tally
+var last_layout: Dictionary = {}   ## the bets on the felt when a table was missed (end screen)
 var run_feats: Array = []          ## Feats earned during the current run (end screen)
 
 
@@ -236,6 +237,7 @@ func start_run(wheel: String, acts: int = 1, grade: int = 0) -> void:
 	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts, mini(grade, profile.max_grade()))
 	run.new_player = profile.best_night == 0 and profile.wins == 0
 	run_feats = []
+	last_layout = {}
 	Sfx.play("click")
 	if Story.TUTORIAL.table.id not in profile.seen_beats:
 		_queue_scene(Story.TUTORIAL.table)
