@@ -36,6 +36,22 @@ static func denom_color(v: int) -> Color:
 	return P.CREAM
 
 
+## Lettered tiles for items drawn as a label rather than a picture: [text, colour].
+const GLYPHS := {
+	"odd_fellow": ["OD", "#e9c46a"], "even_keel": ["EV", "#90e0ef"], "low_roller": ["LO", "#80ed99"],
+	"penthouse": ["HI", "#f4a261"], "dozen_watch": ["DZ", "#cdb4db"], "pillar": ["CL", "#a8dadc"],
+	"night_owl": ["OW", "#b5838d"], "piggy_bank": ["$", "#ffafcc"], "clover": ["4L", "#38b000"],
+	"doorbell": ["DB", "#ffd166"], "prime_time": ["PR", "#e76f51"], "square_deal": ["SQ", "#4cc9f0"],
+	"teen_idol": ["13", "#ff8fab"], "fibonacci": ["FB", "#c77dff"], "nickel": ["5", "#adb5bd"],
+	"seventh_heaven": ["7", "#ffd166"], "last_digit": ["#", "#8ecae6"], "far_side": ["<>", "#f28482"],
+	"seedling": ["SP", "#80ed99"], "golden_goose": ["EG", "#ffd166"], "heart_of_gold": ["<3", "#ef476f"],
+	"spare_key": ["KY", "#2ec4b6"],
+	"zero_tolerance": ["0!", "#2ec46a"], "bankroll": ["+1", "#90be6d"], "compound_interest": ["%", "#ffd166"],
+	"double_down": ["x2", "#f4a261"], "corner_office": ["CO", "#cdb4db"], "big_spender": ["$$", "#57cc99"],
+	"patron": ["VP", "#c77dff"], "late_bloomer": ["4+", "#ff8fab"], "veterans": ["L3", "#e9c46a"],
+}
+
+
 ## A small pixel icon (12x12 at scale 1). `tiny` = draw a 6x6 glyph for inside chips.
 static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool = false) -> void:
 	c = c.round()
@@ -379,7 +395,17 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 			ci.draw_circle(c, 4 * s, P.CREAM, true, -1.0, false)
 			ci.draw_circle(c - Vector2(1, 1) * s, 1.5 * s, Color.WHITE, true, -1.0, false)
 		_:
-			ci.draw_circle(c, 5 * s, P.CREAM, true, -1.0, false)
+			if GLYPHS.has(id):
+				# Lettered tile: a felt square with a short label, framed in the item's colour.
+				var g: Array = GLYPHS[id]
+				R.call(0, 1, 12, 10, Color(g[1]).darkened(0.55))
+				ci.draw_rect(Rect2(o + Vector2(0, 1) * s, Vector2(12, 10) * s), Color(g[1]), false, 1.0)
+				var gf := P.font()
+				var gs: int = 8 * s
+				var gw := gf.get_string_size(g[0], HORIZONTAL_ALIGNMENT_LEFT, -1, gs).x
+				ci.draw_string(gf, (c + Vector2(-gw / 2.0, 3 * s)).round(), g[0], HORIZONTAL_ALIGNMENT_LEFT, -1, gs, Color(g[1]).lightened(0.4))
+			else:
+				ci.draw_circle(c, 5 * s, P.CREAM, true, -1.0, false)
 
 
 static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:

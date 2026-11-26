@@ -256,6 +256,8 @@ func _start_table() -> void:
 	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else Content.SPINS
 	if graded(5) and table_idx >= 1:
 		spins -= 1
+	if boss and felt.has_rule("patron"):
+		spins += 1
 	if "patience" in vouchers:
 		spins += 1
 	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
@@ -439,6 +441,7 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 			if c.is_bet():
 				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
 	felt.final_spin = table.spins_left <= 1
+	felt.spin_no = table.spins_used + 1
 	var res := Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
 	if res.zero_tax:
@@ -472,6 +475,8 @@ func _clear_table() -> void:
 		reward += Content.COMP_CARD_CASH
 	if felt.has_rule("comped"):
 		reward += Content.COMPED_CASH
+	if felt.has_rule("compound_interest"):
+		reward += cash / 10
 	cash += reward
 	overflow += maxi(0, int(t - table.target))
 	total_take += t

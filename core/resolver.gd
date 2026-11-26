@@ -83,6 +83,11 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				res.log.rules.append("La Partage: %d of %s bet returned" % [back, c.bet])
 				_event(res, "loss", c.bet, -(c.value - back), "half back")
 				_remove(res, w, c, "half")
+			elif zero_hit and w.has_rule("zero_tolerance"):
+				res.stack += c.value
+				res.log.rules.append("Zero Tolerance: %s bet goes back to the stack" % c.bet)
+				_event(res, "push", c.bet, 0.0, "zero tolerance")
+				_remove(res, w, c, "push")
 			elif w.bet_upgrades.get(c.bet, "") == "silk":
 				res.stack += c.value
 				res.log.upgrades.append("Silk Box: %s bet goes back to the stack" % c.bet)
@@ -241,6 +246,18 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			if part > 0.0:
 				take += part
 				_bonus(res, c, part, sq.replace("_", " "))
+		var trig: Dictionary = Content.CHIPS.get(c.kind, {}).get("trigger", {})
+		if not trig.is_empty() and _triggered(trig, B, own, pocket, covered):
+			var tk: float = trig.get("take", 0.0) * c.value * crack
+			if tk > 0.0:
+				take += tk
+				_bonus(res, c, tk, Content.CHIPS[c.kind].name.to_lower())
+			var tc: int = int(trig.get("cash", 0)) * c.value
+			if tc > 0:
+				res.cash += tc
+				_event(res, "cash", c.bet, tc, Content.CHIPS[c.kind].name.to_lower())
+			if trig.has("grow") and c.value < trig.get("cap", 99):
+				_value(res, c, int(trig.grow))
 		if c.kind == "black_cat" and pocket > 0 and not B.is_red(pocket):
 			var bc: float = Content.BLACK_CAT_BONUS * c.value * (0.5 if c.flaw == "cracked" else 1.0)
 			take += bc
@@ -316,6 +333,14 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			take *= cm
 			res.log.chips.append("Column Crown x%.2f" % cm)
 			_mult(res, cm, "Column Crown")
+	if w.has_rule("double_down") and w.spin_no == 1 and take > 0.0:
+		take *= 2.0
+		res.log.rules.append("Double Down: the first spin scores double")
+		_mult(res, 2.0, "Double Down")
+	if w.has_rule("late_bloomer") and w.spin_no >= 4 and take > 0.0:
+		take *= 1.5
+		res.log.rules.append("Late Bloomer x1.5")
+		_mult(res, 1.5, "Late Bloomer")
 	if w.has_rule("last_call") and w.final_spin and take > 0.0:
 		take *= 2.0
 		res.log.rules.append("Last Call: the final spin scores double")
@@ -345,6 +370,13 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	w.red_streak = res.red_streak
 	w.hit_streak = res.hit_streak
 	w.last_pocket = pocket
+	if w.has_rule("bankroll"):
+		res.stack += 1
+		res.log.rules.append("Bankroll: +1 chip to your stack")
+	if w.has_rule("big_spender") and take - lost >= 50.0:
+		res.cash += 3
+		res.log.rules.append("Big Spender: +$3")
+		_event(res, "cash", "", 3, "big spender")
 	if w.has_rule("insurance") and biggest_loss > 0:
 		lost -= biggest_loss
 		res.log.rules.append("Insurance: the %d-chip loss doesn't count" % biggest_loss)
@@ -360,6 +392,45 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 ##   kind: win | bonus | loss | push | cash | mult
 static func _event(res: Dictionary, kind: String, key: String, amount: float, label: String) -> void:
 	res.events.append({"kind": kind, "key": key, "amount": amount, "label": label})
+
+
+## Does a trigger chip (Content.CHIPS[...].trigger) fire on this pocket?
+static func _triggered(t: Dictionary, B, own: int, pocket: int, covered: bool) -> bool:
+	match t.on:
+		"every":
+			return true
+		"hit":
+			return covered
+		"miss":
+			return not covered
+		"zero":
+			return B.is_zero(pocket)
+		"odd":
+			return pocket > 0 and pocket % 2 == 1
+		"even":
+			return pocket > 0 and pocket % 2 == 0
+		"low":
+			return pocket > 0 and pocket <= B.numbers / 2
+		"high":
+			return pocket > B.numbers / 2
+		"set":
+			return pocket in t.arg
+	if own == -99 or pocket == own:  # the chip isn't on a single number (or it hit outright)
+		return false
+	match t.on:
+		"dozen":
+			return pocket > 0 and B.dozen_of(pocket) == B.dozen_of(own)
+		"column":
+			return pocket > 0 and Board.grid_row(pocket) == Board.grid_row(own)
+		"grid":
+			return pocket in B.neighbours(own)
+		"wheel":
+			return B.wheel_distance(own, pocket) <= int(t.arg)
+		"digit":
+			return pocket > 0 and pocket % 10 == own % 10
+		"opposite":
+			return B.wheel_distance(own, pocket) == B.order.size() / 2
+	return false
 
 
 static func _bonus(res: Dictionary, c, amount: float, label: String) -> void:
@@ -423,6 +494,9 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	elif bu == "lucky_colour":
 		payout += 1.0
 		res.log.upgrades.append("Lucky Colour %s pays 2:1" % c.bet)
+	if w.has_rule("corner_office") and b.type == "corner":
+		payout += 2.0
+		res.log.rules.append("Corner Office: %s +2x" % c.bet)
 	if w.has_rule("high_society") and b.type in ["column", "dozen"]:
 		payout += 1.0
 		res.log.rules.append("High Society: %s +1x" % c.bet)
@@ -439,6 +513,9 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	elif bu == "repeat_box" and w.last_pocket in b.numbers:
 		amount *= 2.0
 		res.log.upgrades.append("Repeat Box %s: same box again, x2" % c.bet)
+	if w.has_rule("veterans") and not c.is_bet() and c.value >= 3:
+		amount *= 1.5
+		res.log.rules.append("Old Timers: level %d chip x1.5" % c.value)
 	if up == "sweet_spot":
 		amount *= 1.5
 		res.log.upgrades.append("Sweet Spot %s: x1.5" % B.label(pocket))

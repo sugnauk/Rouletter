@@ -3,6 +3,24 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.14
+- **50 chips.** 22 new ones, sorted in the Almanac as Pattern, Watch, Growth and Cash chips:
+  - Pattern: Odd Fellow, Even Keel, Low Roller, Penthouse, Prime Time, Square Deal, Teen Idol, Fibonacci, Nickel, Seventh Heaven, Last Digit.
+  - Watch: Dozen Watch, Pillar, Doorbell, Four-Leaf Clover, Far Side, Night Owl, Heart of Gold.
+  - Growth: Seedling.
+  - Cash: Piggy Bank, Golden Goose, Spare Key.
+- **25 House Rules.** 9 new ones:
+  - Zero Tolerance: bets come back on a zero.
+  - Bankroll: +1 chip a spin.
+  - Compound Interest: $1 per $10 held at each clear.
+  - Double Down: first spin x2.
+  - Corner Office: corners pay 10:1.
+  - Big Spender: +$3 on 50+ spins.
+  - Patron: +1 spin at Enforcer tables.
+  - Late Bloomer: x1.5 from spin 4.
+  - Old Timers: level 3+ chips x1.5.
+- New Almanac category: Money rules.
+
 ## 0.0.13
 - 10 new chips (28 total):
   - Street Light: +3 when another number in its street hits.

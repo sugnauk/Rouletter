@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
@@ -845,6 +845,83 @@ func test_big_content_batch() -> void:
 	run.shop = {"pending_upgrade": "lucky_colour"}
 	check(run.upgrade_targets().size() == 6 and "RED" in run.upgrade_targets(), "Lucky Colour targets the even-money boxes")
 	check(Content.CHIPS.size() >= 28 and Content.UPGRADES.size() >= 17, "content counts (%d chips, %d upgrades)" % [Content.CHIPS.size(), Content.UPGRADES.size()])
+
+
+## Trigger chips: [kind, square, pocket that fires it, take, cash, pocket that doesn't].
+const TRIGGER_CASES := [
+	["odd_fellow", "S10", 3, 2.0, 0, 4], ["even_keel", "S9", 4, 2.0, 0, 3],
+	["low_roller", "S30", 5, 2.0, 0, 20], ["penthouse", "S3", 20, 2.0, 0, 5],
+	["dozen_watch", "S1", 12, 2.0, 0, 13], ["pillar", "S1", 4, 2.0, 0, 2],
+	["night_owl", "S1", 20, 1.0, 0, -99], ["piggy_bank", "S1", 20, 0.0, 1, -99],
+	["clover", "S32", 4, 2.0, 0, 2], ["doorbell", "S8", 11, 3.0, 0, 12],
+	["prime_time", "S1", 7, 3.0, 0, 9], ["square_deal", "S2", 16, 5.0, 0, 15],
+	["teen_idol", "S1", 14, 3.0, 0, 20], ["fibonacci", "S4", 13, 4.0, 0, 14],
+	["nickel", "S1", 25, 3.0, 0, 26], ["seventh_heaven", "S1", 27, 4.0, 0, 28],
+	["last_digit", "S3", 23, 4.0, 0, 24], ["far_side", "S0", 5, 10.0, 0, 2],
+	["golden_goose", "S9", 9, 35.0, 5, -99], ["heart_of_gold", "S9", 9, 45.0, 0, -99],
+	["spare_key", "S1", 0, 0.0, 4, 2],
+]
+
+
+func test_trigger_chips() -> void:
+	for t in TRIGGER_CASES:
+		var f = felt("european", [[t[0], t[1], 1]])
+		var r := Resolver.resolve_spin(f, t[2])
+		near(r.take, t[3], "%s fires on %d (take)" % [t[0], t[2]])
+		check(r.cash == t[4], "%s fires on %d (cash %d)" % [t[0], t[2], r.cash])
+		if t[5] != -99:
+			var q := Resolver.resolve_spin(f, t[5])
+			near(q.take, 0.0, "%s stays quiet on %d" % [t[0], t[5]])
+	var sd = felt("european", [["seedling", "S1", 4]])
+	var s1 := Resolver.resolve_spin(sd, 20)
+	check(s1.felt_after.chips[0].value == 5, "Seedling grows on a miss")
+	check(Resolver.resolve_spin(s1.felt_after, 20).felt_after.chips[0].value == 5, "...up to level 5")
+	var lv = felt("european", [["odd_fellow", "S10", 3]])
+	near(Resolver.resolve_spin(lv, 3).take, 6.0, "trigger rewards scale with level")
+	check(Content.CHIPS.size() >= 50, "50 chips (%d)" % Content.CHIPS.size())
+	check(Content.HOUSE_RULES.size() >= 25, "25 House Rules (%d)" % Content.HOUSE_RULES.size())
+
+
+func test_new_rules() -> void:
+	var zt = felt("european", [["bet", "RED", 4]])
+	zt.house_rules.append("zero_tolerance")
+	var r := Resolver.resolve_spin(zt, 0)
+	check(r.lost == 0 and r.stack == 4, "Zero Tolerance: bets come back on a zero")
+	var bk = felt("european", [])
+	bk.house_rules.append("bankroll")
+	check(Resolver.resolve_spin(bk, 5).stack == 1, "Bankroll: +1 chip a spin")
+	var dd = felt("european", [["perm", "S5", 1]])
+	dd.house_rules.append("double_down")
+	dd.spin_no = 1
+	near(Resolver.resolve_spin(dd, 5).take, 70.0, "Double Down: first spin x2")
+	dd.spin_no = 2
+	near(Resolver.resolve_spin(dd, 5).take, 35.0, "...only the first")
+	var lb = felt("european", [["perm", "S5", 1]])
+	lb.house_rules.append("late_bloomer")
+	lb.spin_no = 4
+	near(Resolver.resolve_spin(lb, 5).take, 52.5, "Late Bloomer: x1.5 from spin 4")
+	var co = felt("european", [["perm", "CO1", 1]])
+	co.house_rules.append("corner_office")
+	near(Resolver.resolve_spin(co, 1).take, 10.0, "Corner Office: corners pay 10")
+	var bs = felt("european", [["perm", "S5", 2]])
+	bs.house_rules.append("big_spender")
+	check(Resolver.resolve_spin(bs, 5).cash == 3, "Big Spender: +$3 on a 70-Take spin")
+	var vt = felt("european", [["perm", "S5", 3]])
+	vt.house_rules.append("veterans")
+	near(Resolver.resolve_spin(vt, 5).take, 105.0 * 1.5, "Old Timers: level 3+ x1.5")
+	var run = new_run()
+	run.felt.house_rules.append("patron")
+	run.enforcer_order = ["sal", "sal", "sal", "sal"]
+	run.table_idx = 2
+	run._start_table()
+	check(run.table.spins_left == Content.SPINS + 1, "Patron: +1 spin at Enforcer tables")
+	var ci = new_run()
+	ci.felt.house_rules.append("compound_interest")
+	ci.cash = 40
+	ci.table.take = ci.table.target
+	ci.place_bet("S17", 1)
+	ci.spin(17)
+	check(ci.cash >= 40 + Content.CLEAR_CASH[0] + 4, "Compound Interest: +$1 per $10 held")
 
 
 func test_shop() -> void:
