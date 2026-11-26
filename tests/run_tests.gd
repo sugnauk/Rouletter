@@ -326,6 +326,10 @@ func test_rebet_and_clear() -> void:
 	check(not run.clear_bets(), "clear with nothing out is a no-op")
 	run.spin(5)
 	check(run.rebet() == 0, "an empty spin leaves nothing to rebet")
+	var st: int = run.table.stack
+	run.place_bet("S9", 5)
+	check(run.unbet("S9", 2) == 2 and run.felt.value_on("S9") == 3 and run.table.stack == st - 3, "undo takes part of a bet back")
+	check(run.unbet("S9", 9) == 3 and run.felt.chips_on("S9").is_empty() and run.table.stack == st, "undo never returns more than was bet")
 
 
 func test_pit_boss() -> void:

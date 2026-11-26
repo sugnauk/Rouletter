@@ -29,6 +29,8 @@ var score_view: Control
 var gauge_view: Control
 var spin_btn: Button
 var clear_btn: Button
+var undo_btn: Button
+var bet_history: Array = []   ## [{key, amount}] of bets placed since the last spin, for Undo
 var status_lbl: Label
 var denom_box: HBoxContainer
 var rack_grid: GridContainer
@@ -60,7 +62,7 @@ func setup() -> void:
 	wheel_view = WheelView.new()
 	P.place(wheel_view, Vector2(4, 24), Vector2(176, 176))
 	add_child(wheel_view)
-	spin_btn = P.button(self, "SPIN", _on_spin, Vector2(168, 22), P.FONT)
+	spin_btn = P.button(self, "SPIN", _on_spin, Vector2(92, 22), P.FONT)
 	spin_btn.add_theme_font_override("font", P.title_font())
 	spin_btn.add_theme_stylebox_override("normal", P.box(Color("#b8862b"), P.BLACK, 1))
 	spin_btn.add_theme_stylebox_override("hover", P.box(Color("#d9a63c"), P.CREAM, 1))
@@ -68,11 +70,11 @@ func setup() -> void:
 	spin_btn.add_theme_stylebox_override("disabled", P.box(Color("#4a3a1c"), P.BLACK, 1))
 	for s in ["font_color", "font_hover_color", "font_pressed_color"]:
 		spin_btn.add_theme_color_override(s, P.WOOD_DARK)
-	spin_btn.custom_minimum_size = Vector2(114, 22)
 	P.place(spin_btn, Vector2(8, 204))
-	clear_btn = P.button(self, "CLEAR", _on_clear, Vector2(50, 22), P.FONT_SMALL)
-	clear_btn.tooltip_text = ""
-	P.place(clear_btn, Vector2(126, 204))
+	undo_btn = P.button(self, "UNDO", _on_undo, Vector2(34, 22), P.FONT_SMALL)
+	P.place(undo_btn, Vector2(104, 204))
+	clear_btn = P.button(self, "CLEAR", _on_clear, Vector2(34, 22), P.FONT_SMALL)
+	P.place(clear_btn, Vector2(142, 204))
 	gauge_view = _canvas(Vector2(4, 232), Vector2(176, 124), _draw_gauges)
 
 	felt_view = FeltView.new()
@@ -81,6 +83,7 @@ func setup() -> void:
 	felt_view.bet_hovered.connect(func(k): _status(felt_view.describe(k) if k != "" else _hint()))
 	add_child(felt_view)
 	status_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
+	status_lbl.clip_text = true
 	P.place(status_lbl, Vector2(MID_X, 150), Vector2(330, 10))
 	history_view = _canvas(Vector2(MID_X, 162), Vector2(330, 18), _draw_history)
 	score_view = _canvas(Vector2(MID_X, 184), Vector2(330, 170), _draw_score)
@@ -140,7 +143,9 @@ func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
 
 
 func _hint() -> String:
-	return "Click: bet %d   Right-click: take back   C: clear   Space: spin" % bet_size
+	if DisplayServer.is_touchscreen_available():
+		return "Tap: bet %d   Hold: take back" % bet_size
+	return "Click: bet %d   Right-click: take back   Z: undo   C: clear" % bet_size
 
 
 func _has_bets() -> bool:
@@ -150,10 +155,21 @@ func _has_bets() -> bool:
 	return false
 
 
+func _on_undo() -> void:
+	var run = main.run
+	if spinning or main.dialogue.is_open() or bet_history.is_empty():
+		return
+	var last: Dictionary = bet_history.pop_back()
+	if run.unbet(last.key, last.amount) > 0:
+		Sfx.play("chip_remove")
+	refresh()
+
+
 func _on_clear() -> void:
 	var run = main.run
 	if spinning or main.dialogue.is_open():
 		return
+	bet_history.clear()
 	if run.clear_bets():
 		Sfx.play("chip_remove")
 		refresh()
@@ -204,6 +220,7 @@ func refresh() -> void:
 		chance = Odds.hit_chance(run.felt, t.target - t.take, t.spins_left)
 	spin_btn.disabled = spinning or run.phase != RunState.Phase.TABLE
 	clear_btn.disabled = spinning or run.phase != RunState.Phase.TABLE or run.is_called_spin() or not _has_bets()
+	undo_btn.disabled = spinning or run.phase != RunState.Phase.TABLE or bet_history.is_empty()
 	spin_btn.text = "CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN")
 	_refresh_tokens()
 	if t.boss:
@@ -401,6 +418,7 @@ func _on_bet_clicked(key: String, button: int) -> void:
 		return
 	if button == MOUSE_BUTTON_RIGHT:
 		if run.take_back(key):
+			bet_history = bet_history.filter(func(h): return h.key != key)
 			Sfx.play("chip_remove")
 		return
 	if button != MOUSE_BUTTON_LEFT:
@@ -416,6 +434,7 @@ func _on_bet_clicked(key: String, button: int) -> void:
 		return
 	var amt: int = mini(bet_size, run.table.stack)
 	if run.place_bet(key, amt):
+		bet_history.append({"key": key, "amount": amt})
 		felt_view.pop(key)
 		Sfx.play("chip_place")
 	elif run.is_called_spin():
@@ -435,6 +454,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_C:
 			_on_clear()
+		elif event.keycode == KEY_Z or event.keycode == KEY_BACKSPACE:
+			_on_undo()
+		elif event.keycode in [KEY_1, KEY_2, KEY_3]:
+			bet_size = DENOMS[event.keycode - KEY_1]
+			Sfx.play("click")
+			_refresh_tokens()
+			_status("")
 		elif event.keycode == KEY_L:
 			log_box.visible = not log_box.visible
 
@@ -452,6 +478,7 @@ func _on_spin() -> void:
 			_refresh_tokens()
 		return
 	spinning = true
+	bet_history.clear()
 	spin_btn.disabled = true
 	selected_item = -1
 	Sfx.play("spin")

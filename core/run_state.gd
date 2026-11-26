@@ -147,6 +147,22 @@ func place_bet(key: String, amount: int) -> bool:
 	return true
 
 
+## Take `amount` betting chips back off one bet (for Undo). Returns how many came back.
+func unbet(key: String, amount: int) -> int:
+	if phase != Phase.TABLE or amount <= 0:
+		return 0
+	for c in felt.chips_on(key):
+		if c.is_bet():
+			var back: int = mini(amount, c.value)
+			c.value -= back
+			table.stack += back
+			if c.value <= 0:
+				felt.remove(c.id)
+			changed.emit()
+			return back
+	return 0
+
+
 ## Pick up every betting chip on the felt (permanent chips stay put).
 func clear_bets() -> bool:
 	if phase != Phase.TABLE or is_called_spin():

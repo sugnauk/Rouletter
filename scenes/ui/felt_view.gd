@@ -27,7 +27,13 @@ var floaters: Array = []         ## {text, pos, t, col}
 var cell_w: float = 24.0
 
 
-const ZONE := 8.0               ## width of the clickable strip on a felt line
+const ZONE := 8.0               ## width of the clickable strip on a felt line (mouse)
+const ZONE_TOUCH := 12.0        ## ...and on touch screens, where fingers need more room
+const HOLD_TIME := 0.45         ## touch: holding a square this long takes the bet back
+
+var zone := ZONE
+var press_key := ""             ## touch: square under the finger, pending tap vs hold
+var press_t := 0.0
 
 
 func layout() -> void:
@@ -66,30 +72,31 @@ func layout() -> void:
 ## Clickable zones on the lines between squares: corners where four squares meet, splits on an
 ## edge, streets / six-lines on the edge against the dozens strip, and zero splits.
 func _layout_lines(B, cw: float) -> void:
-	var hz := ZONE / 2.0
+	zone = ZONE_TOUCH if DisplayServer.is_touchscreen_available() else ZONE
+	var hz := zone / 2.0
 	var floor_y := ROW_H * 3.0
 	for c in range(B.cols):
 		var b := c * 3 + 1
 		var x0: float = ZERO_W + c * cw
 		var xr: float = x0 + cw
-		_zone("ST%d" % b, Rect2(x0 + hz, floor_y - hz, cw - ZONE, ZONE))
+		_zone("ST%d" % b, Rect2(x0 + hz, floor_y - hz, cw - zone, zone))
 		if c < B.cols - 1:
-			_zone("LN%d" % b, Rect2(xr - hz, floor_y - hz, ZONE, ZONE))
+			_zone("LN%d" % b, Rect2(xr - hz, floor_y - hz, zone, zone))
 			for r in range(3):
 				var top: float = (2 - r) * ROW_H
-				_zone("SP%d_%d" % [b + r, b + r + 3], Rect2(xr - hz, top + hz, ZONE, ROW_H - ZONE))
+				_zone("SP%d_%d" % [b + r, b + r + 3], Rect2(xr - hz, top + hz, zone, ROW_H - zone))
 				if r < 2:
-					_zone("CO%d" % (b + r), Rect2(xr - hz, top - hz, ZONE, ZONE))
+					_zone("CO%d" % (b + r), Rect2(xr - hz, top - hz, zone, zone))
 		for r in range(2):
 			var edge: float = (2 - r) * ROW_H
-			_zone("SP%d_%d" % [b + r, b + r + 1], Rect2(x0 + hz, edge - hz, cw - ZONE, ZONE))
+			_zone("SP%d_%d" % [b + r, b + r + 1], Rect2(x0 + hz, edge - hz, cw - zone, zone))
 	# Zero splits sit on the boundary between the zeros and the first column, one slot per zero.
 	var nz: int = B.zeros.size()
 	for i in range(nz):
 		for j in range(3):
 			var top: float = (2 - j) * ROW_H
 			var slot: float = ROW_H / nz
-			_zone("SP%d_%d" % [B.zeros[i], j + 1], Rect2(ZERO_W - hz, top + i * slot + (hz if nz == 1 else 0.0), ZONE, slot - (ZONE if nz == 1 else 0.0)))
+			_zone("SP%d_%d" % [B.zeros[i], j + 1], Rect2(ZERO_W - hz, top + i * slot + (hz if nz == 1 else 0.0), zone, slot - (zone if nz == 1 else 0.0)))
 
 
 func _zone(key: String, r: Rect2) -> void:
@@ -117,6 +124,11 @@ func float_text(key: String, text: String, col: Color = P.GOLD) -> void:
 
 
 func _process(delta: float) -> void:
+	if press_key != "":
+		press_t += delta
+		if press_t >= HOLD_TIME:
+			bet_clicked.emit(press_key, MOUSE_BUTTON_RIGHT)
+			press_key = ""
 	var dirty := false
 	for d in [flashes, pops]:
 		for k in d.keys():
@@ -140,6 +152,17 @@ func _gui_input(event: InputEvent) -> void:
 			hover_key = k
 			bet_hovered.emit(k)
 			queue_redraw()
+	elif event is InputEventMouseButton and DisplayServer.is_touchscreen_available() and event.button_index == MOUSE_BUTTON_LEFT:
+		# Touch: a tap bets, a long hold takes the bet back (there's no right button).
+		var k := key_at(event.position)
+		if event.pressed:
+			press_key = k
+			press_t = 0.0
+		elif press_key != "":
+			if k == press_key:
+				bet_clicked.emit(k, MOUSE_BUTTON_LEFT)
+			press_key = ""
+		accept_event()
 	elif event is InputEventMouseButton and event.pressed:
 		var k := key_at(event.position)
 		if k != "":
