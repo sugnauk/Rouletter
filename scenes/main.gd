@@ -6,12 +6,14 @@ const P := preload("res://scenes/ui/palette.gd")
 const DialogueBox := preload("res://scenes/ui/dialogue_box.gd")
 const Backdrop := preload("res://scenes/ui/backdrop.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
+const Transition := preload("res://scenes/ui/transition.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 const Profile := preload("res://core/profile.gd")
 
 const SCREENS := {
+	"card": preload("res://scenes/screens/card_screen.gd"),
 	"title": preload("res://scenes/screens/title_screen.gd"),
 	"select": preload("res://scenes/screens/select_screen.gd"),
 	"table": preload("res://scenes/screens/table_screen.gd"),
@@ -29,6 +31,8 @@ var current: String = ""
 var dialogue
 var fx
 var crt: CanvasLayer
+var transition
+var fast_ui := false
 var shake_t := 0.0
 var shake_amt := 0.0
 var pending_lines: Array = []
@@ -42,6 +46,7 @@ func _ready() -> void:
 	if game != null:
 		run = game.run
 		profile = game.profile
+		fast_ui = game.fast_ui
 	else:
 		run = RunState.new()
 		profile = Profile.new()
@@ -77,10 +82,15 @@ func _ready() -> void:
 	rect.material = mat
 	crt.add_child(rect)
 	add_child(crt)
+	var tl := CanvasLayer.new()
+	tl.layer = 9
+	transition = Transition.new()
+	tl.add_child(transition)
+	add_child(tl)
 	run.changed.connect(_on_run_changed)
 	run.table_cleared.connect(_on_table_cleared)
 	run.run_ended.connect(_on_run_ended)
-	show_screen("title")
+	show_screen("title" if fast_ui else "card")
 
 
 func _recenter() -> void:
@@ -100,19 +110,49 @@ func show_screen(n: String) -> void:
 	screens[n].call("refresh")
 
 
-## Go wherever the run's phase says, then play any queued story lines.
-func route() -> void:
-	match run.phase:
-		RunState.Phase.TABLE:
-			show_screen("table")
-		RunState.Phase.SHOP:
-			show_screen("shop")
-		_:
-			show_screen("end")
+## Switch screens behind a themed loading card (title + subtitle), or instantly when the
+## card is empty or the UI runs in fast mode. Queued story lines play once the card lifts.
+func go(n: String, title: String = "", subtitle: String = "", accent: Color = P.GOLD) -> void:
+	if title == "" or fast_ui:
+		show_screen(n)
+		_flush_lines()
+		return
+	transition.play(title, subtitle, func():
+		show_screen(n)
+		_flush_lines.call_deferred(), accent)
+
+
+func _flush_lines() -> void:
 	if not pending_lines.is_empty():
 		var lines := pending_lines
 		pending_lines = []
 		say(lines)
+
+
+## The card shown before a table: night and table name, or the Enforcer's name and rule.
+func table_card() -> Array:
+	if run.table.boss:
+		var e: Dictionary = Content.ENFORCERS[run.table.enforcer]
+		return ["NIGHT %d" % (run.night + 1), "%s  -  %s" % [e.name, e.desc], P.DANGER]
+	return ["NIGHT %d" % (run.night + 1), "%s table  -  pay %d" % [run.table_name(), run.table.target], P.GOLD]
+
+
+## Go wherever the run's phase says, then play any queued story lines.
+func route() -> void:
+	match run.phase:
+		RunState.Phase.TABLE:
+			var card := table_card()
+			go("table", card[0], card[1], card[2])
+		RunState.Phase.SHOP:
+			var names := []
+			for v in run.shop.vendors:
+				names.append(Content.VENDORS[v].name)
+			go("shop", "THE CAGE", " and ".join(names) + " are open", P.GOLD)
+		_:
+			if run.phase == RunState.Phase.VICTORY:
+				go("end", "PAID IN FULL", "Mr. Vance almost smiles", P.GOOD)
+			else:
+				go("end", "LAST CALL", "The marker stays on the books", P.DANGER)
 
 
 func begin_flow() -> void:
@@ -128,7 +168,8 @@ func begin_flow() -> void:
 func start_run(wheel: String) -> void:
 	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked)
 	Sfx.play("click")
-	show_screen("table")
+	var card := table_card()
+	go("table", card[0], card[1], card[2])
 
 
 func _on_table_cleared(info: Dictionary) -> void:

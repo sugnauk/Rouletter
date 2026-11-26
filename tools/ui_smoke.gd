@@ -62,7 +62,15 @@ func _process(delta: float) -> void:
 		[14.4, func(): shot("09_game_over")],
 		[14.5, func(): main.show_screen("pawn")],
 		[14.8, func(): shot("10_pawn")],
-		[15.0, func(): get_tree().quit()],
+		[14.9, func():
+			main.fast_ui = false
+			main.show_screen("card")],
+		[17.6, func(): shot("11_title_card")],
+		[17.7, func():
+			main.screens.card.done = true
+			main.go("title", "NIGHT 2", "High Roller table  -  pay 28")],
+		[18.3, func(): shot("12_loading_card")],
+		[19.6, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

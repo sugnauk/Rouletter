@@ -208,3 +208,16 @@ static func text(ci: CanvasItem, font: Font, pos: Vector2, s: String, size: int,
 	p = p.round()
 	ci.draw_string(font, p + Vector2(1, 1), s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0, 0, 0, 0.7 * col.a))
 	ci.draw_string(font, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+
+
+## Centred neon lettering in the title font with a soft glow. `on` < 1 dims it (flicker).
+static func neon(ci: CanvasItem, centre: Vector2, s: String, size: int, col: Color, alpha: float = 1.0, on: float = 1.0) -> void:
+	var font := P.title_font()
+	var w := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var p := (centre - Vector2(w / 2.0, -size / 2.0)).round()
+	var lit: Color = col.lerp(col.darkened(0.7), 1.0 - on)
+	if on > 0.5:
+		for d in [Vector2(-2, 0), Vector2(2, 0), Vector2(0, -2), Vector2(0, 2)]:
+			ci.draw_string(font, p + d, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, 0.18 * alpha * on))
+	ci.draw_string(font, p + Vector2(1, 1), s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0, 0, 0, 0.6 * alpha))
+	ci.draw_string(font, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(lit, alpha))
