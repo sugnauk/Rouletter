@@ -85,7 +85,7 @@ godot --path . --windowed -- smoke=<dir> profile=user://smoke_profile.json   # s
 ```
 
 ## Balance snapshot (sim bot, 400 runs per wheel, starting pool, v0.0.6)
-Full-run win rate: French 14%, European 18%, American 7%, Mini ~6-10%, Triple Zero 4%, Sunrise 4%, Cheater's ~0%. Per-table clear rates are mostly 75-95%. The bot spreads chips over fresh numbers, buys cash items, Dealer perks and (when its stack can afford it) Pit Boss rules, and never borrows; a human should do noticeably better. Night bases are 8 / 21 / 52 / 96 (Act II 140 / 195 / 260 / 340). Tune the constants at the top of `core/content.gd`, plus `target` in `core/wheels.gd`.
+Full-run win rate: French 14%, European 18%, American 7%, Mini 17%, Triple Zero 4%, Sunrise 4%, Cheater's ~0%. Per-table clear rates are mostly 75-95%. The bot spreads chips over fresh numbers, buys cash items, Dealer perks and (when its stack can afford it) Pit Boss rules, and never borrows; a human should do noticeably better. Night bases are 8 / 21 / 52 / 96 (Act II 140 / 195 / 260 / 340). Tune the constants at the top of `core/content.gd`, plus `target` in `core/wheels.gd`.
 
 ## Roadmap ("The Floor Above")
 1. Done: vendor Cage (Cashier, Pit Boss), title card and loading cards, Undo and touch controls, branch CI.
