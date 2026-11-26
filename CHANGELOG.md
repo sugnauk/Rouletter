@@ -3,6 +3,105 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.33
+- Fixed: on iPhone Safari (landscape), the game could slide under the address bar and run off the bottom of the screen, hiding your stack, chips and SPIN.
+  - The page is now pinned to the screen and can't scroll or bounce.
+  - The game measures the part of the screen that's really visible and fits itself into it.
+- New option, Screen fit (Options, also from the in-game MENU): shrink the game to 95-70% and pin it to the top, for any browser that still hides part of it.
+- Add to Home Screen: the web build is now an installable app. On iPhone, Share > Add to Home Screen opens it full screen in landscape, with no Safari bars at all. The title screen says so on the web.
+
+## 0.0.32
+- Under the hood, so the next round of features is safer to build:
+  - The run is split in two: `core/run_table.gd` (state, saves, tables, spins) and `core/run_state.gd` (the Cage), which extends it.
+  - The table screen's overlays (free chip, touch menu, quick edits, tips) moved into `scenes/screens/table_overlays.gd`.
+  - Behaviour is unchanged: the balance bot gives the same results.
+- Versioned saves: run saves and profiles carry a format version.
+  - Older run saves are upgraded step by step on load.
+  - A save from a newer version of the game is refused rather than misread.
+
+## 0.0.31
+- Every Enforcer has a musical sting: a low stab and a four-note motif from a dark scale, worked out from their name. It plays as their card comes up.
+- Enforcer entrances: the loading card before a boss table holds longer. A spotlight snaps on, their portrait slides in out of the dark, and a red bar sweeps under the name.
+- A victory theme: a brisk major-key version of the lounge band with a horn line, playing on the end screen when you pay the marker in full.
+- Each wheel has its own table skin:
+  - French: blue felt.
+  - European: classic green.
+  - American: bright green with a red rail.
+  - Mini: purple.
+  - Triple Zero: charcoal.
+  - Sunrise: burnt orange.
+  - Cheater's: crimson.
+
+## 0.0.30
+- Where the money came from: every dollar in a run is logged by source (starting cash, base pay, balls left, comps, side jobs, chips like Mint, Dealer favours, loans and more).
+  - The end screen has a MONEY tab beside YOUR BUILD.
+  - The pause menu shows your top three sources so far.
+- The Pawn Shop is now a tree: seven lanes (Wheels, Chips I/II, Felt, Rules I/II, Extras), cheapest at the top. Each unlock needs the one above it in its lane. The lines light up as you climb.
+- Challenge ladder: win a challenge to open its next level. Level II runs on a Grade 3 marker, Level III on Grade 5. Pick the level on the wheel screen. Winning any challenge at Level III earns the Hard Way Round Feat.
+- Weekly sharing: finishing a weekly run copies a share code (like RLT-W2917-N3-T1234-L-1A2B) to your clipboard and shows it on the end screen.
+  - Paste a friend's code into the CODE box in Weekly mode to compare.
+  - Your best weekly runs this week are listed there too.
+  - An online leaderboard would need a server; codes work today without one.
+
+## 0.0.29
+- Three new Act II Enforcers. Each Act II run now meets three of the six before the Owner:
+  - The Auditor: your House Rules are suspended (the wheel's own still apply).
+  - Silk Montague: skims 15% off every spin.
+  - Mr. Winter: permanent chips on red numbers score half.
+- Enforcer rewards: beat an Enforcer and raid their stash. Take their trophy or one of two rare chips. Trophies are House Rules sold nowhere else:
+  - Sal's Whistle: every 3rd spin x1.5.
+  - Oro's Coin: +10 Take on zeros.
+  - Accountant's Book: +$1 when an outside bet wins.
+  - Velvet Rope: +2 stack chips every spin.
+  - Kline's Watch: +1 spin at every table.
+- Marker grades get rule twists in place of two plain number changes:
+  - Grade 5 is now Cracked Luck: from night 2, one of your chips cracks each night.
+  - Grade 8 is now One Window: only the Cashier works the Cage.
+- Balance: Enforcer tables ask a little more (x1.95 of the night's base, was x1.8) to offset the trophies.
+
+## 0.0.28
+- Builds can explode now:
+  - Three scaling House Rules:
+    - Crowd Pleaser: every scoring spin x(1 + 0.05 per level of permanent chips on your felt).
+    - Purist: x2 when every winning bet was a straight-up.
+    - High Stakes: x1.5 with 15+ chips riding.
+  - Three chain chips, where one chip sets off others:
+    - Conductor: when it hits, every multiplier chip you own fires too, wherever it sits.
+    - Relay: when it hits, your other number chips score half their straight-up pay.
+    - Fuse: +2 Take for every level your other chips grow that spin.
+  - New Almanac categories: Scaling Rules and Chain Chips, all with pixel icons.
+- Run summary: the end screen shows your build.
+  - The felt you finished with.
+  - Your top three chips by Take scored.
+  - Your best spin broken down by chip and multiplier.
+  - The run's seed.
+- Save image saves the summary as a PNG to share: a download on the web, your user folder on desktop.
+
+## 0.0.27
+- Gentler first runs. Until you've cleared a night, the extra systems arrive one night at a time:
+  - night 1 is just roulette, your kit and the free chip;
+  - side jobs start on night 2;
+  - table conditions and the route pick start on night 3;
+  - Cage events start on night 4.
+  Veterans get everything from the start.
+- Dolores explains each system the first time it shows up: the free chip, side jobs, table conditions, the route pick, Cage events, and Refine/Trade.
+- Touch screens: hold a bet for a menu with Take back, -1 chip, Pin/Unpin and Clear inside. These match right-click, Shift, Alt and Ctrl with a mouse.
+- Faster previews: the hover previews and the gold "could clear" rings are cached until the felt changes, so they don't re-run dozens of spin calculations on every hover (helps phones and the web build).
+
+## 0.0.26
+- A free special chip at every table: before the first spin, pick one of three, each from a different build direction. It's never a plain Permanent. Hover to see what it does; picking it puts it in your rack to place. This replaces the one-off pick after the first table.
+- More to buy: the Cashier now stocks 3 chips. Plain Permanents are much rarer in the Cage (about 1 slot in 7, for levelling), so the counter is mostly special chips.
+- The Cage's tokens shrink a little when a busy counter needs the room.
+- Balance: payments from night 2 on are higher to match the extra chips. Night bases went from 8 / 21 / 52 / 96 to 9 / 32 / 105 / 240, and Act II scales the same way. Balance bot wins: French 35%, European 28%, Mini 40%.
+
+## 0.0.25
+- Stacking a chip on its twin is never worse than owning the two apart. Each chip in a stack keeps its full effect:
+  - Multipliers multiply per stacked chip: two Kingmakers stacked are x1.5 x1.5 = x2.25 (was x2.0). The same goes for Ace of Spades and Column Crown. Levels gained other ways (Echo, Ledger, growth) still add +0.5 / +0.25 each.
+  - Respin gives a spin per stacked chip. Echo and Ledger give a level per stacked chip. Wildcard Zero and Collector pay per stacked chip.
+  - Growth chips (Compounding, Snowball, Green Thumb, Seedling) grow once per stacked chip. Seedling's cap is 5 per chip. Jackpot Jar empties back to one level per chip.
+  - Selling a stack refunds every chip in it. Moving or trading a stack keeps it whole.
+- Hovering a square shows how many chips are stacked there. Dolores' tip and the item descriptions explain stacking.
+
 ## 0.0.24
 - Balance: Mini wheel payments x1.05 -> x1.2. With its Bridge starter it was winning far more often than the other wheels (balance bot: 62% -> 45%).
 

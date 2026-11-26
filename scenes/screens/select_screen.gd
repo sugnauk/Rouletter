@@ -31,7 +31,9 @@ var mode_btn: Button
 var kit_btn: Button
 var seed_edit: LineEdit
 var seed_lbl: Label
-var browse: Array = []     ## the < > buttons (hidden when a mode fixes the wheel)
+var browse: Array = []
+var ch_level := 0          ## challenge level (0 = I); each adds two marker grades
+var level_btn: Button     ## the < > buttons (hidden when a mode fixes the wheel)
 
 
 func setup() -> void:
@@ -68,6 +70,9 @@ func setup() -> void:
 		seed_edit.add_theme_stylebox_override(st, sb)
 	seed_edit.add_theme_color_override("font_color", P.CREAM)
 	seed_edit.add_theme_color_override("font_placeholder_color", P.DIM)
+	seed_edit.text_changed.connect(func(_t):
+		if mode == "weekly":
+			refresh())
 	P.place(seed_edit, Vector2(374, 23), Vector2(110, 14))
 	add_child(seed_edit)
 	lock_lbl = P.label(self, "", P.FONT, P.DANGER)
@@ -97,6 +102,12 @@ func setup() -> void:
 	go_btn = P.button(self, "Deal me in", _deal, Vector2(120, 24))
 	act_btn = P.button(self, "", _toggle_act, Vector2(166, 24))
 	P.place(act_btn, Vector2(334, 322))
+	level_btn = P.button(self, "", func():
+		var top: int = mini(int(main.profile.challenge_level.get(mode, 0)), Content.CHALLENGE_LEVELS - 1)
+		ch_level = (ch_level + 1) % (top + 1)
+		Sfx.play("click")
+		refresh(), Vector2(180, 24), P.FONT_SMALL)
+	P.place(level_btn, Vector2(126, 322))
 	# Marker grade (difficulty) picker, shown once you've won a run.
 	grade_box = HBoxContainer.new()
 	grade_box.add_theme_constant_override("separation", 2)
@@ -117,7 +128,7 @@ func _deal() -> void:
 		main.start_run(w.wheel, 1, w.grade, opts)
 	elif mode != "":
 		opts.challenge = mode
-		main.start_run(selected, 1, 0, opts)
+		main.start_run(selected, 1, ch_level * 2, opts)
 	else:
 		main.start_run(selected, acts, grade, opts)
 
@@ -212,8 +223,15 @@ func refresh() -> void:
 	mode_btn.text = "MODE: " + ("STANDARD" if mode == "" else ("WEEKLY" if mode == "weekly" else Content.CHALLENGES[mode].name.to_upper()))
 	kit_btn.text = "KIT: " + ("WHEEL'S OWN" if kit == "" else Content.STARTERS[kit].name.to_upper())
 	kit_btn.visible = mode in ["", "no_outside", "gauntlet", "shoestring"] and Content.STARTERS.keys().any(func(k): return prof.is_unlocked(k))
-	seed_edit.visible = mode != "weekly"
-	seed_lbl.visible = seed_edit.visible
+	seed_lbl.text = "CODE" if mode == "weekly" else "SEED"
+	seed_edit.placeholder_text = "a friend's code" if mode == "weekly" else "random"
+	var is_ch: bool = mode != "" and mode != "weekly"
+	if is_ch:
+		ch_level = clampi(ch_level, 0, mini(int(prof.challenge_level.get(mode, 0)), Content.CHALLENGE_LEVELS - 1))
+	else:
+		ch_level = 0
+	level_btn.visible = is_ch
+	level_btn.text = "LEVEL %s%s" % [["I", "II", "III"][ch_level], ("  (grade %d)" % (ch_level * 2 + 1)) if ch_level > 0 else ""]
 	for b in browse:
 		b.visible = not fixed
 	grade_box.visible = grade_box.visible and not fixed
@@ -251,10 +269,22 @@ func refresh() -> void:
 		var w: Dictionary = RunState.weekly_preset(int(Time.get_unix_time_from_system()))
 		var wb: Dictionary = prof.weekly_best
 		desc_lbl.text = "WEEKLY CHALLENGE, week of %s. Same wheel, same seed, same Grade 2 marker for everyone this week." % w.monday
-		if wb.get("id", "") == w.id:
+		var mine: Array = prof.weekly_runs.filter(func(r): return r.id == w.id)
+		if not mine.is_empty():
+			var bits := []
+			for r in mine.slice(0, 3):
+				bits.append("WON" if r.won else "%dN %d" % [r.nights, r.take])
+			desc_lbl.text += "  Your runs: " + ", ".join(bits) + "."
+		elif wb.get("id", "") == w.id:
 			desc_lbl.text += "  Your best: %s." % ("PAID IN FULL" if wb.won else "%d night%s" % [wb.nights, "" if wb.nights == 1 else "s"])
+		var friend: Dictionary = RunState.read_share_code(seed_edit.text) if seed_edit.text.strip_edges() != "" else {}
+		if not friend.is_empty():
+			desc_lbl.text += "  Friend's code: %s, %d nights, %d Take%s." % ["won" if friend.won else "lost", friend.nights, friend.take, "" if friend.week == w.id else " (a different week)"]
+		elif seed_edit.text.strip_edges() != "":
+			desc_lbl.text += "  That code doesn't check out."
 	elif mode != "":
-		desc_lbl.text = "CHALLENGE: %s  %s" % [Content.CHALLENGES[mode].desc, "(Won)" if ("ch_" + mode) in prof.feats else ""]
+		var beaten: int = int(prof.challenge_level.get(mode, 0))
+		desc_lbl.text = "CHALLENGE: %s  Levels beaten: %d/%d. Each level adds two marker grades." % [Content.CHALLENGES[mode].desc, beaten, Content.CHALLENGE_LEVELS]
 	var edge_txt := "%.1f%%" % edge + (" (%.1f%% even-money)" % (edge / 2.0) if "la_partage" in d.rules else "")
 	var zeros := []
 	for z in b.zeros:

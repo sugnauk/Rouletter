@@ -129,6 +129,9 @@ func _load_or_synth(cue: String) -> AudioStream:
 
 static func synth(cue: String) -> AudioStreamWAV:
 	var s := []
+	if cue.begins_with("enforcer:"):
+		_enforcer_sting(s, cue.substr(9))
+		return _to_wav(s)
 	match cue:
 		"click":
 			_tone(s, 0.0, 0.03, 1400.0, 0.25, "square")
@@ -232,6 +235,29 @@ static func synth(cue: String) -> AudioStreamWAV:
 		_:
 			return null
 	return _to_wav(s)
+
+
+## Every Enforcer gets their own short motif, worked out from their name: a low stab, then
+## four notes from a dark scale (minor, phrygian or diminished, also picked by the name).
+static func _enforcer_sting(s: Array, who: String) -> void:
+	var h: int = absi(who.hash())
+	var scales := [[0, 2, 3, 5, 7, 8, 10], [0, 1, 3, 5, 7, 8, 10], [0, 2, 3, 5, 6, 8, 9, 11]]
+	var sc: Array = scales[h % scales.size()]
+	var root: float = 110.0 * pow(2.0, float((h / 7) % 5) / 12.0)
+	var wave := "square"
+	# The stab: root + fifth + minor third, low, with a hit of noise.
+	for iv in [0, 3, 7]:
+		_tone(s, 0.0, 0.32, root * pow(2.0, iv / 12.0), 0.16, wave)
+	_noise(s, 0.0, 0.1, 0.35)
+	var t := 0.34
+	for i in range(4):
+		var step: int = sc[(h / int(pow(3, i + 1))) % sc.size()]
+		var f: float = root * 2.0 * pow(2.0, step / 12.0)
+		var dur: float = [0.12, 0.18, 0.12, 0.45][i]
+		_tone(s, t, dur, f, 0.22, "square")
+		_tone(s, t, dur, f * 0.5, 0.08, "sine")
+		t += dur + 0.02
+	_tone(s, t - 0.47, 0.6, root, 0.12, "sine", root * 0.94)
 
 
 static func _ensure(s: Array, n: int) -> void:

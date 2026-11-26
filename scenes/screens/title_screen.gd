@@ -40,7 +40,10 @@ func setup() -> void:
 	continue_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	continue_info.add_theme_constant_override("line_spacing", -1)
 	P.place(continue_info, Vector2(180, 158), Vector2(170, 90))
-	P.place(P.label(self, "F2: CRT filter    F11: fullscreen", P.FONT_SMALL, P.DIM), Vector2(32, 340))
+	# On the web, phones get the tip that matters: home-screen play is truly full screen.
+	var hint := "On a phone: Share > Add to Home Screen plays full screen. Options > Screen fit if it's cut off." if OS.has_feature("web") \
+		else "F2: CRT filter    F11: fullscreen"
+	P.place(P.label(self, hint, P.FONT_SMALL, P.DIM), Vector2(32, 340))
 	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.CREAM)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	P.place(ver, Vector2(408, 340), Vector2(224, 10))

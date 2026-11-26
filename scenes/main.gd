@@ -111,8 +111,45 @@ func _ready() -> void:
 	show_screen("title" if fast_ui else "card")
 
 
+## The part of the window that's really on screen, as fractions of it: {top, height, width}.
+## On phones the browser can make the page taller than what's visible (iPhone Safari's bars);
+## the web build measures window.visualViewport to find out. 1.0 everywhere else.
+var visible_frac := {"top": 0.0, "height": 1.0, "width": 1.0}
+var _view_poll := 0.0
+
+
+## Fit the 640x360 play area into the visible part of the window. It's centred, as before,
+## unless the screen is cut off (or the player asked for Screen fit), when it shrinks to fit and
+## sits at the top of what's visible, so nothing ends up under a toolbar or off the bottom.
 func _recenter() -> void:
-	frame.position = ((size - Vector2(640, 360)) / 2.0).floor()
+	var fit: float = clampf(float(profile.settings.get("fit", 1.0)), Profile.FIT_MIN, 1.0) if profile != null else 1.0
+	var vis_pos := Vector2(0, size.y * visible_frac.top)
+	var vis_size := Vector2(size.x * visible_frac.width, size.y * visible_frac.height)
+	var s: float = minf(1.0, minf(vis_size.x / 640.0, vis_size.y / 360.0)) * fit
+	var clipped: bool = visible_frac.height < 0.999 or visible_frac.top > 0.001
+	frame.scale = Vector2(s, s)
+	var used := Vector2(640, 360) * s
+	var x: float = vis_pos.x + (vis_size.x - used.x) / 2.0
+	var y: float = vis_pos.y + ((vis_size.y - used.y) / 2.0 if not (clipped or fit < 0.999) else 0.0)
+	frame.position = Vector2(x, y).floor()
+
+
+## Web only: ask the page how much of the canvas is actually visible.
+func _measure_view() -> void:
+	if not OS.has_feature("web"):
+		return
+	# JavaScriptBridge only hands back plain values, so the page answers with "height,top,width".
+	var raw = JavaScriptBridge.eval("(function(){var v=window.visualViewport;var h=window.innerHeight||1,w=window.innerWidth||1;" +
+		"if(!v)return '1,0,1';return [Math.min(1,v.height/h),Math.max(0,v.offsetTop/h),Math.min(1,v.width/w)].join(',');})()", true)
+	if not (raw is String):
+		return
+	var r: PackedStringArray = raw.split(",")
+	if r.size() < 3:
+		return
+	var nf := {"top": clampf(float(r[1]), 0.0, 0.5), "height": clampf(float(r[0]), 0.5, 1.0), "width": clampf(float(r[2]), 0.5, 1.0)}
+	if absf(nf.height - visible_frac.height) > 0.005 or absf(nf.top - visible_frac.top) > 0.005 or absf(nf.width - visible_frac.width) > 0.005:
+		visible_frac = nf
+		_recenter()
 
 
 func _on_run_changed() -> void:
@@ -128,7 +165,10 @@ func show_screen(n: String) -> void:
 	screens[n].call("refresh")
 	if n == "table" or n == "shop":
 		save_run()
-	Sfx.play_music("enforcer" if n == "table" and not run.table.is_empty() and run.table.boss else "lounge")
+	if n == "end" and last_summary.get("won", false):
+		Sfx.play_music("victory")
+	else:
+		Sfx.play_music("enforcer" if n == "table" and not run.table.is_empty() and run.table.boss else "lounge")
 	if n != "table":
 		Sfx.set_tension(0.0)
 
@@ -236,13 +276,17 @@ func begin_flow() -> void:
 
 
 ## opts: {seed (0 = random), challenge, starter, weekly}
+var last_share_code := ""   ## the weekly run just finished, as a code to share
+
+
 func start_run(wheel: String, acts: int = 1, grade: int = 0, opts: Dictionary = {}) -> void:
 	var seed_v: int = opts.get("seed", 0)
 	if seed_v == 0:
 		seed_v = (int(Time.get_unix_time_from_system()) ^ randi()) % 1000000000
-	var g: int = grade if opts.get("weekly", "") != "" else mini(grade, profile.max_grade())
+	var g: int = grade if opts.get("weekly", "") != "" or opts.get("challenge", "") != "" else mini(grade, profile.max_grade())
+	opts = opts.duplicate()
+	opts.new_player = profile.best_night == 0 and profile.wins == 0
 	run.start_run(seed_v, wheel, profile.unlocked, acts, g, opts)
-	run.new_player = profile.best_night == 0 and profile.wins == 0
 	run_feats = []
 	last_layout = {}
 	Sfx.play("click")
@@ -303,6 +347,17 @@ func _queue_scene(scene: Dictionary) -> void:
 func _on_run_ended(won: bool) -> void:
 	delete_saved_run()
 	check_feats("end", {"won": won, "wheels_won": profile.wheels_won})
+	if won and run.challenge != "":
+		var lvl: int = run.grade / 2 + 1
+		profile.challenge_level[run.challenge] = maxi(int(profile.challenge_level.get(run.challenge, 0)), lvl)
+	if run.weekly != "":
+		var code: String = RunState.share_code(run.weekly, run.nights_cleared, int(run.total_take), won)
+		profile.weekly_runs = profile.weekly_runs.filter(func(r): return r.id == run.weekly)
+		profile.weekly_runs.append({"id": run.weekly, "nights": run.nights_cleared, "take": int(run.total_take), "won": won, "code": code})
+		profile.weekly_runs.sort_custom(func(a, b): return [a.won, a.nights, a.take] > [b.won, b.nights, b.take])
+		profile.weekly_runs = profile.weekly_runs.slice(0, 5)
+		last_share_code = code
+		DisplayServer.clipboard_set(code)
 	if won and not run.wheel_id in profile.wheels_won:
 		profile.wheels_won.append(run.wheel_id)
 	var paid: int = run.marker_paid()
@@ -350,6 +405,10 @@ func save_profile() -> void:
 
 
 func _process(delta: float) -> void:
+	_view_poll -= delta
+	if _view_poll <= 0.0:
+		_view_poll = 0.5
+		_measure_view()
 	if shake_t > 0.0:
 		shake_t -= delta
 		var a := int(ceil(shake_amt * clampf(shake_t / 0.3, 0.0, 1.0)))
@@ -416,6 +475,7 @@ func abandon_run() -> void:
 func set_option(key: String, value) -> void:
 	profile.settings[key] = value
 	crt.visible = profile.settings.crt
+	_recenter()
 	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
 	save_profile()
 	if screens.has(current) and screens[current].visible:

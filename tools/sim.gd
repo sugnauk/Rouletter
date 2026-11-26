@@ -61,6 +61,8 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: i
 				var idx: int = run.night * 3 + run.table_idx
 				if run.table.spins_used == 0:
 					reached[idx] += 1
+				if not run.table_offer.is_empty():
+					run.take_table_offer(0)
 				bot_bet(run)
 				run.spin()
 				if run.phase != RunState.Phase.TABLE and run.phase != RunState.Phase.GAME_OVER:
@@ -70,6 +72,9 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: i
 					run.take_offer(0)
 				if not run.shop.bonus.is_empty():
 					run.take_bonus(0)
+				if not run.shop.get("stash", []).is_empty():
+					if not run.take_stash(0):
+						run.take_stash(1)
 				if not run.shop.get("routes", []).is_empty():
 					run.pick_route("")
 				if run.shop.get("event", "") != "":

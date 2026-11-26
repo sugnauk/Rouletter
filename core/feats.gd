@@ -46,6 +46,7 @@ const FEATS := {
 	"ch_fence_run": {"name": "Fell Off a Truck", "desc": "Win The Fence's Run challenge.", "reward": 3, "on": "end", "challenge": "fence_run"},
 	"ch_gauntlet": {"name": "Ran the Gauntlet", "desc": "Win the Enforcer Gauntlet challenge.", "reward": 4, "on": "end", "challenge": "gauntlet"},
 	"ch_shoestring": {"name": "On a Shoestring", "desc": "Win the Shoestring challenge.", "reward": 3, "on": "end", "challenge": "shoestring"},
+	"ch_master": {"name": "Hard Way Round", "desc": "Win any challenge at Level III.", "reward": 4, "on": "end"},
 	"weekly_win": {"name": "Weekly Winner", "desc": "Win a weekly challenge run.", "reward": 2, "on": "end"},
 }
 
@@ -114,6 +115,8 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 	if id == "grand_tour":
 		var won: Array = ctx.get("wheels_won", [])
 		return ctx.won and Wheels.ORDER.all(func(w): return w in won or w == run.wheel_id)
+	if id == "ch_master":
+		return ctx.won and run.challenge != "" and run.grade >= (Content.CHALLENGE_LEVELS - 1) * 2
 	if id == "weekly_win":
 		return ctx.won and run.weekly != ""
 	if f.has("enforcer"):

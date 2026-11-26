@@ -10,8 +10,8 @@ const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
 const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
 const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
 ## Take target of each night's first table (nights 5-8 are Act II only).
-const NIGHT_BASE := [8, 21, 52, 96, 140, 195, 260, 340]
-const TABLE_MULT := [1.0, 1.4, 1.8]      ## Floor / High Roller / Enforcer
+const NIGHT_BASE := [9, 32, 105, 240, 330, 450, 600, 780]
+const TABLE_MULT := [1.0, 1.4, 1.95]      ## Floor / High Roller / Enforcer
 const SPINS := 6
 const START_STACK := 25                 ## betting chips handed out at each table
 const START_CASH := 4
@@ -111,10 +111,10 @@ const GRADES := [
 	{"name": "Short Stack", "desc": "You start every table with 5 fewer betting chips."},
 	{"name": "Tight Cage", "desc": "Everything sold for cash in the Cage costs $1 more."},
 	{"name": "Heavy Payments", "desc": "Every payment is 10% bigger."},
-	{"name": "No Tips", "desc": "No cash for spins left over when you clear a table."},
+	{"name": "Cracked Luck", "desc": "From night 2, each night one of your permanent chips cracks (scores half)."},
 	{"name": "Fast Tables", "desc": "High Roller and Enforcer tables have one spin fewer."},
 	{"name": "Mean Enforcers", "desc": "Enforcer tables ask 10% more."},
-	{"name": "Pricey Rerolls", "desc": "Rerolls in the Cage start at $4."},
+	{"name": "One Window", "desc": "Only the Cashier works the Cage."},
 	{"name": "Vance's Own Marker", "desc": "Every payment is a further 10% bigger. Mr. Vance's personal paper."},
 ]
 const MARKER_GRADE_STEP := 0.25          ## each grade adds 25% to the marker's face value
@@ -134,25 +134,25 @@ const CHIPS := {
 	"magnet": {"name": "Magnet", "desc": "If the ball lands one grid square away, it slides onto the winner.",
 		"price": 6, "unlock": 0,
 		"note": "Uses the physical 3xN felt layout only a roulette table has."},
-	"compounding": {"name": "Compounding", "desc": "+1 value every spin.",
+	"compounding": {"name": "Compounding", "desc": "+1 value every spin (per chip stacked).",
 		"price": 6, "unlock": 0,
 		"note": "'Let it ride' on a bet nobody ever collects."},
 	"croupier": {"name": "Croupier", "desc": "When it hits, +1 Take for each betting chip that lost this spin.",
 		"price": 5, "unlock": 0,
 		"note": "The rake sweeping the losers off the layout, paid to you."},
-	"wildcard_zero": {"name": "Wildcard Zero", "desc": "Sits on a zero. When any zero hits: outside bets push and +6 Take.",
+	"wildcard_zero": {"name": "Wildcard Zero", "desc": "Sits on a zero. When any zero hits: outside bets push and +6 Take (per chip stacked).",
 		"price": 6, "unlock": 0, "zero_only": true,
 		"note": "Targets the green pockets, the literal source of the house edge."},
 	"mint": {"name": "Mint", "desc": "+$1 every spin, hit or miss.",
 		"price": 5, "unlock": 0,
 		"note": "A comp from the pit for staying at the table."},
-	"respin": {"name": "Respin", "desc": "When it hits, +1 spin at this table.",
+	"respin": {"name": "Respin", "desc": "When it hits, +1 spin at this table (per chip stacked).",
 		"price": 6, "unlock": 0,
 		"note": "Buys time against the payment clock."},
-	"ledger": {"name": "Ledger", "desc": "When it hits, +1 value to your permanent chips on adjacent squares.",
+	"ledger": {"name": "Ledger", "desc": "When it hits, +1 value to your permanent chips on adjacent squares (per chip stacked).",
 		"price": 6, "unlock": 2,
 		"note": "Growth spreads along felt neighbours, the same geometry splits and corners use."},
-	"collector": {"name": "Collector", "desc": "When it hits, +1 Take per value of your other chips in its dozen or column.",
+	"collector": {"name": "Collector", "desc": "When it hits, +1 Take per value of your other chips in its dozen or column (per chip stacked).",
 		"price": 6, "unlock": 2,
 		"note": "Pays off roulette's own groupings when you crowd them."},
 	"bridge": {"name": "Bridge", "desc": "Sits on a split, corner, street or line. When it hits, +1 Take per number it covers.",
@@ -170,7 +170,7 @@ const CHIPS := {
 	"penny": {"name": "Lucky Penny", "desc": "When it hits, +$2 cash (per level).",
 		"price": 4, "unlock": 0,
 		"note": "A coin that pays the gambler, not the house."},
-	"snowball": {"name": "Snowball", "desc": "When it hits, it grows 2 levels.",
+	"snowball": {"name": "Snowball", "desc": "When it hits, it grows 2 levels (per chip stacked).",
 		"price": 6, "unlock": 0,
 		"note": "'Let it ride', but only when it wins."},
 	"street_light": {"name": "Street Light", "desc": "Whenever another number in its street (its row of three) hits, +3 Take (per level).",
@@ -179,7 +179,7 @@ const CHIPS := {
 	"red_herring": {"name": "Red Herring", "desc": "Whenever any red number hits, +2 Take (per level).",
 		"price": 5, "unlock": 0,
 		"note": "The Black Cat's cousin, for the other colour."},
-	"jar": {"name": "Jackpot Jar", "desc": "Grows a level every spin it misses. When it hits it pays, then empties back to level 1.",
+	"jar": {"name": "Jackpot Jar", "desc": "Grows a level every spin it misses. When it hits it pays, then empties back to one level per chip stacked.",
 		"price": 6, "unlock": 0,
 		"note": "Saving up for the one big night."},
 	"hedge": {"name": "Hedge", "desc": "Sits on an even-money box (red, black, odd, even, high, low). Every spin it misses, +1 Take (per level).",
@@ -188,16 +188,16 @@ const CHIPS := {
 	"wheel_spoke": {"name": "Wheel Spoke", "desc": "When the ball lands 1 or 2 pockets from its number on the wheel, +4 Take (per level).",
 		"price": 6, "unlock": 2,
 		"note": "Plays the wheel's order, the way a 'neighbours' bet does."},
-	"echo": {"name": "Echo", "desc": "When it hits, every other permanent chip you own gains a level.",
+	"echo": {"name": "Echo", "desc": "When it hits, every other permanent chip you own gains a level (per chip stacked).",
 		"price": 9, "unlock": 3,
 		"note": "One hit that ripples across the whole felt."},
-	"ace": {"name": "Ace of Spades", "desc": "Sits on a black number only. When it hits, the spin's Take x2 (+0.5 per extra level).",
+	"ace": {"name": "Ace of Spades", "desc": "Sits on a black number only. When it hits, the spin's Take x2. Each chip stacked on it multiplies again; other levels add +0.5.",
 		"price": 9, "unlock": 3, "black_only": true,
 		"note": "The death card of the deck, dealt onto roulette's black squares."},
 	"tip_jar": {"name": "Tip Jar", "desc": "+$1 for every betting chip that loses (up to $5 a spin, per level).",
 		"price": 5, "unlock": 0,
 		"note": "The croupier's tip box, emptied into your pocket."},
-	"green_thumb": {"name": "Green Thumb", "desc": "Sits on a zero. Grows a level every time any zero hits.",
+	"green_thumb": {"name": "Green Thumb", "desc": "Sits on a zero. Grows a level every time any zero hits (per chip stacked).",
 		"price": 5, "unlock": 0, "zero_only": true,
 		"note": "Grows on the green, the one colour the house owns."},
 	"signpost": {"name": "Signpost", "desc": "Sits on a split, corner, street or line. When it hits, +$2 cash (per level).",
@@ -206,7 +206,7 @@ const CHIPS := {
 	"sentinel": {"name": "Sentinel", "desc": "Sits on a zero. Whenever a zero hits, +8 Take (per level).",
 		"price": 5, "unlock": 0, "zero_only": true,
 		"note": "Guards the green pockets, where the house edge lives."},
-	"crown": {"name": "Column Crown", "desc": "Sits on a column bet. When its column hits, the spin's Take x1.25 (+0.25 per extra level).",
+	"crown": {"name": "Column Crown", "desc": "Sits on a column bet. When its column hits, the spin's Take x1.25. Each chip stacked on it multiplies again; other levels add +0.25.",
 		"price": 7, "unlock": 2, "column_only": true,
 		"note": "Turns one of the long 2:1 boxes into a multiplier."},
 	"odd_fellow": {"name": "Odd Fellow", "desc": "Whenever an odd number hits, +2 Take (per level).",
@@ -263,7 +263,7 @@ const CHIPS := {
 	"far_side": {"name": "Far Side", "desc": "When the ball lands directly across the wheel from its number (the farthest pockets), +10 Take (per level).",
 		"price": 6, "unlock": 2, "trigger": {"on": "opposite", "take": 10.0},
 		"note": "Bets on the pocket opposite on the wheel, the farthest one."},
-	"seedling": {"name": "Seedling", "desc": "Grows a level every spin it misses, up to level 5.",
+	"seedling": {"name": "Seedling", "desc": "Grows a level every spin it misses, up to level 5 (per chip stacked).",
 		"price": 5, "unlock": 0, "trigger": {"on": "miss", "grow": 1, "cap": 5},
 		"note": "Plant it early; it pays later."},
 	"golden_goose": {"name": "Golden Goose", "desc": "When it hits, +$5 cash (per level).",
@@ -275,7 +275,13 @@ const CHIPS := {
 	"spare_key": {"name": "Spare Key", "desc": "Whenever a zero hits, +$4 cash (per level).",
 		"price": 5, "unlock": 0, "trigger": {"on": "zero", "cash": 4},
 		"note": "For the night the green comes up."},
-	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5 (+0.5 per extra level).",
+	"conductor": {"name": "Conductor", "desc": "When it hits, every multiplier chip you own (Kingmaker, Ace, Crown) fires too, wherever it sits.",
+		"price": 9, "unlock": 0, "note": "Strikes up the whole band at once."},
+	"relay": {"name": "Relay", "desc": "When it hits, every other permanent chip on a number scores half its straight-up pay too.",
+		"price": 8, "unlock": 0, "note": "Passes the win down the line."},
+	"fuse": {"name": "Fuse", "desc": "Each spin, +2 Take for every level your other chips gained that spin (per level of Fuse).",
+		"price": 7, "unlock": 0, "note": "Growth chips light it; it turns growing into scoring."},
+	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5. Each chip stacked on it multiplies again; other levels add +0.5.",
 		"price": 7, "unlock": 0,
 		"note": "A crowned number: one pocket that makes the whole spin."},
 }
@@ -283,6 +289,8 @@ const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zer
 
 ## Rarity: how often something shows up in the Cage (common unless listed) and the frame it gets.
 const RARITY := {
+	"sals_whistle": "legendary", "oros_coin": "legendary", "accountants_book": "legendary", "velvet_rope": "legendary", "klines_watch": "legendary",
+	"conductor": "legendary", "relay": "rare", "fuse": "rare", "crowd_pleaser": "rare", "purist": "rare",
 	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
 	"night_owl": "rare", "far_side": "rare", "heart_of_gold": "rare", "golden_goose": "rare", "square_deal": "rare",
 	"zero_tolerance": "rare", "double_down": "rare", "patron": "rare", "late_bloomer": "rare", "veterans": "legendary",
@@ -298,6 +306,13 @@ const RARITY_WEIGHT := {"common": 6, "rare": 3, "legendary": 1}
 const PORCH_SHARE := 0.5
 const BLACK_CAT_BONUS := 2.0
 const RAINY_DAY_CASH := 2
+const CROWD_STEP := 0.05
+const SKIM_CUT := 0.15
+const OROS_COIN_TAKE := 10.0
+const VELVET_ROPE_CHIPS := 2
+const HIGH_STAKES_CHIPS := 15
+const RELAY_SHARE := 0.5
+const FUSE_BONUS := 2.0
 ## Refine: a second act for a levelled-up number chip (one path per chip, at the Cashier).
 const REFINE_PRICE := 6
 const REFINE_LEVEL := 2
@@ -349,6 +364,10 @@ const TAGS := {
 	"wheel_spoke": ["wheel", "neighbours"], "echo": ["numbers", "multiplier"], "ace": ["numbers", "multiplier"],
 	"tip_jar": ["cash"], "green_thumb": ["zero"], "signpost": ["inside", "cash"],
 	"diamond": ["numbers"], "magnetized": ["numbers", "neighbours"], "twin_square": ["numbers"], "spoke": ["wheel", "neighbours"],
+	"sals_whistle": ["multiplier"], "oros_coin": ["zero"], "accountants_book": ["outside", "cash"],
+	"velvet_rope": ["spins"], "klines_watch": ["spins"],
+	"crowd_pleaser": ["multiplier", "numbers"], "purist": ["multiplier", "numbers"], "high_stakes": ["multiplier"],
+	"conductor": ["multiplier"], "relay": ["numbers"], "fuse": ["numbers", "multiplier"],
 	"outside_connection": ["outside", "numbers"], "inside_track": ["inside", "numbers"],
 	"colour_coded": ["even", "numbers"], "rainy_day": ["cash", "even"],
 	"gold_trim": ["outside", "cash"], "fat_box": ["outside"], "repeat_box": ["outside", "multiplier"], "lucky_colour": ["even"],
@@ -364,6 +383,9 @@ const COUNTERS := {
 	"no_inside": {"good": ["numbers", "outside", "even"], "bad": ["inside"]},
 	"drain": {"good": ["multiplier"], "bad": []},
 	"short": {"good": ["spins", "multiplier"], "bad": []},
+	"no_rules": {"good": ["numbers", "inside"], "bad": ["even", "multiplier"]},
+	"skim": {"good": ["multiplier", "numbers"], "bad": []},
+	"cold_red": {"good": ["even", "outside"], "bad": []},
 	"crowd": {"good": ["outside", "inside", "even"], "bad": []},
 	"tempo": {"good": ["even", "outside"], "bad": []},
 	"clock": {"good": ["multiplier", "numbers"], "bad": ["spins"]},
@@ -404,6 +426,8 @@ const EVENTS := {
 		"options": [["Take it", "A random chip, free, but HOT: lost the first time a zero hits."], ["Pass", "Leave it."]]},
 }
 const EVENT_CHANCE := 0.6
+const CASHIER_CHIPS := 3                ## chips on the Cashier's counter each visit
+const PERM_CHANCE := 0.15               ## chance a shop chip slot is a plain Permanent
 
 ## Named challenges: handcrafted runs with their own Feat (Act I, base marker).
 const CHALLENGES := {
@@ -416,6 +440,7 @@ const CHALLENGES := {
 	"shoestring": {"name": "Shoestring", "wheel": "european",
 		"desc": "A 12-chip stack, and no Pit Boss or Loan Shark to lean on."},
 }
+const CHALLENGE_LEVELS := 3            ## each level adds two marker grades (I: base, II: grade 3, III: grade 5)
 const SHOESTRING_STACK := 12
 const FENCE_RUN_CASH := 10
 ## Alternative starting kits, bought at the Pawn Shop and picked on the wheel screen.
@@ -436,6 +461,7 @@ const ALMANAC := [
 	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "red_herring", "street_light", "wheel_spoke", "hedge", "croupier", "collector", "ledger"]],
 	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "seedling", "echo"]],
 	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "ace", "crown", "bridge"]],
+	["CHAIN CHIPS", "CHIPS", ["conductor", "relay", "fuse"]],
 	["ZERO CHIPS", "CHIPS", ["wildcard_zero", "sentinel", "green_thumb"]],
 	["PATTERN CHIPS", "CHIPS", ["odd_fellow", "even_keel", "low_roller", "penthouse", "prime_time", "square_deal", "teen_idol", "fibonacci", "nickel", "seventh_heaven", "last_digit"]],
 	["WATCH CHIPS", "CHIPS", ["dozen_watch", "pillar", "doorbell", "clover", "far_side", "night_owl", "heart_of_gold"]],
@@ -447,6 +473,8 @@ const ALMANAC := [
 	["SAFETY RULES", "HOUSE_RULES", ["la_partage", "en_prison", "insurance", "zero_tolerance", "rent_control", "patron", "bankroll"]],
 	["MONEY RULES", "HOUSE_RULES", ["comped", "compound_interest", "big_spender"]],
 	["BRIDGE RULES", "HOUSE_RULES", ["outside_connection", "inside_track", "colour_coded", "rainy_day"]],
+	["SCALING RULES", "HOUSE_RULES", ["crowd_pleaser", "purist", "high_stakes"]],
+	["TROPHIES", "HOUSE_RULES", ["sals_whistle", "oros_coin", "accountants_book", "velvet_rope", "klines_watch"]],
 	["DEALER FAVOURS", "FAVOURS", ["extra_spin", "fat_stack", "head_start"]],
 	["DEALER VOUCHERS", "VOUCHERS", ["comp_card", "vip_rack", "patience", "house_credit"]],
 ]
@@ -570,6 +598,24 @@ const HOUSE_RULES := {
 		"price": 7, "unlock": 0, "note": "Bridges inside bets and number chips."},
 	"colour_coded": {"name": "Colour Coded", "desc": "When red or black wins, +1 Take per level of every permanent chip on a number of that colour.",
 		"price": 6, "unlock": 0, "note": "Bridges even-money bets and number chips."},
+	# Trophies: only from an Enforcer's stash, never sold in the Cage.
+	"sals_whistle": {"name": "Sal's Whistle", "desc": "Every 3rd spin at a table scores x1.5.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "Big Sal called his spins; now you call yours."},
+	"oros_coin": {"name": "Oro's Coin", "desc": "Whenever a zero hits, +10 Take.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "Madame Oro's lucky green coin."},
+	"accountants_book": {"name": "Accountant's Book", "desc": "+$1 for every spin an outside bet wins.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "Balanced books, in your favour for once."},
+	"velvet_rope": {"name": "Velvet Rope", "desc": "+2 betting chips to your stack every spin.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "The VIP line moves fast."},
+	"klines_watch": {"name": "Kline's Watch", "desc": "+1 spin at every table.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "He was always early. Now you are too."},
+	# Scaling rules: they grow with the build.
+	"crowd_pleaser": {"name": "Crowd Pleaser", "desc": "Every scoring spin x(1 + 0.05 per level of permanent chips on your felt).",
+		"price": 9, "unlock": 0, "note": "The more you've built, the louder the room gets."},
+	"purist": {"name": "Purist", "desc": "x2 on a spin where every winning bet was a straight-up.",
+		"price": 8, "unlock": 0, "note": "No hedging, no splits: just numbers."},
+	"high_stakes": {"name": "High Stakes", "desc": "x1.5 on spins with 15 or more betting chips riding.",
+		"price": 7, "unlock": 0, "note": "Push the pile in and the house pays attention."},
 	"rainy_day": {"name": "Rainy Day Fund", "desc": "A spin that scores no Take pays +$2.",
 		"price": 5, "unlock": 0, "note": "Bridges a cautious layout and a cash build: even bad spins pay."},
 }
@@ -582,51 +628,63 @@ const FEATURES := {
 
 # --- Enforcers (boss tables) -----------------------------------------------------------------
 const ENFORCERS := {
-	"accountant": {"name": "The Accountant", "rule": "no_outside",
+	"accountant": {"name": "The Accountant", "rule": "no_outside", "trophy": "accountants_book",
 		"desc": "Outside bets are off the books: they can't be placed and don't pay.",
 		"intro": "Mr. Vance doesn't like round numbers. Inside bets only tonight.",
 		"defeat": "...The ledger balances. For now."},
-	"oro": {"name": "Madame Oro", "rule": "zero_tax",
+	"oro": {"name": "Madame Oro", "rule": "zero_tax", "trophy": "oros_coin",
 		"desc": "Every zero costs you 10% of the Take you've built.",
 		"intro": "Green is my favourite colour, darling. Every time it comes up, I take a cut.",
 		"defeat": "Lucky. Luck doesn't last in this building."},
-	"vic": {"name": "Vic \"The Rake\"", "rule": "frozen",
+	"vic": {"name": "Vic \"The Rake\"", "rule": "frozen", "trophy": "sals_whistle",
 		"desc": "Your biggest permanent chip is frozen and pays nothing this table.",
 		"intro": "Nice stack. Be a shame if it couldn't move.",
 		"defeat": "Vance is gonna hear about this."},
-	"sal": {"name": "Big Sal", "rule": "called",
+	"sal": {"name": "Big Sal", "rule": "called", "trophy": "sals_whistle",
 		"desc": "Every 3rd spin is called: you can't place new bets on it.",
 		"intro": "I call the spins at my table. You just watch.",
 		"defeat": "Huh. Didn't call that one."},
-	"duchess": {"name": "The Duchess", "rule": "crowd",
+	"duchess": {"name": "The Duchess", "rule": "crowd", "trophy": "oros_coin",
 		"desc": "Piles are vulgar: any bet of 5 or more chips on one spot pays half.",
 		"intro": "Darling, nobody needs that many chips in one place. Spread them out or pay for it.",
 		"defeat": "How very... democratic of you."},
-	"tempo": {"name": "Miss Tempo", "rule": "tempo",
+	"tempo": {"name": "Miss Tempo", "rule": "tempo", "trophy": "sals_whistle",
 		"desc": "Keep the beat: every spin that scores nothing costs 10% of the Take you've built.",
 		"intro": "One, two, one, two. Miss a beat and the band stops playing for you.",
 		"defeat": "You kept time. Barely."},
-	"timekeeper": {"name": "The Timekeeper", "rule": "clock",
+	"timekeeper": {"name": "The Timekeeper", "rule": "clock", "trophy": "klines_watch",
 		"desc": "The clock is running: the payment grows by 5% every spin.",
 		"intro": "Every tick costs you. I'd hurry.",
 		"defeat": "...Time's up. For me, apparently."},
-	"ilsa": {"name": "Countess Ilsa", "rule": "no_repeat",
+	"ilsa": {"name": "Countess Ilsa", "rule": "no_repeat", "trophy": "velvet_rope",
 		"desc": "No encores: you can't bet on a spot you bet on last spin.",
 		"intro": "The same bet twice? How dreadfully dull. I won't allow it.",
 		"defeat": "At least you were never boring."},
 	# Act II: the Floor Above (nights 5-7), then the Owner on night 8.
-	"inspector": {"name": "The Inspector", "rule": "no_inside", "act": 2,
+	"inspector": {"name": "The Inspector", "rule": "no_inside", "trophy": "accountants_book", "act": 2,
 		"desc": "Inside bets are under review: no splits, streets, corners or lines, and those chips don't pay.",
 		"intro": "Gaming commission. Routine check. Keep your chips in the middle of the squares, please.",
 		"defeat": "Everything appears to be... in order. How irritating."},
-	"velvet": {"name": "Velvet", "rule": "drain", "act": 2,
+	"velvet": {"name": "Velvet", "rule": "drain", "trophy": "velvet_rope", "act": 2,
 		"desc": "The room has a minimum: every spin costs 2 chips from your stack.",
 		"intro": "Upstairs, darling, we don't count chips. We just watch them leave.",
 		"defeat": "You kept some. How quaint."},
-	"kline": {"name": "Mr. Kline", "rule": "short", "act": 2,
+	"kline": {"name": "Mr. Kline", "rule": "short", "trophy": "klines_watch", "act": 2,
 		"desc": "A short table: only 4 spins to make the payment.",
 		"intro": "I'm a busy man. Four spins. Make them count or make them your last.",
 		"defeat": "...Fine. Next."},
+	"auditor": {"name": "The Auditor", "rule": "no_rules", "act": 2, "trophy": "accountants_book",
+		"desc": "Your House Rules are suspended at this table. Only the wheel's own rules apply.",
+		"intro": "I'll be reviewing those little arrangements of yours. Until then, they don't exist.",
+		"defeat": "Everything checks out. Somehow."},
+	"montague": {"name": "Silk Montague", "rule": "skim", "act": 2, "trophy": "oros_coin",
+		"desc": "The house skims 15% off every spin's Take.",
+		"intro": "A little off the top, dear. It's how the lights stay on.",
+		"defeat": "You'd make a fine skimmer yourself."},
+	"winter": {"name": "Mr. Winter", "rule": "cold_red", "act": 2, "trophy": "velvet_rope",
+		"desc": "A cold table: permanent chips on red numbers score half.",
+		"intro": "Red's a warm colour. I don't care for warm.",
+		"defeat": "...Thawed. How irritating."},
 	"owner": {"name": "Mr. Vance", "rule": "owner", "act": 2, "final": true,
 		"desc": "The Owner's table: every zero costs 10% of your Take, and every 3rd spin is called.",
 		"intro": "My wheel. My felt. My rules. Sit down. You've earned the chair, if not the room.",

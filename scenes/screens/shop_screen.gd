@@ -10,6 +10,7 @@ const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 const FeltView := preload("res://scenes/ui/felt_view.gd")
 const Preview := preload("res://core/preview.gd")
+const Story := preload("res://core/story.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
 const Portraits := preload("res://scenes/ui/portraits.gd")
 
@@ -279,6 +280,17 @@ func refresh() -> void:
 	status_lbl.text = _hint()
 	cage_view.queue_redraw()
 	_refresh_choice(run)
+	_first_time_tips(run)
+
+
+func _first_time_tips(run) -> void:
+	if main.dialogue.is_open():
+		return
+	var refinable: bool = "cashier" in run.shop.get("vendors", []) and run.felt.perm_chips().any(func(c): return Board.is_straight(c.bet) and c.value >= Content.REFINE_LEVEL)
+	for pair in [["route", not run.shop.get("routes", []).is_empty()], ["event", run.shop.get("event", "") != ""], ["refine", refinable]]:
+		if pair[1] and Story.TIPS[pair[0]].id not in main.profile.seen_beats:
+			main.tip(pair[0], true)
+			return
 
 
 ## The pick-one panels over the Cage: the opening build pick, and the early-clear bonus.
@@ -292,7 +304,8 @@ func _refresh_choice(run) -> void:
 		refine_id = -1
 	var event: String = run.shop.get("event", "")
 	var routes: Array = run.shop.get("routes", [])
-	if offer.is_empty() and bonus.is_empty() and refine_id < 0 and event == "" and routes.is_empty():
+	var stash: Array = run.shop.get("stash", [])
+	if offer.is_empty() and bonus.is_empty() and refine_id < 0 and event == "" and routes.is_empty() and stash.is_empty():
 		return
 	choice = Panel.new()
 	choice.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.96), P.GOLD, 1))
@@ -325,6 +338,25 @@ func _refresh_choice(run) -> void:
 			refine_id = -1
 			refresh(), Vector2(60, 16), P.FONT_SMALL)
 		P.place(cb, Vector2(CAGE.size.x - 68, CAGE.size.y - 22))
+	elif not stash.is_empty():
+		title.text = "THE ENFORCER'S STASH: TAKE ONE"
+		for i in range(stash.size()):
+			var it: Dictionary = stash[i]
+			var is_rule: bool = it.type == "rule"
+			var nm: String = Content.HOUSE_RULES[it.id].name if is_rule else Content.CHIPS[it.id].name
+			var ds: String = Content.HOUSE_RULES[it.id].desc if is_rule else Content.CHIPS[it.id].desc
+			_choice_option(row, it.id, "TROPHY" if is_rule else Content.rarity_of(it.id).to_upper(), nm,
+				ds + ("\n(A trophy House Rule: sold nowhere else.)" if is_rule else "\n(A chip: place it on the felt.)"), func():
+				if run.take_stash(i):
+					main.profile.note_used(it.id)
+					Sfx.play("sting" if is_rule else "buy")
+					main.fx.burst(CAGE.get_center(), 36, [P.GOLD, P.CREAM, P.VIOLET], 150.0)
+					if not is_rule:
+						selected_item = run.inventory.size() - 1
+						mode = "place"
+					refresh()
+				else:
+					_describe("No room", "Your House Rule slots are full. Take a chip instead."))
 	elif not offer.is_empty():
 		title.text = "ON THE HOUSE: PICK ONE"
 		for i in range(offer.size()):
@@ -428,9 +460,16 @@ func _build_windows(run) -> void:
 		groups[v] = []
 	for i in range(run.shop.stock.size()):
 		groups[run.shop.stock[i].vendor].append(i)
-	const TOK := Vector2(46, 62)
-	const SEP := 6.0
 	const GAP := 8.0
+	# Tokens shrink (46 wide down to 36) when a busy counter wouldn't otherwise fit the Cage.
+	var n_tok := 0
+	for v in run.shop.vendors:
+		n_tok += maxi(1, groups[v].size())
+	var nv: int = run.shop.vendors.size()
+	var SEP := 6.0 if n_tok <= 5 else 4.0
+	var tw: float = floor((CAGE.size.x - (n_tok - nv) * SEP - 16.0 * nv - GAP * (nv - 1)) / n_tok)
+	tw = clampf(tw, 36.0, 46.0)
+	var TOK := Vector2(tw, round(tw * 62.0 / 46.0))
 	var widths := []
 	var total := 0.0
 	for v in run.shop.vendors:
@@ -448,7 +487,7 @@ func _build_windows(run) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", int(SEP))
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		P.place(row, Vector2(r.position.x, r.position.y + 62), Vector2(r.size.x, TOK.y))
+		P.place(row, Vector2(r.position.x, r.position.y + 62 + (62.0 - TOK.y) / 2.0), Vector2(r.size.x, TOK.y))
 		counter.add_child(row)
 		if groups[v].is_empty():
 			P.label(row, "SOLD OUT", P.FONT_SMALL, P.DIM)

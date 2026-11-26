@@ -14,6 +14,11 @@ const ENFORCER_BARS := [[45, [0, 3, 7, 10]], [45, [0, 3, 7, 10]], [41, [0, 4, 7,
 ## Vibraphone melody, one note per beat (midi, 0 = rest), 8 bars x 4 beats.
 const LOUNGE_MELODY := [77, 0, 74, 72, 74, 0, 71, 0, 72, 76, 79, 0, 76, 0, 72, 0,
 	77, 0, 74, 72, 71, 74, 77, 0, 76, 0, 74, 72, 73, 0, 0, 0]
+## The victory theme: the lounge band in a bright major key, brisk, with a rising horn line.
+const VICTORY_BARS := [[48, [0, 4, 7, 11]], [53, [0, 4, 7, 11]], [50, [0, 3, 7, 10]], [55, [0, 4, 7, 10]],
+	[48, [0, 4, 7, 11]], [57, [0, 3, 7, 10]], [53, [0, 4, 7, 11]], [55, [0, 4, 7, 10]]]
+const VICTORY_MELODY := [72, 76, 79, 0, 84, 0, 79, 76, 77, 81, 84, 0, 83, 0, 79, 0,
+	76, 79, 84, 0, 88, 0, 84, 81, 81, 84, 89, 0, 86, 0, 0, 0]
 const ENFORCER_MELODY := [69, 0, 72, 0, 76, 75, 0, 0, 69, 0, 72, 0, 71, 0, 68, 0,
 	69, 0, 72, 0, 76, 79, 0, 77, 76, 0, 72, 0, 68, 0, 0, 0]
 
@@ -37,9 +42,10 @@ static func _hz(midi: float) -> float:
 ## "enforcer") and the same length, so it can be faded in on top while the table gets tight.
 static func synth_tension(base: String) -> AudioStreamWAV:
 	var tense := base == "enforcer"
-	var bpm := 112.0 if tense else 92.0
+	var victory := base == "victory"
+	var bpm := 112.0 if tense else (124.0 if victory else 92.0)
 	var beat := 60.0 / bpm
-	var bars: Array = ENFORCER_BARS if tense else LOUNGE_BARS
+	var bars: Array = ENFORCER_BARS if tense else (VICTORY_BARS if victory else LOUNGE_BARS)
 	var n := int(bars.size() * 4 * beat * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -63,10 +69,11 @@ static func synth(track: String) -> AudioStreamWAV:
 	if track.ends_with("_tension"):
 		return synth_tension(track.trim_suffix("_tension"))
 	var tense := track == "enforcer"
-	var bpm := 112.0 if tense else 92.0
+	var victory := track == "victory"
+	var bpm := 112.0 if tense else (124.0 if victory else 92.0)
 	var beat := 60.0 / bpm
-	var bars: Array = ENFORCER_BARS if tense else LOUNGE_BARS
-	var melody: Array = ENFORCER_MELODY if tense else LOUNGE_MELODY
+	var bars: Array = ENFORCER_BARS if tense else (VICTORY_BARS if victory else LOUNGE_BARS)
+	var melody: Array = ENFORCER_MELODY if tense else (VICTORY_MELODY if victory else LOUNGE_MELODY)
 	var n := int(bars.size() * 4 * beat * RATE)
 	var s := PackedFloat32Array()
 	s.resize(n)
@@ -101,6 +108,8 @@ static func synth(track: String) -> AudioStreamWAV:
 			var m: int = melody[(b * 4 + q) % melody.size()]
 			if m > 0:
 				_vibe(s, t0 + q * beat, beat * 1.4, _hz(m), 0.10)
+				if victory:   # a horn doubling the tune an octave down
+					_pad(s, t0 + q * beat, beat * 0.9, _hz(m - 12), 0.06)
 	return _finish(s)
 
 

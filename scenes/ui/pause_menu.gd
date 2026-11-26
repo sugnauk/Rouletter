@@ -25,7 +25,7 @@ func _ready() -> void:
 	add_child(shade)
 	var panel := Panel.new()
 	panel.add_theme_stylebox_override("panel", P.box(P.PANEL, P.GOLD, 2))
-	P.place(panel, Vector2(200, 72), Vector2(240, 216))
+	P.place(panel, Vector2(200, 66), Vector2(240, 228))
 	add_child(panel)
 	var t := P.label(panel, "PAUSED", P.FONT_BIG, P.GOLD)
 	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -36,7 +36,7 @@ func _ready() -> void:
 	info = P.label(panel, "", P.FONT_SMALL, P.DIM)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.add_theme_constant_override("line_spacing", -1)
-	P.place(info, Vector2(10, 182), Vector2(220, 30))
+	P.place(info, Vector2(10, 182), Vector2(220, 44))
 	panel.add_child(box)
 	P.button(box, "Resume", close, Vector2(140, 22))
 	P.button(box, "Options", func():
@@ -68,6 +68,12 @@ func open() -> void:
 		for g in range(1, r.grade + 1):
 			mods.append(Content.GRADES[g].name)
 		lines.append("GRADE %d: %s" % [r.grade + 1, ", ".join(mods)])
+	var src: Array = r.cash_sources()
+	if not src.is_empty():
+		var bits := []
+		for x in src.slice(0, 3):
+			bits.append("%s $%d" % [x[0], x[1]])
+		lines.append("MONEY: " + ", ".join(bits))
 	info.text = "\n".join(lines)
 	confirm = false
 	abandon_btn.text = "Abandon run"

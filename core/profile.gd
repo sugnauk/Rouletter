@@ -20,6 +20,8 @@ var best_spin: int = 0       ## best single spin ever (personal-best celebration
 var feats: Array = []        ## Feats earned (core/feats.gd)
 var seen_items: Array = []   ## Almanac: content ids that have appeared in the Cage
 var used_items: Array = []   ## Almanac: content ids you have bought
+var challenge_level: Dictionary = {}   ## challenge id -> levels beaten (0-3); level N+1 opens after N
+var weekly_runs: Array = []      ## this week's weekly-challenge results: {id, nights, take, won, code}
 var wheels_won: Array = []        ## wheels you've won a run on (the Grand Tour Feat)
 var weekly_best: Dictionary = {}   ## this week's best weekly challenge run: {id, nights, won, take}
 var best_grade: int = -1     ## highest marker grade won (-1: none yet)
@@ -28,7 +30,11 @@ const HISTORY_MAX := 10
 var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
-const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false, "fast_spins": false}
+const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false, "fast_spins": false,
+	"fit": 1.0}
+## Screen fit: shrink the play area (and pin it to the top) when a phone browser hides part of it.
+const FIT_MIN := 0.7
+const FIT_STEP := 0.05
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 var save_path: String = DEFAULT_PATH
 
@@ -62,12 +68,53 @@ static func catalogue() -> Array:
 	return out
 
 
+## The Pawn Shop as a tree: lanes of unlocks, cheapest at the top. Each item needs the one
+## above it in its lane. [{title, ids}], built from catalogue() (big categories split in two).
+static func tree() -> Array:
+	var by := {}
+	for e in catalogue():
+		var cat: String = e.category if e.category in ["wheel", "chip", "upgrade", "rule"] else "extra"
+		by[cat] = by.get(cat, []) + [e.id]
+	var lanes := []
+	for cat in ["wheel", "chip", "upgrade", "rule", "extra"]:
+		var ids: Array = by.get(cat, [])
+		if ids.is_empty():
+			continue
+		var title: String = {"wheel": "WHEELS", "chip": "CHIPS", "upgrade": "FELT", "rule": "RULES", "extra": "EXTRAS"}[cat]
+		if ids.size() > 6:
+			var a: Array = []
+			var b: Array = []
+			for i in range(ids.size()):
+				(a if i % 2 == 0 else b).append(ids[i])
+			lanes.append({"title": title + " I", "ids": a})
+			lanes.append({"title": title + " II", "ids": b})
+		else:
+			lanes.append({"title": title, "ids": ids})
+	return lanes
+
+
+## The unlock that has to be owned before `id` (the one above it in its lane), or "".
+static func requires(id: String) -> String:
+	for lane in tree():
+		var i: int = lane.ids.find(id)
+		if i > 0:
+			return lane.ids[i - 1]
+	return ""
+
+
+func can_unlock(id: String) -> bool:
+	var req := requires(id)
+	return not is_unlocked(id) and (req == "" or is_unlocked(req))
+
+
 func is_unlocked(id: String) -> bool:
 	return id in unlocked
 
 
 func buy_unlock(id: String) -> bool:
 	if is_unlocked(id):
+		return false
+	if not can_unlock(id):
 		return false
 	for e in catalogue():
 		if e.id == id and markers >= e.cost:
@@ -80,7 +127,7 @@ func buy_unlock(id: String) -> bool:
 ## The cheapest thing still locked in the Pawn Shop (a goal to aim for), or {} if none.
 func next_unlock() -> Dictionary:
 	for e in catalogue():
-		if not is_unlocked(e.id):
+		if can_unlock(e.id):
 			return e
 	return {}
 
@@ -138,13 +185,29 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 	return {"paid": paid, "markers": earned}
 
 
+const PROFILE_VERSION := 2   ## profile save format (see migrate())
+
+
+## Older profiles load with defaults for anything missing; this records which format a file
+## was written in so later changes can convert it.
+static func migrate(d_in: Dictionary) -> Dictionary:
+	var d := d_in.duplicate(true)
+	var v := int(d.get("version", 1))
+	if v < 2:
+		# 1 -> 2: Pawn Shop lanes. Nothing to convert: unlocks bought out of order stay owned.
+		v = 2
+	d["version"] = v
+	return d
+
+
 func to_dict() -> Dictionary:
-	return {"markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
+	return {"version": PROFILE_VERSION, "markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
 		"runs": runs, "wins": wins, "best_night": best_night,
-		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "weekly_best": weekly_best, "wheels_won": wheels_won, "settings": settings}
+		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "weekly_best": weekly_best, "wheels_won": wheels_won, "challenge_level": challenge_level, "weekly_runs": weekly_runs, "settings": settings}
 
 
-func from_dict(d: Dictionary) -> void:
+func from_dict(d_in: Dictionary) -> void:
+	var d := migrate(d_in)
 	markers = int(d.get("markers", 0))
 	unlocked = d.get("unlocked", default_unlocks())
 	for id in default_unlocks():  # new free content added since the save
@@ -153,6 +216,8 @@ func from_dict(d: Dictionary) -> void:
 	seen_beats = d.get("seen_beats", [])
 	weekly_best = d.get("weekly_best", {})
 	wheels_won = d.get("wheels_won", [])
+	challenge_level = d.get("challenge_level", {})
+	weekly_runs = d.get("weekly_runs", [])
 	runs = int(d.get("runs", 0))
 	wins = int(d.get("wins", 0))
 	best_night = int(d.get("best_night", 0))
