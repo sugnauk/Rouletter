@@ -25,6 +25,7 @@ var flashes: Dictionary = {}     ## key -> seconds left
 var pops: Dictionary = {}        ## key -> seconds left (chip placed)
 var floaters: Array = []         ## {text, pos, t, col}
 var cell_w: float = 24.0
+var marks := false               ## colour-blind aid: a diamond on every red square
 
 
 const ZONE := 8.0               ## width of the clickable strip on a felt line (mouse)
@@ -229,6 +230,10 @@ func _draw() -> void:
 			draw_rect(Rect2(px, Vector2(1, 1)), bg.darkened(0.12))
 		draw_rect(Rect2(inner.position, Vector2(inner.size.x, 1)), bg.lightened(0.12))
 		draw_rect(r, P.LINE.darkened(0.25), false, 1.0)
+		if marks and Board.is_straight(k) and B.is_red(Board.straight_number(k)):
+			var m := (r.position + Vector2(3, r.size.y - 4)).floor()
+			draw_rect(Rect2(m + Vector2(1, 0), Vector2(1, 3)), P.CREAM)
+			draw_rect(Rect2(m + Vector2(0, 1), Vector2(3, 1)), P.CREAM)
 		# Upgrade markers.
 		var up := ""
 		if Board.is_straight(k):

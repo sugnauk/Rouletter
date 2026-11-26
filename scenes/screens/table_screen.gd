@@ -196,6 +196,7 @@ func refresh() -> void:
 	var run = main.run
 	if run.phase != RunState.Phase.TABLE and not spinning:
 		return
+	felt_view.marks = main.profile.settings.cb_marks
 	var bid: String = run.wheel_id + str(run.has_feature("call_bets"))
 	if board_id != bid or felt_view.run != run:
 		felt_view.run = run
@@ -516,6 +517,7 @@ func _on_spin() -> void:
 		spinning = false
 		if run.rebet() > 0:
 			Sfx.play("chip_place")
+		main.save_run()
 		refresh()
 
 

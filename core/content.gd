@@ -40,11 +40,38 @@ const VENDORS := {
 	"loan_shark": {"name": "Loan Shark", "currency": "loan", "unlock": 0,
 		"blurb": "Cash now. You pay him back by making the next payment bigger.", "desc": "Loans: cash now, a bigger payment at the next table.",
 		"note": "Casino markers are loans; this one is collected at the table."},
+	"dealer": {"name": "Dealer", "currency": "take", "unlock": 0,
+		"blurb": "Trades favours for spare Take: whatever you scored past the payment.", "desc": "Favours and vouchers, paid in spare Take.",
+		"note": "Croupiers trade in tokes and favours; here the currency is your surplus."},
 	"fence": {"name": "Fence", "currency": "cash", "unlock": 2,
 		"blurb": "Chips at half price. They fell off a truck, and every one has a flaw.", "desc": "A Cage window selling chips at half price. Every one is cracked, hot or sticky.",
 		"note": "Stolen or doctored chips: cheap, but never quite right."},
 }
 ## Loans the Loan Shark offers: cash now, the next table's payment grows by `pct`.
+## The Dealer is paid in spare Take: what you scored past each payment. Prices scale with the
+## night (x this night's first target / Night 1's).
+const FAVOURS := {
+	"extra_spin": {"name": "Extra Spin", "icon": "respin", "price": 4,
+		"desc": "+1 spin at the next table."},
+	"fat_stack": {"name": "Fat Stack", "icon": "stack", "price": 3,
+		"desc": "+8 betting chips at the next table."},
+	"head_start": {"name": "Head Start", "icon": "momentum", "price": 6,
+		"desc": "The next table starts with 20% of its payment already on the meter."},
+}
+const VOUCHERS := {
+	"comp_card": {"name": "Comp Card", "icon": "cash", "price": 10,
+		"desc": "For the rest of the run: +$2 every time you clear a table."},
+	"vip_rack": {"name": "VIP Rack", "icon": "call_bets", "price": 12,
+		"desc": "For the rest of the run: +1 House Rule slot."},
+	"patience": {"name": "Patience", "icon": "spin", "price": 16,
+		"desc": "For the rest of the run: +1 spin at every table."},
+	"house_credit": {"name": "House Credit", "icon": "loan", "price": 12,
+		"desc": "For the rest of the run: cash prices in the Cage are $1 cheaper (never below $1)."},
+}
+const FAT_STACK := 8
+const HEAD_START := 0.2
+const COMP_CARD_CASH := 2
+const ENDLESS_GROWTH := 1.3               ## endless mode: each night past 8 asks this much more
 const LOANS := [{"cash": 5, "pct": 0.15}, {"cash": 10, "pct": 0.35}]
 ## Flaws on the Fence's chips (`short` is the badge on the token).
 const FLAWS := {
@@ -204,7 +231,10 @@ const SHORT_SPINS := 4
 
 
 static func targets_for(night: int) -> Array:
+	var base: float = NIGHT_BASE[mini(night, NIGHT_BASE.size() - 1)]
+	if night >= NIGHT_BASE.size():  # endless mode keeps climbing
+		base *= pow(ENDLESS_GROWTH, night - NIGHT_BASE.size() + 1)
 	var out := []
 	for m in TABLE_MULT:
-		out.append(int(round(NIGHT_BASE[mini(night, NIGHT_BASE.size() - 1)] * m)))
+		out.append(int(round(base * m)))
 	return out

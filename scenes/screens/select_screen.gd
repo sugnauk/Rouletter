@@ -67,7 +67,8 @@ func setup() -> void:
 
 
 func _toggle_act() -> void:
-	acts = 2 if acts == 1 else 1
+	var top: int = 3 if main.profile.act2_wins > 0 else 2
+	acts = acts % top + 1
 	Sfx.play("click")
 	refresh()
 
@@ -85,7 +86,9 @@ func refresh() -> void:
 	if not prof.act2_unlocked():
 		acts = 1
 	act_btn.visible = prof.act2_unlocked()
-	act_btn.text = "ACT I: THE FLOOR" if acts == 1 else "ACT II: FLOOR ABOVE"
+	if acts == 3 and prof.act2_wins <= 0:
+		acts = 1
+	act_btn.text = ["ACT I: THE FLOOR", "ACT II: FLOOR ABOVE", "ENDLESS"][acts - 1]
 	for id in cards:
 		var c: Dictionary = cards[id]
 		var unlocked: bool = prof.is_unlocked(id)
@@ -102,6 +105,8 @@ func refresh() -> void:
 	var edge: float = float(b.zeros.size()) / b.pockets.size() * 100.0
 	if acts == 2:
 		desc_lbl.text = d.desc + "  ACT II: eight nights, ending at the Owner's table."
+	elif acts == 3:
+		desc_lbl.text = d.desc + "  ENDLESS: the nights never stop; payments grow 30% a night past the eighth."
 	var edge_txt := "%.1f%%" % edge + (" (%.1f%% even-money)" % (edge / 2.0) if "la_partage" in d.rules else "")
 	stat_lbl.text = "%d pockets   house edge %s   payments x%.1f   start: $%d%s" % [
 		b.pockets.size(), edge_txt, d.get("target", 1.0),

@@ -28,6 +28,10 @@ func _process(delta: float) -> void:
 			run.place_bet("S17", 5)
 			run.place_bet("DOZ2", 5)
 			run.place_bet("RED", 3)],
+		[2.5, func():
+			_close_dialogue()
+			main.profile.settings.cb_marks = true
+			main.screens.table.refresh()],
 		[2.6, func(): shot("04_table_bets")],
 		[2.7, func(): main.screens.table._on_spin()],
 		[4.8, func(): shot("05a_counting")],
@@ -46,7 +50,11 @@ func _process(delta: float) -> void:
 		[10.0, func(): shot("06b_shop_fence")],
 		[10.1, func(): _staff(["cashier", "loan_shark"])],
 		[10.3, func(): shot("06c_shop_loan_shark")],
-		[10.4, func(): _staff(["cashier", "pit_boss"])],
+		[10.4, func():
+			main.run.overflow = 14
+			_staff(["cashier", "dealer"])],
+		[10.55, func(): shot("06d_shop_dealer")],
+		[10.6, func(): _staff(["cashier", "pit_boss"])],
 		[10.7, func():
 			for i in range(run.shop.stock.size()):
 				if run.shop.stock[i].type == "upgrade":
@@ -68,17 +76,19 @@ func _process(delta: float) -> void:
 		[15.4, func(): shot("09_game_over")],
 		[15.5, func(): main.show_screen("pawn")],
 		[15.8, func(): shot("10_pawn")],
-		[15.82, func(): main.show_screen("journal")],
-		[15.88, func(): shot("10b_journal")],
-		[15.9, func():
+		[16.0, func(): main.show_screen("journal")],
+		[16.2, func(): shot("10b_journal")],
+		[16.3, func(): main.show_screen("options")],
+		[16.5, func(): shot("10c_options")],
+		[16.7, func():
 			main.fast_ui = false
 			main.show_screen("card")],
-		[18.6, func(): shot("11_title_card")],
-		[18.7, func():
+		[19.4, func(): shot("11_title_card")],
+		[19.5, func():
 			main.screens.card.done = true
 			main.go("title", "NIGHT 2", "High Roller table  -  pay 28")],
-		[19.3, func(): shot("12_loading_card")],
-		[20.6, func(): get_tree().quit()],
+		[20.1, func(): shot("12_loading_card")],
+		[21.4, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

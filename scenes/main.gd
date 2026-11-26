@@ -21,6 +21,7 @@ const SCREENS := {
 	"end": preload("res://scenes/screens/end_screen.gd"),
 	"pawn": preload("res://scenes/screens/pawn_screen.gd"),
 	"journal": preload("res://scenes/screens/journal_screen.gd"),
+	"options": preload("res://scenes/screens/options_screen.gd"),
 }
 
 var run
@@ -83,6 +84,7 @@ func _ready() -> void:
 	rect.material = mat
 	crt.add_child(rect)
 	add_child(crt)
+	crt.visible = profile.settings.crt
 	var tl := CanvasLayer.new()
 	tl.layer = 9
 	transition = Transition.new()
@@ -109,12 +111,43 @@ func show_screen(n: String) -> void:
 	current = n
 	screens[n].visible = true
 	screens[n].call("refresh")
+	if n == "table" or n == "shop":
+		save_run()
+
+
+# --- Run saves: the run in progress is kept next to the profile ---------------------------
+
+func run_save_path() -> String:
+	return profile.save_path.get_basename() + "_run.save"
+
+
+func save_run() -> void:
+	if not fast_ui or profile.save_path != Profile.DEFAULT_PATH:
+		run.save_to(run_save_path())
+
+
+func has_saved_run() -> bool:
+	return FileAccess.file_exists(run_save_path())
+
+
+func delete_saved_run() -> void:
+	if has_saved_run():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(run_save_path()))
+
+
+func continue_run() -> void:
+	if run.load_from(run_save_path()):
+		Sfx.play("click")
+		route()
+	else:
+		delete_saved_run()
+		screens.title.refresh()
 
 
 ## Switch screens behind a themed loading card (title + subtitle), or instantly when the
 ## card is empty or the UI runs in fast mode. Queued story lines play once the card lifts.
 func go(n: String, title: String = "", subtitle: String = "", accent: Color = P.GOLD) -> void:
-	if title == "" or fast_ui:
+	if title == "" or fast_ui or not profile.settings.cards:
 		show_screen(n)
 		_flush_lines()
 		return
@@ -148,6 +181,8 @@ func route() -> void:
 			go("table", card[0], card[1], card[2])
 		RunState.Phase.SHOP:
 			var names := []
+			if Story.TUTORIAL.shop.id not in profile.seen_beats:
+				_queue_scene(Story.TUTORIAL.shop)
 			for v in run.shop.vendors:
 				names.append(Content.VENDORS[v].name)
 				var intro: Dictionary = Story.VENDOR_INTROS.get(v, {})
@@ -174,6 +209,8 @@ func begin_flow() -> void:
 func start_run(wheel: String, acts: int = 1) -> void:
 	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts)
 	Sfx.play("click")
+	if Story.TUTORIAL.table.id not in profile.seen_beats:
+		_queue_scene(Story.TUTORIAL.table)
 	var card := table_card()
 	go("table", card[0], card[1], card[2])
 
@@ -197,6 +234,7 @@ func _queue_scene(scene: Dictionary) -> void:
 
 
 func _on_run_ended(won: bool) -> void:
+	delete_saved_run()
 	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
 		"paid": res.paid, "markers": res.markers}
@@ -208,6 +246,8 @@ func say(lines: Array, done: Callable = Callable()) -> void:
 
 
 func shake(amount: float, t: float = 0.3) -> void:
+	if not profile.settings.shake:
+		return
 	shake_amt = amount
 	shake_t = t
 
@@ -228,9 +268,18 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F2:
-			crt.visible = not crt.visible
+			set_option("crt", not profile.settings.crt)
 		elif event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
 			toggle_fullscreen()
+
+
+## Change one option, apply it straight away and save it.
+func set_option(key: String, value: bool) -> void:
+	profile.settings[key] = value
+	crt.visible = profile.settings.crt
+	save_profile()
+	if screens.has(current) and screens[current].visible:
+		screens[current].call("refresh")
 
 
 func toggle_fullscreen() -> void:

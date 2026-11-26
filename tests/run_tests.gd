@@ -23,7 +23,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -477,6 +477,78 @@ func test_act2() -> void:
 	check(p.debt == 0 and p.act2_unlocked() and p.debt2 == Content.ACT2_DEBT - 4000, "overflow pays the Act II marker")
 	p.record_run(8, 10.0, true, 2)
 	check(p.act2_runs == 1 and p.act2_wins == 1, "Act II runs counted")
+
+
+func test_dealer_and_endless() -> void:
+	var run = new_run()
+	run.table.take = run.table.target + 6.5
+	run.place_bet("S1", 1)
+	run.spin(5)  # a miss, but Take is already past the target, so the table clears 6 over
+	check(run.phase == RunState.Phase.SHOP and run.overflow >= 6, "spare Take past the payment is banked")
+	run.shop.vendors = ["cashier", "dealer"]
+	run._restock()
+	var fav := -1
+	var vou := -1
+	for i in range(run.shop.stock.size()):
+		match run.shop.stock[i].type:
+			"favour":
+				fav = i
+			"voucher":
+				vou = i
+	check(fav >= 0 and vou >= 0, "the Dealer sells a favour and a voucher")
+	run.overflow = 100
+	var fid: String = run.shop.stock[fav].id
+	check(run.price_text(run.shop.stock[fav]).ends_with("TAKE") and run.buy(fav) and run.overflow < 100, "paid in spare Take")
+	run.vouchers = ["patience", "comp_card", "vip_rack"]
+	run.favours = ["extra_spin", "fat_stack", "head_start"]
+	var cash0: int = run.cash
+	run.leave_shop()
+	check(run.table.spins_left == Content.SPINS + 2, "Patience +1 and Extra Spin +1")
+	check(run.table.stack == run.stack_size + Content.FAT_STACK, "Fat Stack")
+	check(run.table.take == floor(run.table.target * Content.HEAD_START), "Head Start")
+	check(run.favours.is_empty() and run.relic_slots() == Content.RELIC_SLOTS + 1, "favours are spent; VIP Rack adds a slot")
+	run.table.take = run.table.target
+	run.place_bet("S17", 1)
+	run.spin(17)
+	check(run.cash > cash0, "cleared")
+	run.vouchers.append("house_credit")
+	run._restock()
+	for it in run.shop.stock:
+		if it.currency == "cash":
+			check(run.price_of(it) == maxi(1, it.price - 1), "House Credit takes $1 off")
+	# Endless
+	var e = RunState.new()
+	e.start_run(3, "european", Profile.default_unlocks(), 3)
+	check(e.endless() and e.nights_total() > 1000, "endless never ends on a win")
+	var t8: int = Content.targets_for(8)[0]
+	var t9: int = Content.targets_for(9)[0]
+	check(t8 > Content.NIGHT_BASE[7] and t9 > t8, "endless targets keep climbing")
+	check(Content.ENFORCERS.has(e.enforcer_order[8 % e.enforcer_order.size()]), "Enforcers cycle")
+
+
+func test_run_save() -> void:
+	var run = new_run()
+	run.place_bet("S17", 2)
+	run.spin(17)  # clears: now in the Cage
+	run.cash = 33
+	run.vouchers = ["patience"]
+	run.felt.add_chip("perm", "SP1_4", 3, "hot")
+	var path := "user://test_run.save"
+	check(run.save_to(path), "save mid-run")
+	var r2 = RunState.new()
+	check(r2.load_from(path), "load")
+	check(r2.phase == run.phase and r2.cash == 33 and r2.night == run.night and r2.table_idx == run.table_idx, "phase, cash and position restored")
+	check(r2.felt.chips.size() == run.felt.chips.size() and r2.felt.chips[-1].flaw == "hot" and r2.felt.chips[-1].value == 3, "felt chips restored with flaws")
+	check(r2.shop.stock.size() == run.shop.stock.size() and r2.vouchers == ["patience"], "shop and perks restored")
+	# Same seed position: the next restock and table play out identically.
+	run.leave_shop()
+	r2.leave_shop()
+	check(r2.table.target == run.table.target and r2.table.spins_left == run.table.spins_left, "next table identical")
+	var a: Dictionary = run.spin()
+	var b: Dictionary = r2.spin()
+	check(a.pocket == b.pocket, "the RNG continues from the same place")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	check(not RunState.new().load_from(path), "no save, nothing to load")
 
 
 func test_shop() -> void:

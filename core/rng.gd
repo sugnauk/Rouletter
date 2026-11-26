@@ -16,6 +16,17 @@ func reseed(seed_in: int) -> void:
 	_rng.seed = seed_in
 
 
+## Save / restore the exact position in the random stream (run saves).
+func get_state() -> Dictionary:
+	return {"seed": seed_value, "state": _rng.state}
+
+
+func set_state(d: Dictionary) -> void:
+	seed_value = d.seed
+	_rng.seed = d.seed
+	_rng.state = d.state
+
+
 ## A fair European pocket, uniform over 0..36.
 func pocket() -> int:
 	return _rng.randi_range(0, 36)

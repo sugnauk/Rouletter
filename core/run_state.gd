@@ -36,7 +36,10 @@ var table_idx: int = 0
 var table: Dictionary = {}
 var shop: Dictionary = {}
 var enforcer_order: Array = []
-var acts: int = 1               ## 1: the Floor (4 nights). 2: on upstairs to the Owner (8 nights).
+var acts: int = 1               ## 1: the Floor (4 nights). 2: on upstairs to the Owner (8 nights). 3: endless.
+var overflow: int = 0            ## spare Take (scored past each payment): the Dealer's currency
+var favours: Array = []          ## Dealer favours waiting for the next table
+var vouchers: Array = []         ## run-wide perks from the Dealer
 var total_take: float = 0.0
 var nights_cleared: int = 0
 var message: String = ""
@@ -58,6 +61,9 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	stack_buys = 0
 	stack_owed = 0
 	loan_pct = 0.0
+	overflow = 0
+	favours = []
+	vouchers = []
 	night = 0
 	table_idx = 0
 	total_take = 0.0
@@ -79,6 +85,58 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	_start_table()
 
 
+# --- Run saves ------------------------------------------------------------------------------
+
+const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
+	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
+	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers"]
+
+
+## Everything needed to pick the run up again later (only meaningful mid-run).
+func to_dict() -> Dictionary:
+	var d := {"version": 1, "rng": rng.get_state(), "felt": felt.to_dict()}
+	for k in SAVE_FIELDS:
+		var v = get(k)
+		d[k] = v.duplicate(true) if (v is Dictionary or v is Array) else v
+	return d
+
+
+func from_dict(d: Dictionary) -> bool:
+	if int(d.get("version", 0)) != 1:
+		return false
+	for k in SAVE_FIELDS:
+		if not d.has(k):
+			return false
+	for k in SAVE_FIELDS:
+		var v = d[k]
+		set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
+	rng.set_state(d.rng)
+	felt = FeltState.from_dict(d.felt)
+	last_result = {}
+	changed.emit()
+	return true
+
+
+func save_to(path: String) -> bool:
+	if phase != Phase.TABLE and phase != Phase.SHOP:
+		return false
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_var(to_dict())
+	return true
+
+
+func load_from(path: String) -> bool:
+	if not FileAccess.file_exists(path):
+		return false
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return false
+	var d = f.get_var()
+	return d is Dictionary and from_dict(d)
+
+
 func has_feature(id: String) -> bool:
 	return id in unlocked
 
@@ -95,7 +153,20 @@ func current_target() -> int:
 
 ## The Enforcer waiting at this night's boss table.
 func nights_total() -> int:
-	return Content.NIGHTS if acts == 1 else Content.ACT2_NIGHTS
+	match acts:
+		1:
+			return Content.NIGHTS
+		2:
+			return Content.ACT2_NIGHTS
+	return 1 << 30  # endless
+
+
+func endless() -> bool:
+	return acts >= 3
+
+
+func relic_slots() -> int:
+	return Content.RELIC_SLOTS + (1 if "vip_rack" in vouchers else 0)
 
 
 ## Act II nights (5-8) are upstairs.
@@ -128,8 +199,21 @@ func _start_table() -> void:
 	felt.red_streak = 0
 	felt.hit_streak = 0
 	felt.last_pocket = -99
-	table = {"target": target, "take": 0.0, "spins_left": Content.SHORT_SPINS if felt.boss_is("short") else Content.SPINS, "spins_used": 0,
-		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan}
+	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else Content.SPINS
+	if "patience" in vouchers:
+		spins += 1
+	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
+		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan,
+		"favours": favours.duplicate()}
+	for f in favours:
+		match f:
+			"extra_spin":
+				table.spins_left += 1
+			"fat_stack":
+				table.stack += Content.FAT_STACK
+			"head_start":
+				table.take = floor(target * Content.HEAD_START)
+	favours = []
 	stack_owed = 0
 	last_result = {}
 	last_bets = {}
@@ -319,7 +403,10 @@ func _clear_table() -> void:
 	var t: float = table.take
 	var comps := mini(cash / Content.COMPS_PER, Content.COMPS_MAX)
 	var reward: int = Content.CLEAR_CASH[table_idx] + table.spins_left * Content.CASH_PER_SPIN_LEFT + comps
+	if "comp_card" in vouchers:
+		reward += Content.COMP_CARD_CASH
 	cash += reward
+	overflow += maxi(0, int(t - table.target))
 	total_take += t
 	felt.clear_bets()
 	felt.frozen_id = -1
@@ -402,6 +489,16 @@ func _vendor_stock(v: String) -> Array:
 			if not ups.is_empty():
 				var u: String = rng.pick(ups)
 				out.append({"type": "upgrade", "id": u, "price": Content.UPGRADES[u].price})
+		"dealer":
+			var fav: String = rng.pick(Content.FAVOURS.keys())
+			out.append({"type": "favour", "id": fav, "icon": Content.FAVOURS[fav].icon, "price": Content.FAVOURS[fav].price})
+			var vs := []
+			for k in Content.VOUCHERS:
+				if k not in vouchers:
+					vs.append(k)
+			if not vs.is_empty():
+				var vo: String = rng.pick(vs)
+				out.append({"type": "voucher", "id": vo, "icon": Content.VOUCHERS[vo].icon, "price": Content.VOUCHERS[vo].price})
 		"pit_boss":
 			var rules := []
 			for k in Content.HOUSE_RULES:
@@ -433,6 +530,10 @@ func _vendor_stock(v: String) -> Array:
 func price_of(item: Dictionary) -> int:
 	if item.get("vendor", "") == "pit_boss":
 		return item.price + Content.PIT_BOSS_STEP * felt.house_rules.size()
+	if item.get("currency", "cash") == "take":
+		return int(ceil(item.price * Content.targets_for(night)[0] / float(Content.NIGHT_BASE[0])))
+	if item.get("currency", "cash") == "cash" and "house_credit" in vouchers:
+		return maxi(1, item.price - 1)
 	return item.price
 
 
@@ -444,6 +545,8 @@ func stack_spare() -> int:
 func can_afford(item: Dictionary) -> bool:
 	if item.get("currency", "cash") == "loan":
 		return true
+	if item.get("currency", "cash") == "take":
+		return overflow >= price_of(item)
 	if item.get("currency", "cash") == "stack":
 		return stack_spare() >= price_of(item)
 	return cash >= price_of(item)
@@ -453,6 +556,8 @@ func can_afford(item: Dictionary) -> bool:
 func price_text(item: Dictionary) -> String:
 	if item.get("currency", "cash") == "loan":
 		return "+%d%% DUE" % int(round(item.pct * 100))
+	if item.get("currency", "cash") == "take":
+		return "%d TAKE" % price_of(item)
 	if item.get("currency", "cash") == "stack":
 		return "%d CHIPS" % price_of(item)
 	return "$%d" % price_of(item)
@@ -465,6 +570,10 @@ func item_name(item: Dictionary) -> String:
 			return ("%s " % Content.FLAWS[flaw].name if flaw != "" else "") + Content.CHIPS[item.id].name + " chip"
 		"loan":
 			return "$%d loan" % item.price
+		"favour":
+			return Content.FAVOURS[item.id].name
+		"voucher":
+			return Content.VOUCHERS[item.id].name + " voucher"
 		"upgrade":
 			return Content.UPGRADES[item.id].name
 	return Content.HOUSE_RULES[item.id].name
@@ -477,6 +586,10 @@ func item_desc(item: Dictionary) -> String:
 			return Content.CHIPS[item.id].desc + ("  FLAW: " + Content.FLAWS[flaw].desc if flaw != "" else "")
 		"loan":
 			return "+$%d now. Your next payment is %d%% bigger." % [item.price, int(round(item.pct * 100))]
+		"favour":
+			return Content.FAVOURS[item.id].desc
+		"voucher":
+			return Content.VOUCHERS[item.id].desc
 		"upgrade":
 			return Content.UPGRADES[item.id].desc
 	return Content.HOUSE_RULES[item.id].desc
@@ -488,7 +601,7 @@ func buy(i: int) -> bool:
 	var item: Dictionary = shop.stock[i]
 	if item.sold or not can_afford(item):
 		return false
-	if item.type == "rule" and felt.house_rules.size() >= Content.RELIC_SLOTS:
+	if item.type == "rule" and felt.house_rules.size() >= relic_slots():
 		return false
 	match item.get("currency", "cash"):
 		"stack":
@@ -496,6 +609,8 @@ func buy(i: int) -> bool:
 		"loan":
 			cash += item.price
 			loan_pct += item.pct
+		"take":
+			overflow -= price_of(item)
 		_:
 			cash -= price_of(item)
 	item.sold = true
@@ -509,6 +624,10 @@ func buy(i: int) -> bool:
 			felt.house_rules.append(item.id)
 		"upgrade":
 			shop.pending_upgrade = item.id
+		"favour":
+			favours.append(item.id)
+		"voucher":
+			vouchers.append(item.id)
 	changed.emit()
 	return true
 

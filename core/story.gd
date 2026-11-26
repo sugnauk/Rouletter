@@ -130,6 +130,18 @@ const INTERLUDES := {
 	],
 }
 
+## First-run lessons, played the first time you sit at a table and visit the Cage.
+const TUTORIAL := {
+	"table": {"id": "tut_table", "title": "How to Play: The Table", "lines": [
+		{"speaker": "Dolores", "text": "First time at a wheel, sugar? Listen close, I only say it once. Well. Twice, in the Journal."},
+		{"speaker": "Dolores", "text": "Click a square to bet chips from your stack. Splits and corners sit on the lines between squares."},
+		{"speaker": "Dolores", "text": "Winning bets add to your Take. Losing bets come off it. Reach the payment before your spins run out."},
+		{"speaker": "Dolores", "text": "Your bets go back down every spin by themselves. Undo or Clear to change them. Right-click, or hold, to take one back."}]},
+	"shop": {"id": "tut_shop", "title": "How to Play: The Cage", "lines": [
+		{"speaker": "Dolores", "text": "Between tables you visit the Cage. Every window takes a different kind of money."},
+		{"speaker": "Dolores", "text": "Chips you buy go on the felt for good and score every time they hit. Place them before you leave."}]},
+}
+
 ## The first time a vendor's window opens in the Cage.
 const VENDOR_INTROS := {
 	"cashier": {"id": "meet_cashier", "title": "The Cashier", "lines": [
@@ -141,6 +153,9 @@ const VENDOR_INTROS := {
 	"loan_shark": {"id": "meet_loan_shark", "title": "The Loan Shark", "lines": [
 		{"speaker": "Loan Shark", "text": "Short? Everybody's short at four in the morning. I've got cash, no paperwork."},
 		{"speaker": "Loan Shark", "text": "You don't pay me back. You pay Vance a little extra at the next table. He passes it along. Clean."}]},
+	"dealer": {"id": "meet_dealer", "title": "The Dealer", "lines": [
+		{"speaker": "Dealer", "text": "Off shift, I deal in favours. A spin here, a stack there. I don't take money. Money's loud."},
+		{"speaker": "Dealer", "text": "Pay me in what you won past the payment. The spare Take. Vance never counts that."}]},
 	"fence": {"id": "meet_fence", "title": "The Fence", "lines": [
 		{"speaker": "Fence", "text": "Half price. Don't ask where they're from. Some are cracked, some are hot, some won't come off the felt."},
 		{"speaker": "Fence", "text": "If the house finds a hot one, it was never mine. I was never here. Neither were you."}]},
@@ -190,7 +205,7 @@ static func interlude(night: int, profile) -> Dictionary:
 
 ## Every scene in Journal order: intro, beats, vendor intros, interludes.
 static func all_scenes() -> Array:
-	var out := [{"id": "intro", "title": "The Marker", "lines": INTRO}]
+	var out := [{"id": "intro", "title": "The Marker", "lines": INTRO}, TUTORIAL.table, TUTORIAL.shop]
 	out.append_array(BEATS)
 	for v in VENDOR_INTROS:
 		out.append(VENDOR_INTROS[v])

@@ -104,13 +104,16 @@ func _draw_cage() -> void:
 	Art.text(c, font, Vector2(83, 17), "THE CAGE", 8, P.CREAM, true)
 	Art.icon(c, "cash", Vector2(176, 13), 1)
 	Art.text(c, font, Vector2(186, 18), "$%d" % run.cash, 16, P.GOLD)
+	if run.overflow > 0 or "dealer" in run.shop.get("vendors", []):
+		Art.text(c, P.font(), Vector2(250, 12), "SPARE TAKE", 8, P.DIM)
+		Art.text(c, P.font(), Vector2(250, 22), str(run.overflow), 8, P.VIOLET)
 	for win in windows:
 		_draw_window(c, win.rect, win.vendor)
 
 
 ## One vendor's window: wood frame, dark interior, a lamp, brass bars, velvet counter, name.
 func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
-	var accent: Color = {"cash": P.GOLD, "stack": P.RED.lightened(0.2), "loan": P.CYAN}.get(Content.VENDORS[vendor].currency, P.GOLD)
+	var accent: Color = {"cash": P.GOLD, "stack": P.RED.lightened(0.2), "loan": P.CYAN, "take": P.VIOLET}.get(Content.VENDORS[vendor].currency, P.GOLD)
 	c.draw_rect(w.grow(4), P.WOOD_DARK)
 	c.draw_rect(w.grow(2), P.WOOD)
 	c.draw_rect(w, Color("#0d0907"))
@@ -129,7 +132,7 @@ func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
 	c.draw_rect(Rect2(w.position.x, w.position.y + 30, w.size.x, 2), P.GOLD.darkened(0.35))
 	# Name plate over the bars.
 	_plate(c, w, 14, Content.VENDORS[vendor].name.to_upper(), accent)
-	_plate(c, w, 38, {"cash": "CASH", "stack": "PAY IN CHIPS", "loan": "PAY LATER"}.get(Content.VENDORS[vendor].currency, ""), accent.darkened(0.25))
+	_plate(c, w, 38, {"cash": "CASH", "stack": "PAY IN CHIPS", "loan": "PAY LATER", "take": "PAY IN SPARE TAKE"}.get(Content.VENDORS[vendor].currency, ""), accent.darkened(0.25))
 
 
 func _plate(c: Control, w: Rect2, y: float, text: String, col: Color) -> void:
@@ -182,6 +185,7 @@ func refresh() -> void:
 	var run = main.run
 	if run.phase != RunState.Phase.SHOP:
 		return
+	felt_view.marks = main.profile.settings.cb_marks
 	var bid: String = run.wheel_id + str(run.has_feature("call_bets"))
 	if felt_view.run != run or board_id != bid:
 		felt_view.run = run
@@ -213,7 +217,14 @@ func refresh() -> void:
 	var rl := []
 	for r in run.felt.house_rules:
 		rl.append(Content.HOUSE_RULES[r].name)
-	rules.text = "HOUSE RULES %d/%d\n%s" % [rl.size(), Content.RELIC_SLOTS, ", ".join(rl) if not rl.is_empty() else "none yet"]
+	rules.text = "HOUSE RULES %d/%d\n%s" % [rl.size(), run.relic_slots(), ", ".join(rl) if not rl.is_empty() else "none yet"]
+	if not run.vouchers.is_empty() or not run.favours.is_empty():
+		var vn := []
+		for v in run.vouchers:
+			vn.append(Content.VOUCHERS[v].name)
+		for f in run.favours:
+			vn.append(Content.FAVOURS[f].name + " (next)")
+		rules.text += "\nPERKS: " + ", ".join(vn)
 	var nxt := "NEXT: Night %d %s - pay %d" % [run.night + 1, run.table_name(), run.current_target()]
 	if run.stack_owed > 0:
 		nxt += "  (stack %d, -%d to the Pit Boss)" % [run.stack_size - run.stack_owed, run.stack_owed]
@@ -269,7 +280,7 @@ func _build_windows(run) -> void:
 			P.label(row, "SOLD OUT", P.FONT_SMALL, P.DIM)
 		for i in groups[v]:
 			var item: Dictionary = run.shop.stock[i]
-			var tok = Token.new(item.id, TOK)
+			var tok = Token.new(item.get("icon", item.id), TOK)
 			tok.price = "SOLD" if item.sold else run.price_text(item)
 			if item.get("flaw", "") != "":
 				tok.badge = Content.FLAWS[item.flaw].short
@@ -277,7 +288,8 @@ func _build_windows(run) -> void:
 				tok.badge = "$%d" % item.price
 			tok.dim = item.sold or not run.can_afford(item)
 			tok.disabled = item.sold
-			var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE", "loan": "LOAN"}[item.type]
+			var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE", "loan": "LOAN",
+				"favour": "FAVOUR (next table)", "voucher": "VOUCHER (whole run)"}[item.type]
 			var vname: String = Content.VENDORS[v].name
 			tok.hover_target = func(_s):
 				var body: String = run.item_desc(item)
@@ -344,6 +356,8 @@ func _buy(i: int) -> void:
 	else:
 		if item.type == "loan":
 			_describe("Already borrowed", "Each loan once per visit.")
+		elif item.get("currency", "cash") == "take":
+			_describe("Not enough spare Take", "The Dealer takes what you scored past each payment. You have %d." % run.overflow)
 		elif item.get("currency", "cash") == "stack":
 			_describe("Can't buy that", "The Pit Boss won't leave you fewer than %d betting chips, or your House Rule slots are full." % Content.MIN_STACK)
 		else:

@@ -8,6 +8,7 @@ const WheelView := preload("res://scenes/ui/wheel_view.gd")
 var main
 var debt_lbl: Label
 var info_lbl: Label
+var continue_btn: Button
 
 
 func setup() -> void:
@@ -22,11 +23,15 @@ func setup() -> void:
 	P.place(debt_lbl, Vector2(32, 122))
 	info_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
 	P.place(info_lbl, Vector2(32, 138))
-	var y := 170
+	var menu := VBoxContainer.new()
+	menu.add_theme_constant_override("separation", 6)
+	P.place(menu, Vector2(32, 160))
+	add_child(menu)
+	continue_btn = P.button(menu, "Continue Run", func(): main.continue_run(), Vector2(140, 22))
 	for b in [["New Run", func(): main.begin_flow()], ["Pawn Shop", func(): main.show_screen("pawn")],
-			["Journal", func(): main.show_screen("journal")], ["Quit", func(): get_tree().quit()]]:
-		P.place(P.button(self, b[0], b[1], Vector2(140, 22)), Vector2(32, y))
-		y += 28
+			["Journal", func(): main.show_screen("journal")], ["Options", func(): main.show_screen("options")],
+			["Quit", func(): get_tree().quit()]]:
+		P.button(menu, b[0], b[1], Vector2(140, 22))
 	P.place(P.label(self, "F2: CRT filter    F11: fullscreen", P.FONT_SMALL, P.DIM), Vector2(32, 340))
 	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.DIM)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -35,6 +40,7 @@ func setup() -> void:
 
 func refresh() -> void:
 	var p = main.profile
+	continue_btn.visible = main.has_saved_run()
 	debt_lbl.text = "Marker owed to Mr. Vance: $%s" % P.money(p.debt)
 	if p.act2_unlocked():
 		debt_lbl.text += "   Floor Above: $%s" % P.money(p.debt2)

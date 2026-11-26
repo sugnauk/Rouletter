@@ -17,6 +17,9 @@ var best_night: int = 0
 var debt2: int = Content.ACT2_DEBT      ## Act II marker (the Floor Above)
 var act2_runs: int = 0
 var act2_wins: int = 0
+## Player options (Options screen). Missing keys fall back to these defaults.
+const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true}
+var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 var save_path: String = DEFAULT_PATH
 
 
@@ -92,7 +95,7 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 func to_dict() -> Dictionary:
 	return {"debt": debt, "markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
 		"runs": runs, "wins": wins, "best_night": best_night,
-		"debt2": debt2, "act2_runs": act2_runs, "act2_wins": act2_wins}
+		"debt2": debt2, "act2_runs": act2_runs, "act2_wins": act2_wins, "settings": settings}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -109,6 +112,11 @@ func from_dict(d: Dictionary) -> void:
 	debt2 = int(d.get("debt2", Content.ACT2_DEBT))
 	act2_runs = int(d.get("act2_runs", 0))
 	act2_wins = int(d.get("act2_wins", 0))
+	settings = DEFAULT_SETTINGS.duplicate()
+	var saved: Dictionary = d.get("settings", {})
+	for k in saved:
+		if settings.has(k):
+			settings[k] = bool(saved[k])
 
 
 func save(path: String = "") -> bool:

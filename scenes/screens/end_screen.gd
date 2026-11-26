@@ -34,7 +34,7 @@ func refresh() -> void:
 	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Paid on marker", "Markers earned", "Still owed"])
 	values_lbl.text = "\n".join([
 		main.run.felt.board.def.name,
-		"%d / %d" % [s.get("nights", 0), main.run.nights_total()],
+		("%d (endless)" % s.get("nights", 0)) if main.run.endless() else "%d / %d" % [s.get("nights", 0), main.run.nights_total()],
 		str(int(s.get("take", 0.0))),
 		"$" + P.money(s.get("paid", 0)),
 		"%d   (now %d)" % [s.get("markers", 0), main.profile.markers],
