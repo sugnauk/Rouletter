@@ -22,9 +22,8 @@ const SCREENS := {
 	"shop": preload("res://scenes/screens/shop_screen.gd"),
 	"end": preload("res://scenes/screens/end_screen.gd"),
 	"pawn": preload("res://scenes/screens/pawn_screen.gd"),
-	"journal": preload("res://scenes/screens/journal_screen.gd"),
+	"casebook": preload("res://scenes/screens/casebook_screen.gd"),
 	"options": preload("res://scenes/screens/options_screen.gd"),
-	"feats": preload("res://scenes/screens/feats_screen.gd"),
 	"credits": preload("res://scenes/screens/credits_screen.gd"),
 }
 

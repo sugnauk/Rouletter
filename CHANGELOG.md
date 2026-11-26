@@ -3,6 +3,17 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.37
+- The Casebook replaces the Almanac, the Journal and run History. One screen, four tabs:
+  - **COLLECTION:** every chip, felt upgrade, House Rule and Dealer perk, as icon tiles grouped by family.
+    - Each family shows seen, bought and locked counts and a progress bar.
+    - Seen tiles are bright, bought tiles have a gold frame, and locked tiles show their Marker cost.
+    - Tap a tile for its description, what it works with and its rarity. A locked one takes you to the Pawn Shop.
+  - **STORY:** every story scene, by chapter (Prologue, The story, Faces in the Cage, Between nights), with a count per chapter. Click a page to replay it.
+  - **HOW TO PLAY:** ten short guide pages covering every part of the game. "Hear it from Dolores" replays her lines for that topic.
+  - **RUNS:** your last 10 runs (hover one for its key chips and seed) and this week's weekly-challenge results (click one to copy its share code).
+- The title menu is now Pawn Shop, Casebook, How to Play, Options, Credits and Quit.
+
 ## 0.0.36
 - The Pawn Shop is now the hub for everything about Markers: earning them and spending them.
   - **Top bar:** your Markers and a progress bar to the next unlock you can buy. If you're short, it names the Feats that would earn the rest.

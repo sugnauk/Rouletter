@@ -131,8 +131,10 @@ func _process(delta: float) -> void:
 		[17.05, func(): shot("09b_money")],
 		[17.2, func(): main.show_screen("pawn")],
 		[17.5, func(): shot("10_pawn")],
-		[17.7, func(): main.show_screen("journal")],
-		[17.9, func(): shot("10b_journal")],
+		[17.7, func():
+			main.screens.casebook.tab = "story"
+			main.show_screen("casebook")],
+		[17.9, func(): shot("10b_casebook_story")],
 		[18, func(): main.show_screen("options")],
 		[18.2, func(): shot("10c_options")],
 		[18.4, func():
@@ -153,9 +155,9 @@ func _process(delta: float) -> void:
 		[23.7, func():
 			main.profile.seen_items = ["perm", "magnet", "gilded", "la_partage", "patience"]
 			main.profile.used_items = ["perm"]
-			main.screens.feats.tab = "almanac"
-			main.screens.feats.refresh()],
-		[24, func(): shot("14_almanac")],
+			main.screens.casebook.tab = "collection"
+			main.show_screen("casebook")],
+		[24, func(): shot("14_casebook_collection")],
 		[24.2, func():
 			main.show_screen("title")
 			main.say([{"speaker": "Mr. Vance", "text": "Portrait check."}])],
@@ -176,22 +178,22 @@ func _process(delta: float) -> void:
 		[25.9, func():
 			main.profile.add_history({"wheel": "european", "acts": 1, "nights": 2, "take": 140, "best_spin": 60, "won": false})
 			main.profile.add_history({"wheel": "french", "acts": 1, "nights": 4, "take": 520, "best_spin": 210, "won": true})
-			main.show_screen("feats")
-			main.screens.feats.tab = "history"
-			main.screens.feats.refresh()],
-		[26.2, func(): shot("19_history")],
+			main.screens.casebook.tab = "runs"
+			main.show_screen("casebook")],
+		[26.2, func(): shot("19_casebook_runs")],
 		[26.3, func(): main.pause.open()],
 		[26.5, func(): shot("20_pause")],
 		[26.7, func():
 			main.pause.close()
 			main.profile.seen_items = Content.CHIPS.keys() + Content.UPGRADES.keys() + Content.HOUSE_RULES.keys()
-			main.show_screen("feats")
-			main.screens.feats.tab = "almanac"
-			main.screens.feats.refresh()],
-		[27, func(): main.screens.feats.list.get_parent().scroll_vertical = 330],
-		[27.25, func(): shot("21_almanac_chips")],
-		[27.35, func(): main.screens.feats.list.get_parent().scroll_vertical = 990],
-		[27.6, func(): shot("22_almanac_upgrades")],
+			main.screens.casebook.tab = "collection"
+			main.show_screen("casebook")],
+		[27, func(): main.screens.casebook.scroll.scroll_vertical = 330],
+		[27.25, func(): shot("21_casebook_collection_scrolled")],
+		[27.35, func():
+			main.screens.casebook.tab = "guide"
+			main.screens.casebook.refresh()],
+		[27.6, func(): shot("22_casebook_guide")],
 		[27.8, func(): main.start_run("european")],
 		[28.9, func():
 			_close_dialogue()

@@ -95,8 +95,8 @@ func setup() -> void:
 	grid.add_theme_constant_override("v_separation", 6)
 	P.place(grid, Vector2(18, 244))
 	add_child(grid)
-	for b in [["Pawn Shop", func(): main.show_screen("pawn")], ["Almanac", func(): main.show_screen("feats")],
-			["Journal", func(): main.show_screen("journal")], ["Options", func(): main.open_options()],
+	for b in [["Pawn Shop", func(): main.show_screen("pawn")], ["Casebook", func(): _casebook("collection")],
+			["How to Play", func(): _casebook("guide")], ["Options", func(): main.open_options()],
 			["Credits", func(): main.show_screen("credits")], ["Quit", func(): get_tree().quit()]]:
 		P.button(grid, b[0], b[1], Vector2(104, 22))
 	# On the web, phones get the tip that matters: home-screen play is truly full screen.
@@ -106,6 +106,11 @@ func setup() -> void:
 	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.CREAM)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	P.place(ver, Vector2(408, 340), Vector2(224, 10))
+
+
+func _casebook(t: String) -> void:
+	main.screens.casebook.tab = t
+	main.show_screen("casebook")
 
 
 func _process(delta: float) -> void:
