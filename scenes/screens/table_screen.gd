@@ -344,10 +344,18 @@ func _draw_gauges(c: Control) -> void:
 	Art.text(c, font, Vector2(168 - font.get_string_size("%d%%" % int(round(chance * 100)), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 8), "%d%%" % int(round(chance * 100)), 8, col)
 	Art.text(c, font, Vector2(4, 32), "TAKE/SPIN", 8, P.DIM)
 	Art.text(c, font, Vector2(84, 32), "%.1f" % take_per_spin, 8, P.CREAM)
+	# Tonight's marker: what's still owed to Mr. Vance across the whole run.
+	var mt: int = run.marker_total()
+	var mp: int = run.marker_paid()
+	Art.text(c, font, Vector2(4, 46), "MARKER", 8, P.DIM)
+	var owed := "$%s LEFT" % P.money(maxi(0, mt - mp)) if mp < mt else "PAID"
+	Art.text(c, font, Vector2(168 - font.get_string_size(owed, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 46), owed, 8, P.DANGER.lerp(P.GOLD, clampf(float(mp) / mt, 0.0, 1.0)))
+	c.draw_rect(Rect2(4, 49, 168, 4), P.BLACK)
+	c.draw_rect(Rect2(5, 50, floor(166.0 * clampf(float(mp) / mt, 0.0, 1.0)), 2), P.GOLD)
 	# The stack as a physical tower of chips.
 	var stack: int = run.table.stack
-	Art.text(c, font, Vector2(4, 50), "STACK", 8, P.DIM)
-	Art.text(c, P.title_font(), Vector2(4, 66), "%d" % stack, 8, P.CREAM)
+	Art.text(c, font, Vector2(4, 66), "STACK", 8, P.DIM)
+	Art.text(c, P.title_font(), Vector2(4, 82), "%d" % stack, 8, P.CREAM)
 	# Break the stack into casino denominations (blue 10, red 5, white 1), at most 10 chips per tower.
 	var counts := {10: stack / 10, 5: (stack % 10) / 5, 1: stack % 5}
 	var ti := 0
@@ -356,7 +364,7 @@ func _draw_gauges(c: Control) -> void:
 		while left > 0 and ti < 6:
 			var in_tower := mini(10, left)
 			for j in range(in_tower):
-				Art.chip(c, Vector2(56 + ti * 19, 112 - j * 3), 7.0, Art.denom_color(d))
+				Art.chip(c, Vector2(56 + ti * 19, 114 - j * 3), 7.0, Art.denom_color(d))
 			left -= in_tower
 			ti += 1
 	if stack == 0:

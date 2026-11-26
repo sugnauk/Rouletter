@@ -19,7 +19,7 @@ func setup() -> void:
 	add_child(wheel)
 	P.place(P.label(self, "ROULETTER", P.FONT_HUGE, P.GOLD), Vector2(28, 54))
 	P.place(P.label(self, "The Gilded Ace  -  1974", P.FONT, P.DIM), Vector2(32, 98))
-	debt_lbl = P.label(self, "", P.FONT, P.DANGER)
+	debt_lbl = P.label(self, "", P.FONT, P.GOLD)
 	P.place(debt_lbl, Vector2(32, 122))
 	info_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
 	P.place(info_lbl, Vector2(32, 138))
@@ -41,7 +41,5 @@ func setup() -> void:
 func refresh() -> void:
 	var p = main.profile
 	continue_btn.visible = main.has_saved_run()
-	debt_lbl.text = "Marker owed to Mr. Vance: $%s" % P.money(p.debt)
-	if p.act2_unlocked():
-		debt_lbl.text += "   Floor Above: $%s" % P.money(p.debt2)
-	info_lbl.text = "Markers %d    Runs %d    Wins %d    Best night %d" % [p.markers, p.runs, p.wins, p.best_night]
+	debt_lbl.text = "Markers %d   (spend them at the Pawn Shop)" % p.markers
+	info_lbl.text = "Runs %d    Wins %d    Best night %d    Best Take %d    Paid to Vance $%s" % [p.runs, p.wins, p.best_night, p.best_take, P.money(p.total_paid)]

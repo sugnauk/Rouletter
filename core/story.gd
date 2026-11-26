@@ -20,11 +20,12 @@ const INTRO := [
 ]
 
 ## Between runs, on the end screen. A beat plays once every condition holds:
-##   debt <= `debt`, runs >= `after_runs`, best_night >= `best_night`, wins >= `wins`,
-##   wins <= `max_wins`.
+##   runs >= `after_runs`, best_night >= `best_night`, wins >= `wins`, wins <= `max_wins`,
+##   act2_runs >= `act2_runs`, act2_wins >= `act2_wins`.
+## (Each run is its own marker now, so beats follow your progress, not a lifetime debt.)
 const BEATS := [
-	{"id": "first_night", "title": "The Alley", "debt": 1000000, "after_runs": 1, "lines": [
-		{"speaker": "Narrator", "text": "You wake up in the alley behind the Ace. Your pockets are lighter. The marker isn't."},
+	{"id": "first_night", "title": "The Alley", "after_runs": 1, "lines": [
+		{"speaker": "Narrator", "text": "You wake up in the alley behind the Ace. Your pockets are lighter. Somewhere inside, a fresh marker is already drawn up."},
 		{"speaker": "Mr. Vance", "text": "Back so soon? Good. The vig doesn't sleep either."}]},
 	{"id": "first_enforcer", "title": "Lucky Lou", "best_night": 1, "lines": [
 		{"speaker": "Lucky Lou", "text": "You walked away from one of Vance's people. Nobody walks away. They limp, at best."},
@@ -33,7 +34,7 @@ const BEATS := [
 	{"id": "regular", "title": "A Regular", "after_runs": 3, "lines": [
 		{"speaker": "Dolores", "text": "Cigarettes, cigars... you again? Third night running. You're practically furniture."},
 		{"speaker": "Dolores", "text": "Word of advice, sugar. Vance doesn't mind losers. He minds people who stop coming back."}]},
-	{"id": "nine_hundred", "title": "He Prints the Felt", "debt": 900000, "lines": [
+	{"id": "nine_hundred", "title": "He Prints the Felt", "after_runs": 2, "lines": [
 		{"speaker": "Dolores", "text": "You're the one paying Vance in chips? Folks say he never rigs a wheel."},
 		{"speaker": "Dolores", "text": "He doesn't need to. He prints the felt."}]},
 	{"id": "first_win", "title": "A Full Night", "wins": 1, "lines": [
@@ -44,19 +45,19 @@ const BEATS := [
 		{"speaker": "Big Sal", "text": "Six nights and you ain't finished one. Boss is starting to talk about you like a lamp."},
 		{"speaker": "Big Sal", "text": "Part of the décor. Lights up, goes out. Gets plugged back in."},
 		{"speaker": "Lucky Lou", "text": "Don't listen to him. Watch the felt, not the wheel. Build something that pays when you're wrong."}]},
-	{"id": "three_quarters", "title": "Fifth Street", "debt": 750000, "lines": [
+	{"id": "three_quarters", "title": "Fifth Street", "best_night": 2, "lines": [
 		{"speaker": "Abe", "text": "I've been saving the good stock for you. Don't tell the others. I tell all the others that."},
-		{"speaker": "Mr. Vance", "text": "Three quarters. You're becoming expensive to keep around."}]},
-	{"id": "half", "title": "Upstairs", "debt": 500000, "lines": [
-		{"speaker": "Big Sal", "text": "Half paid. Vance is moving you upstairs. Nobody comes back from upstairs."},
+		{"speaker": "Mr. Vance", "text": "Three nights deep. You're becoming expensive to keep around."}]},
+	{"id": "half", "title": "Upstairs", "best_night": 3, "lines": [
+		{"speaker": "Big Sal", "text": "Four nights at his tables. Vance is talking about moving you upstairs. Nobody comes back from upstairs."},
 		{"speaker": "Narrator", "text": "Above the casino floor, a private room. Its wheel has no numbers you recognise."}]},
-	{"id": "lou_out", "title": "Almost Even", "debt": 400000, "lines": [
+	{"id": "lou_out", "title": "Almost Even", "after_runs": 8, "lines": [
 		{"speaker": "Dolores", "text": "Lou's gone. Paid off his marker last night, every cent. Walked out the front door."},
 		{"speaker": "Dolores", "text": "Then he walked right back in. Said the street felt too quiet."},
 		{"speaker": "Lucky Lou", "text": "Almost even was a good place, kid. You can see both doors from there."}]},
-	{"id": "quarter", "title": "Patience", "debt": 250000, "lines": [
+	{"id": "quarter", "title": "Patience", "after_runs": 12, "lines": [
 		{"speaker": "Mr. Vance", "text": "You know what the house edge really is? Patience. Mine is running out."}]},
-	{"id": "free", "title": "Act I: Paid in Full", "debt": 0, "lines": [
+	{"id": "free", "title": "Act I: Paid in Full", "wins": 1, "lines": [
 		{"speaker": "Narrator", "text": "The last chip crosses the felt. The cashier counts twice. Then a third time, for Vance."},
 		{"speaker": "Mr. Vance", "text": "Paid in full. Here's your marker back. Frame it. Most people only see theirs on a tombstone."},
 		{"speaker": "Dolores", "text": "You're free, sugar. You know what free people do at four in the morning?"},
@@ -71,10 +72,10 @@ const BEATS := [
 		{"speaker": "Mr. Vance", "text": "Nobody has beaten me at my own table since 1959. I want you to know I remember his name."},
 		{"speaker": "Mr. Vance", "text": "I'm going to remember yours too. That isn't a compliment."},
 		{"speaker": "Dolores", "text": "He poured you a drink. He doesn't pour drinks. I've worked here eleven years."}]},
-	{"id": "act2_half", "title": "Half the Floor", "debt2": 2500000, "lines": [
+	{"id": "act2_half", "title": "Half the Floor", "act2_runs": 3, "lines": [
 		{"speaker": "Lucky Lou", "text": "They let me up here once. I lasted four spins. You're making it look like a job."},
 		{"speaker": "Lucky Lou", "text": "Careful. In this building, when it looks like a job, it usually is one."}]},
-	{"id": "act2_free", "title": "Act II: The House", "debt2": 0, "lines": [
+	{"id": "act2_free", "title": "Act II: The House", "act2_wins": 2, "lines": [
 		{"speaker": "Narrator", "text": "The second marker burns in an ashtray on Vance's desk. He watches it the whole way down."},
 		{"speaker": "Mr. Vance", "text": "You know what you are now? You're the house. Everyone who sits at that wheel is playing against you."},
 		{"speaker": "Mr. Vance", "text": "The wheel is honest. I insisted on it. Now you get to find out why."},
@@ -163,8 +164,6 @@ const VENDOR_INTROS := {
 
 
 static func _holds(b: Dictionary, profile) -> bool:
-	if profile.debt > b.get("debt", 1 << 40):
-		return false
 	if profile.runs < b.get("after_runs", 1):
 		return false
 	if profile.best_night < b.get("best_night", 0):
@@ -172,8 +171,6 @@ static func _holds(b: Dictionary, profile) -> bool:
 	if profile.wins < b.get("wins", 0):
 		return false
 	if b.has("max_wins") and profile.wins > b.max_wins:
-		return false
-	if profile.debt2 > b.get("debt2", 1 << 40):
 		return false
 	if profile.act2_wins < b.get("act2_wins", 0):
 		return false

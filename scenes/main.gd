@@ -170,6 +170,8 @@ func table_card() -> Array:
 		return ["NIGHT %d" % (run.night + 1), "%s  -  %s" % [e.name, e.desc], P.DANGER if not e.get("final", false) else P.GOLD]
 	if run.upstairs() and run.table_idx == 0:
 		return ["NIGHT %d" % (run.night + 1), "The Floor Above  -  %s  -  pay %d" % [run.table_name(), run.table.target], P.VIOLET]
+	if run.table_idx == 0:
+		return ["NIGHT %d" % (run.night + 1), "%s table  -  pay %d  -  marker $%s left" % [run.table_name(), run.table.target, P.money(run.marker_left())], P.GOLD]
 	return ["NIGHT %d" % (run.night + 1), "%s table  -  pay %d" % [run.table_name(), run.table.target], P.GOLD]
 
 
@@ -235,9 +237,10 @@ func _queue_scene(scene: Dictionary) -> void:
 
 func _on_run_ended(won: bool) -> void:
 	delete_saved_run()
-	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts)
+	var paid: int = run.marker_paid()
+	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
-		"paid": res.paid, "markers": res.markers}
+		"paid": paid, "marker": run.marker_total(), "markers": res.markers}
 	save_profile()
 
 

@@ -23,7 +23,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -469,12 +469,11 @@ func test_act2() -> void:
 	var st: int = v.table.stack
 	v.spin(5)
 	check(v.table.stack == st - Content.DRAIN_PER_SPIN, "Velvet drains 2 chips a spin")
-	# Profile: Act II opens when Act I's marker is paid; take overflows into the new marker.
+	# Profile: Act II opens after an Act I win.
 	var p = Profile.new()
 	check(not p.act2_unlocked(), "Act II locked at first")
-	p.debt = 1000
-	p.record_run(4, 50.0, true, 1)
-	check(p.debt == 0 and p.act2_unlocked() and p.debt2 == Content.ACT2_DEBT - 4000, "overflow pays the Act II marker")
+	p.record_run(4, 50.0, true, 1, Content.MARKER_ACT1)
+	check(p.act2_unlocked() and p.total_paid == Content.MARKER_ACT1, "winning Act I opens Act II")
 	p.record_run(8, 10.0, true, 2)
 	check(p.act2_runs == 1 and p.act2_wins == 1, "Act II runs counted")
 
@@ -549,6 +548,29 @@ func test_run_save() -> void:
 	check(a.pocket == b.pocket, "the RNG continues from the same place")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	check(not RunState.new().load_from(path), "no save, nothing to load")
+
+
+func test_run_marker() -> void:
+	var run = new_run()
+	check(run.marker_total() == Content.MARKER_ACT1 and run.marker_paid() == 0, "a fresh run owes the whole marker")
+	run.place_bet("S17", 1)
+	run.spin(17)
+	var p1: int = run.marker_paid()
+	check(p1 > 0 and p1 < run.marker_total() / 10, "the first table pays a small share")
+	run.leave_shop()
+	run.table.take = run.table.target
+	run.place_bet("S17", 1)
+	run.spin(17)
+	check(run.marker_paid() > p1, "each table pays more")
+	var w = new_run()
+	w.night = 3
+	w.table_idx = 2
+	w._start_table()
+	check(w.marker_paid() < w.marker_total() and w.marker_paid() > w.marker_total() / 2, "the last table is a big share")
+	w.table.take = w.table.target
+	w.place_bet("S17", 1)
+	w.spin(17)
+	check(w.phase == RunState.Phase.VICTORY and w.marker_paid() == w.marker_total() and w.marker_left() == 0, "a win pays the marker in full")
 
 
 func test_shop() -> void:
@@ -646,12 +668,12 @@ func test_profile() -> void:
 	check(p.is_unlocked("european") and p.is_unlocked("french") and not p.is_unlocked("american"), "starter wheels")
 	check(not p.buy_unlock("american"), "can't afford")
 	var res: Dictionary = p.record_run(3, 1234.0, false)
-	check(res.markers == 3 and p.debt == Content.DEBT_START - 1234 * Content.DEBT_PER_TAKE, "run pays debt, earns markers")
+	check(res.markers == 3 and p.best_take == 1234, "run earns markers and records the best Take")
 	check(p.buy_unlock("american") and p.markers == 0, "unlock american")
 	var path := "user://test_profile.json"
 	check(p.save(path), "save")
 	var q = Profile.new()
-	check(q.load_from(path) and q.debt == p.debt and q.is_unlocked("american") and q.runs == 1, "round trip")
+	check(q.load_from(path) and q.best_take == p.best_take and q.is_unlocked("american") and q.runs == 1, "round trip")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	var run = RunState.new()
 	run.start_run(1, "european", Profile.default_unlocks())
@@ -678,19 +700,13 @@ func test_story_beats() -> void:
 	check(Story.beats_due(p).is_empty(), "no beats before the first run")
 	p.runs = 1
 	check(Story.beats_due(p).size() == 1, "first-night beat")
-	p.debt = 700000
-	var ids := []
-	for b in Story.beats_due(p):
-		ids.append(b.id)
-	check(ids == ["first_night", "nine_hundred", "three_quarters"], "threshold beats in order")
-	p.debt = 1000000
 	p.seen_beats = ["first_night"]
 	p.best_night = 1
 	p.runs = 3
-	ids = []
+	var ids := []
 	for b in Story.beats_due(p):
 		ids.append(b.id)
-	check(ids == ["first_enforcer", "regular"], "milestone beats (first Enforcer, third run)")
+	check(ids == ["first_enforcer", "regular", "nine_hundred"], "milestone beats in order (first Enforcer, third run, second run)")
 	p.runs = 6
 	check(Story.beats_due(p).any(func(b): return b.id == "the_fixture"), "six runs without a win")
 	p.wins = 1

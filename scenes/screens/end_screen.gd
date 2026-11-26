@@ -1,5 +1,5 @@
 extends Control
-## Run summary: what the night paid toward the marker, Markers earned, then any story beats.
+## Run summary: how much of the run's marker was paid, Markers earned, then any story beats.
 
 const P := preload("res://scenes/ui/palette.gd")
 const Story := preload("res://core/story.gd")
@@ -31,14 +31,14 @@ func refresh() -> void:
 	title_lbl.text = ("THE OWNER FALLS" if main.run.acts == 2 else "PAID IN FULL") if won else "THE HOUSE COLLECTS"
 	title_lbl.add_theme_color_override("font_color", P.GOLD if won else P.DANGER)
 	msg_lbl.text = main.run.message
-	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Paid on marker", "Markers earned", "Still owed"])
+	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Marker paid", "Left unpaid", "Markers earned"])
 	values_lbl.text = "\n".join([
 		main.run.felt.board.def.name,
 		("%d (endless)" % s.get("nights", 0)) if main.run.endless() else "%d / %d" % [s.get("nights", 0), main.run.nights_total()],
 		str(int(s.get("take", 0.0))),
-		"$" + P.money(s.get("paid", 0)),
+		"$%s of $%s" % [P.money(s.get("paid", 0)), P.money(s.get("marker", 0))],
+		"$" + P.money(maxi(0, s.get("marker", 0) - s.get("paid", 0))),
 		"%d   (now %d)" % [s.get("markers", 0), main.profile.markers],
-		"$" + P.money(main.profile.debt) + ("   (Act II: $%s)" % P.money(main.profile.debt2) if main.profile.act2_unlocked() else ""),
 	])
 
 

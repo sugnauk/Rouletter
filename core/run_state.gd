@@ -161,6 +161,38 @@ func nights_total() -> int:
 	return 1 << 30  # endless
 
 
+# --- The run's marker: what you owe Mr. Vance tonight ------------------------------------
+
+func marker_total() -> int:
+	return Content.MARKER_ACT1 if acts == 1 else Content.MARKER_ACT2
+
+
+## Each table's share of the marker is its base payment over the whole run's payments.
+func _marker_weight_total() -> float:
+	var t := 0.0
+	for n in range(mini(nights_total(), Content.ACT2_NIGHTS)):
+		for x in Content.targets_for(n):
+			t += x
+	return t
+
+
+## Dollars paid so far: every table cleared before the current one (all of them on a win).
+func marker_paid() -> int:
+	if phase == Phase.VICTORY:
+		return marker_total()
+	var w := 0.0
+	for n in range(night + 1):
+		var tg: Array = Content.targets_for(n)
+		for i in range(3):
+			if n < night or i < table_idx:
+				w += tg[i]
+	return int(round(marker_total() * w / _marker_weight_total() / 1000.0)) * 1000
+
+
+func marker_left() -> int:
+	return maxi(0, marker_total() - marker_paid())
+
+
 func endless() -> bool:
 	return acts >= 3
 

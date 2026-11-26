@@ -99,9 +99,10 @@ const KINGMAKER_MULT := 1.5               ## Kingmaker: the spin's Take x1.5 whe
 const MOMENTUM_STEP := 0.25               ## Momentum: +25% per scoring spin in a row
 
 # --- Meta ------------------------------------------------------------------------------
-const DEBT_START := 1000000
-const ACT2_DEBT := 5000000               ## the Floor Above's marker, opened when Act I is paid
-const DEBT_PER_TAKE := 100               ## each point of Take pays $100 of the marker
+## Every run is one marker owed to Mr. Vance; each table cleared pays its share (weighted by
+## that table's payment). Clearing the last night pays it in full.
+const MARKER_ACT1 := 1000000
+const MARKER_ACT2 := 5000000             ## Act II (and endless) runs carry the Floor Above's marker
 const MARKERS_PER_NIGHT := 1
 const MARKERS_VICTORY := 3
 

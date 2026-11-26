@@ -4,7 +4,7 @@ A roulette roguelite. **The wheel is always fair, and the felt is what you build
 
 ## Story (light noir)
 All scenes live in `core/story.gd` with an id and a Journal title; `profile.seen_beats` records what you've seen.
-1974, the Gilded Ace casino. You owe its owner, Mr. Vance, a **$1,000,000 marker**. Each run is a night of payments: every table's Take target is a payment due, and missing one ends the run. The Take you bank pays down the debt ($100 per point), and the debt carries across runs. Story beats unlock as it shrinks. Enforcers are Vance's people. Data lives in `core/story.gd` and the Enforcers in `core/content.gd`.
+1974, the Gilded Ace casino. **Each run is one marker**: you start it owing Mr. Vance $1,000,000 ($5,000,000 in Act II). Every table is a payment due; clearing it pays that table's share of the marker (weighted by its payment), missing one ends the run, and clearing the last night pays the marker in full. The HUD shows what's left; the title screen shows only lifetime stats and Markers. Story beats unlock as it shrinks. Enforcers are Vance's people. Data lives in `core/story.gd` and the Enforcers in `core/content.gd`.
 
 ## Run loop
 - **4 Nights × 3 tables:** Floor, then High Roller, then Enforcer. Clearing Night 4 wins the run.
