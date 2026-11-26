@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1480,6 +1480,39 @@ func test_run_report() -> void:
 	check(run.run_report().contains("LOST") and run.run_report().contains("Result: lost"), "a loss is reported")
 
 
+func test_provisional_placement() -> void:
+	var run = new_run()
+	run.inventory = [{"kind": "perm", "value": 1}]
+	check(run.place_chip(0, "S8"), "place a chip")
+	var c = run.felt.chips_on("S8")[0]
+	check(run.is_fresh(c.id), "a chip placed this turn is provisional")
+	var cash0: int = run.cash
+	check(run.unplace(c.id) and run.felt.chips_on("S8").is_empty() and run.inventory.size() == 1 and run.cash == cash0, "and comes back to the rack for free")
+	run.place_chip(0, "S9")
+	var c2 = run.felt.chips_on("S9")[0]
+	run.place_bet("S17", 1)
+	run.spin(5)
+	check(not run.is_fresh(c2.id), "the next spin makes it final")
+	check(not run.unplace(c2.id), "a final chip can't be unplaced for free")
+	# Stacked onto a twin: only the part added this turn comes back off.
+	run.table.take = run.table.target
+	run.place_bet("S17", 1)
+	run.spin(17)
+	run.inventory = [{"kind": "perm", "value": 1}]
+	c2 = run.felt.chips_on("S9")[0]   # spins hand back a fresh felt
+	check(run.place_chip(0, "S9") and c2.value == 2 and c2.copies == 2, "stack a twin in the Cage")
+	check(run.pick_up(c2.id) and c2.value == 1 and c2.copies == 1 and run.inventory.back().value == 1 and run.cash == cash0 + (run.cash - cash0), "moving it is free and only takes the new chip off")
+	# Sticky chips placed this turn can still be picked back up.
+	run.inventory = [{"kind": "perm", "value": 1, "flaw": "sticky"}]
+	run.place_chip(0, "S20")
+	var st = run.felt.chips_on("S20")[0]
+	check(run.unplace(st.id), "even a sticky chip, until the next spin")
+	var d: Dictionary = run.to_dict()
+	run.place_chip(run.inventory.size() - 1, "S21")
+	var back = RunState.new()
+	check(back.from_dict(run.to_dict()) and back.fresh.size() == run.fresh.size(), "provisional placements survive a save")
+
+
 func test_new_rules() -> void:
 	var zt = felt("european", [["bet", "RED", 4]])
 	zt.house_rules.append("zero_tolerance")
@@ -1547,7 +1580,7 @@ func test_shop() -> void:
 	check(run.place_chip(0, "S30"), "place a chip from the shop")
 	var placed_id: int = run.felt.perm_chips()[0].id
 	var cash: int = run.cash
-	check(run.pick_up(placed_id) and run.cash == cash - Content.RELOCATE_PRICE, "pick up to relocate")
+	check(run.pick_up(placed_id) and run.cash == cash, "a chip placed this visit moves for free")
 	var idx: int = run.inventory.size() - 1
 	check(run.place_chip(idx, "S33"), "re-place in shop")
 	check(run.sell_chip(run.felt.chips_on("S33")[0].id), "sell")

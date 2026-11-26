@@ -152,7 +152,8 @@ func on_bet_held(key: String) -> void:
 	close_bet_menu()
 	var has_bet: bool = run.felt.chips_on(key).any(func(c): return c.is_bet())
 	var outside: bool = not Board.is_straight(key)
-	if not has_bet and not outside:
+	var has_fresh: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and run.is_fresh(c.id))
+	if not has_bet and not outside and not has_fresh:
 		return
 	bet_menu = Control.new()
 	bet_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -170,6 +171,8 @@ func on_bet_held(key: String) -> void:
 		items.append(["Unpin" if t.pinned.has(key) else "Pin", func(): edit_pin(key)])
 	if outside:
 		items.append(["Clear inside", func(): edit_clear_area(key)])
+	if has_fresh:
+		items.append(["Pick up chip", func(): t.unplace_at(key)])
 	var bg := Panel.new()
 	bg.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.GOLD, 1))
 	var at: Vector2 = t.felt_view.position + t.felt_view.key_center(key)

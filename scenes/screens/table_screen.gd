@@ -550,6 +550,22 @@ func _select_item(i: int) -> void:
 	_refresh_tokens()
 
 
+## Pick a chip placed this turn back up off `key` (free until the next spin) and hold it.
+func unplace_at(key: String) -> bool:
+	var run = main.run
+	for c in Placing.perms_on(run, key):
+		if run.is_fresh(c.id):
+			var nm: String = Content.CHIPS[c.kind].name
+			if run.unplace(c.id):
+				selected_item = run.inventory.size() - 1
+				main.hide_card()
+				Sfx.play("chip_remove")
+				_status("Picked up %s: click a lit spot to put it somewhere else." % nm)
+				refresh()
+				return true
+	return false
+
+
 ## Place the selected rack chip on `key`; the next chip in the rack is picked up straight after.
 func _place_selected(key: String) -> void:
 	var run = main.run
@@ -759,6 +775,8 @@ func _on_bet_clicked(key: String, button: int) -> void:
 			selected_item = -1
 			_status("")
 			_refresh_tokens()
+			return
+		if not run.felt.chips_on(key).any(func(c): return c.is_bet()) and unplace_at(key):
 			return
 		overlays.edit_take_back(key)
 		return

@@ -30,6 +30,7 @@ var unlocked: Array = []
 var cash: int = 0
 var inventory: Array = []        ## unplaced permanent chips: {kind, value}
 var cash_log: Dictionary = {}    ## run summary: where the money came from (source -> dollars)
+var fresh: Dictionary = {}       ## chips placed since the last spin (provisional, free to pick up): str(id) -> {value, copies, whole}
 var report: Array = []           ## playtest report: one readable line per table, free pick and Cage buy
 var contrib: Dictionary = {}     ## run summary: Take scored per chip kind ("bet" for betting chips)
 var best_spin_info: Dictionary = {}   ## run summary: the biggest spin's breakdown
@@ -100,6 +101,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 		cash += Content.FENCE_RUN_CASH
 	cash_log = {"Starting cash": cash}
 	report = []
+	fresh = {}
 	for r in def.get("house", []):
 		felt.house_rules.append(r)
 	stack_size = Content.START_STACK - (5 if graded(1) else 0)
@@ -182,7 +184,7 @@ static func parse_seed(text: String) -> int:
 const SAVE_VERSION := 2   ## run save format (see migrate())
 
 ## Saved too, but optional, so saves from before they existed still load.
-const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [], "report": [],
+const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [], "report": [], "fresh": {},
 	"contrib": {}, "best_spin_info": {}, "cash_log": {}}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
@@ -600,11 +602,50 @@ func place_chip(index: int, key: String) -> bool:
 		if not c.is_bet() and c.kind == item.kind and c.flaw == item.get("flaw", ""):
 			c.value += item.value
 			c.copies += int(item.get("copies", 1))
+			var f: Dictionary = fresh.get(str(c.id), {"value": 0, "copies": 0, "whole": false})
+			f.value += item.value
+			f.copies += int(item.get("copies", 1))
+			fresh[str(c.id)] = f
 			changed.emit()
 			return true
 	var nc = felt.add_chip(item.kind, key, item.value, item.get("flaw", ""))
 	nc.mod = item.get("mod", "")
 	nc.copies = int(item.get("copies", 1))
+	fresh[str(nc.id)] = {"value": item.value, "copies": nc.copies, "whole": true}
+	changed.emit()
+	return true
+
+
+## Placed since the last spin? Those placements aren't final: they can be picked back up free.
+func is_fresh(chip_id: int) -> bool:
+	return fresh.has(str(chip_id))
+
+
+## Pick a provisional chip back up into the rack, free. If it was stacked onto a twin, only the
+## part added this turn comes back off the stack.
+func unplace(chip_id: int) -> bool:
+	var c = felt.find(chip_id)
+	if (phase != Phase.TABLE and phase != Phase.SHOP) or c == null or c.is_bet() or not is_fresh(chip_id):
+		return false
+	var f: Dictionary = fresh[str(chip_id)]
+	fresh.erase(str(chip_id))
+	var inv := {"kind": c.kind}
+	if c.flaw != "":
+		inv.flaw = c.flaw
+	if f.whole or f.value >= c.value:
+		inv.value = c.value
+		if c.mod != "":
+			inv.mod = c.mod
+		if c.copies > 1:
+			inv.copies = c.copies
+		felt.remove(chip_id)
+	else:
+		inv.value = f.value
+		if f.copies > 1:
+			inv.copies = f.copies
+		c.value -= f.value
+		c.copies = maxi(1, c.copies - f.copies)
+	inventory.append(inv)
 	changed.emit()
 	return true
 
@@ -616,6 +657,7 @@ func expected_value() -> Dictionary:
 func spin(forced_pocket: int = -99) -> Dictionary:
 	if phase != Phase.TABLE:
 		return {}
+	fresh = {}   # the spin makes every placement final
 	if not table_offer.is_empty():   # spinning passes on the free pick (the table screen asks first)
 		note("Free chip: passed by spinning (offered %s)" % ", ".join(table_offer.map(func(o): return Content.CHIPS[o.id].name)))
 	table_offer = []

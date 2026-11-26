@@ -606,6 +606,7 @@ func sell_chip(chip_id: int) -> bool:
 	var got := int(Content.CHIPS[c.kind].price * c.copies * Content.SELL_SHARE * (Content.FENCE_SHARE if c.flaw != "" else 1.0))
 	cash += got
 	log_cash("Sold chips", got)
+	fresh.erase(str(chip_id))
 	felt.remove(chip_id)
 	changed.emit()
 	return true
@@ -613,6 +614,8 @@ func sell_chip(chip_id: int) -> bool:
 
 ## Pick a placed chip back up into the inventory to move it.
 func pick_up(chip_id: int) -> bool:
+	if is_fresh(chip_id):   # placed since the last spin: moving it is free
+		return unplace(chip_id)
 	var c = felt.find(chip_id)
 	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky" or cash < Content.RELOCATE_PRICE:
 		return false

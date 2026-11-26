@@ -100,6 +100,9 @@ static func for_chip(c, run = null) -> Dictionary:
 		body += "\n%s: %s" % [Content.FLAWS[c.flaw].name, Content.FLAWS[c.flaw].desc]
 	if run != null and c.id == run.felt.frozen_id:
 		body += "\nFrozen by the Enforcer: it pays nothing this table."
+	if run != null and run.is_fresh(c.id):
+		body += "\nPlaced this turn: pick it back up for free until the next spin (right-click it, or hold it on a touch screen)."
+		facts.append("NEW")
 	return {"icon": c.kind, "title": spec.name, "sub": "  ".join(facts), "body": body, "col": _rar_col(c.kind)}
 
 

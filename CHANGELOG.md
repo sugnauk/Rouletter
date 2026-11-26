@@ -3,6 +3,15 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.41
+- Placements aren't final until the next spin. Any chip you place, in the Cage or at the table, can be picked back up for free until you spin:
+  - **In the Cage:** click it (or right-click it) and it's back in your hand, ready to put somewhere else. MOVE is also free for these chips.
+  - **At the table:** right-click it, or hold it on a touch screen and choose "Pick up chip".
+  - **Stacked onto a twin:** only the chip you just added comes back off; the rest of the stack stays.
+  - **Sticky:** even Sticky chips can be repositioned until the spin.
+  - **How to tell:** chips placed this turn have a dashed cyan ring and say NEW on their info card.
+  - Spinning locks every placement in. Older chips still cost $2 to move in the Cage.
+
 ## 0.0.40
 - The Mini wheel's felt now fills the same space as every other wheel, at the table and in the Cage. Its four columns of numbers are wider squares instead of a small felt with empty space around it.
 - On a busy Cage counter, price tags are shortened to fit the narrower tokens (e.g. the Loan Shark's "+15%").

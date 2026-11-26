@@ -182,7 +182,7 @@ func _hint() -> String:
 		return "Click a glowing spot on the felt to lay your %s." % Content.UPGRADES[main.run.shop.pending_upgrade].name
 	match mode:
 		"move":
-			return "Click one of your chips on the felt to pick it up ($%d), then place it again." % Content.RELOCATE_PRICE
+			return "Click one of your chips on the felt to pick it up ($%d; free for chips placed since the last spin), then place it again." % Content.RELOCATE_PRICE
 		"sell":
 			return "Click one of your chips on the felt to sell it for half its price."
 		"refine":
@@ -738,6 +738,19 @@ func _on_felt(key: String, button: int) -> void:
 		selected_item = -1
 		refresh()
 		return
+	# A chip placed this visit isn't final: clicking it (or right-clicking) picks it back up, free.
+	if selected_item < 0 and (button == MOUSE_BUTTON_RIGHT or (button == MOUSE_BUTTON_LEFT and mode in ["place", "move"])):
+		for c in Placing.perms_on(run, key):
+			if run.is_fresh(c.id):
+				var nm: String = Content.CHIPS[c.kind].name
+				if run.unplace(c.id):
+					selected_item = run.inventory.size() - 1
+					mode = "place"
+					main.hide_card()
+					Sfx.play("chip_remove")
+					refresh()
+					status_lbl.text = "Picked up %s (free until the next spin): click a lit spot to put it back down." % nm
+					return
 	if button != MOUSE_BUTTON_LEFT or main.dialogue.is_open():
 		return
 	if run.shop.pending_upgrade != "":
