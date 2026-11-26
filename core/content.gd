@@ -275,6 +275,12 @@ const CHIPS := {
 	"spare_key": {"name": "Spare Key", "desc": "Whenever a zero hits, +$4 cash (per level).",
 		"price": 5, "unlock": 0, "trigger": {"on": "zero", "cash": 4},
 		"note": "For the night the green comes up."},
+	"conductor": {"name": "Conductor", "desc": "When it hits, every multiplier chip you own (Kingmaker, Ace, Crown) fires too, wherever it sits.",
+		"price": 9, "unlock": 0, "note": "Strikes up the whole band at once."},
+	"relay": {"name": "Relay", "desc": "When it hits, every other permanent chip on a number scores half its straight-up pay too.",
+		"price": 8, "unlock": 0, "note": "Passes the win down the line."},
+	"fuse": {"name": "Fuse", "desc": "Each spin, +2 Take for every level your other chips gained that spin (per level of Fuse).",
+		"price": 7, "unlock": 0, "note": "Growth chips light it; it turns growing into scoring."},
 	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5. Each chip stacked on it multiplies again; other levels add +0.5.",
 		"price": 7, "unlock": 0,
 		"note": "A crowned number: one pocket that makes the whole spin."},
@@ -283,6 +289,7 @@ const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zer
 
 ## Rarity: how often something shows up in the Cage (common unless listed) and the frame it gets.
 const RARITY := {
+	"conductor": "legendary", "relay": "rare", "fuse": "rare", "crowd_pleaser": "rare", "purist": "rare",
 	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
 	"night_owl": "rare", "far_side": "rare", "heart_of_gold": "rare", "golden_goose": "rare", "square_deal": "rare",
 	"zero_tolerance": "rare", "double_down": "rare", "patron": "rare", "late_bloomer": "rare", "veterans": "legendary",
@@ -298,6 +305,10 @@ const RARITY_WEIGHT := {"common": 6, "rare": 3, "legendary": 1}
 const PORCH_SHARE := 0.5
 const BLACK_CAT_BONUS := 2.0
 const RAINY_DAY_CASH := 2
+const CROWD_STEP := 0.05
+const HIGH_STAKES_CHIPS := 15
+const RELAY_SHARE := 0.5
+const FUSE_BONUS := 2.0
 ## Refine: a second act for a levelled-up number chip (one path per chip, at the Cashier).
 const REFINE_PRICE := 6
 const REFINE_LEVEL := 2
@@ -349,6 +360,8 @@ const TAGS := {
 	"wheel_spoke": ["wheel", "neighbours"], "echo": ["numbers", "multiplier"], "ace": ["numbers", "multiplier"],
 	"tip_jar": ["cash"], "green_thumb": ["zero"], "signpost": ["inside", "cash"],
 	"diamond": ["numbers"], "magnetized": ["numbers", "neighbours"], "twin_square": ["numbers"], "spoke": ["wheel", "neighbours"],
+	"crowd_pleaser": ["multiplier", "numbers"], "purist": ["multiplier", "numbers"], "high_stakes": ["multiplier"],
+	"conductor": ["multiplier"], "relay": ["numbers"], "fuse": ["numbers", "multiplier"],
 	"outside_connection": ["outside", "numbers"], "inside_track": ["inside", "numbers"],
 	"colour_coded": ["even", "numbers"], "rainy_day": ["cash", "even"],
 	"gold_trim": ["outside", "cash"], "fat_box": ["outside"], "repeat_box": ["outside", "multiplier"], "lucky_colour": ["even"],
@@ -438,6 +451,7 @@ const ALMANAC := [
 	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "red_herring", "street_light", "wheel_spoke", "hedge", "croupier", "collector", "ledger"]],
 	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "seedling", "echo"]],
 	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "ace", "crown", "bridge"]],
+	["CHAIN CHIPS", "CHIPS", ["conductor", "relay", "fuse"]],
 	["ZERO CHIPS", "CHIPS", ["wildcard_zero", "sentinel", "green_thumb"]],
 	["PATTERN CHIPS", "CHIPS", ["odd_fellow", "even_keel", "low_roller", "penthouse", "prime_time", "square_deal", "teen_idol", "fibonacci", "nickel", "seventh_heaven", "last_digit"]],
 	["WATCH CHIPS", "CHIPS", ["dozen_watch", "pillar", "doorbell", "clover", "far_side", "night_owl", "heart_of_gold"]],
@@ -449,6 +463,7 @@ const ALMANAC := [
 	["SAFETY RULES", "HOUSE_RULES", ["la_partage", "en_prison", "insurance", "zero_tolerance", "rent_control", "patron", "bankroll"]],
 	["MONEY RULES", "HOUSE_RULES", ["comped", "compound_interest", "big_spender"]],
 	["BRIDGE RULES", "HOUSE_RULES", ["outside_connection", "inside_track", "colour_coded", "rainy_day"]],
+	["SCALING RULES", "HOUSE_RULES", ["crowd_pleaser", "purist", "high_stakes"]],
 	["DEALER FAVOURS", "FAVOURS", ["extra_spin", "fat_stack", "head_start"]],
 	["DEALER VOUCHERS", "VOUCHERS", ["comp_card", "vip_rack", "patience", "house_credit"]],
 ]
@@ -572,6 +587,13 @@ const HOUSE_RULES := {
 		"price": 7, "unlock": 0, "note": "Bridges inside bets and number chips."},
 	"colour_coded": {"name": "Colour Coded", "desc": "When red or black wins, +1 Take per level of every permanent chip on a number of that colour.",
 		"price": 6, "unlock": 0, "note": "Bridges even-money bets and number chips."},
+	# Scaling rules: they grow with the build.
+	"crowd_pleaser": {"name": "Crowd Pleaser", "desc": "Every scoring spin x(1 + 0.05 per level of permanent chips on your felt).",
+		"price": 9, "unlock": 0, "note": "The more you've built, the louder the room gets."},
+	"purist": {"name": "Purist", "desc": "x2 on a spin where every winning bet was a straight-up.",
+		"price": 8, "unlock": 0, "note": "No hedging, no splits: just numbers."},
+	"high_stakes": {"name": "High Stakes", "desc": "x1.5 on spins with 15 or more betting chips riding.",
+		"price": 7, "unlock": 0, "note": "Push the pile in and the house pays attention."},
 	"rainy_day": {"name": "Rainy Day Fund", "desc": "A spin that scores no Take pays +$2.",
 		"price": 5, "unlock": 0, "note": "Bridges a cautious layout and a cash build: even bad spins pay."},
 }

@@ -26,6 +26,8 @@ var phase: int = Phase.TABLE
 var unlocked: Array = []
 var cash: int = 0
 var inventory: Array = []        ## unplaced permanent chips: {kind, value}
+var contrib: Dictionary = {}     ## run summary: Take scored per chip kind ("bet" for betting chips)
+var best_spin_info: Dictionary = {}   ## run summary: the biggest spin's breakdown
 var table_offer: Array = []      ## the free pick-1-of-3 special chip waiting at this table
 var stack_size: int = Content.START_STACK
 var stack_buys: int = 0
@@ -105,6 +107,8 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	best_spin = 0.0
 	beaten = []
 	used_outside = false
+	contrib = {}
+	best_spin_info = {}
 	night = 0
 	table_idx = 0
 	total_take = 0.0
@@ -151,7 +155,8 @@ static func parse_seed(text: String) -> int:
 
 
 ## Saved too, but optional, so saves from before they existed still load.
-const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": []}
+const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [],
+	"contrib": {}, "best_spin_info": {}}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
 	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade", "used_outside"]
@@ -165,7 +170,7 @@ func to_dict() -> Dictionary:
 		d[k] = v.duplicate(true) if (v is Dictionary or v is Array) else v
 	for k in OPTIONAL_FIELDS:
 		var ov = get(k)
-		d[k] = ov.duplicate(true) if ov is Array else ov
+		d[k] = ov.duplicate(true) if (ov is Array or ov is Dictionary) else ov
 	return d
 
 
@@ -180,7 +185,7 @@ func from_dict(d: Dictionary) -> bool:
 		set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
 	for k in OPTIONAL_FIELDS:
 		var ov = d.get(k, OPTIONAL_FIELDS[k])
-		set(k, ov.duplicate(true) if ov is Array else ov)
+		set(k, ov.duplicate(true) if (ov is Array or ov is Dictionary) else ov)
 	rng.set_state(d.rng)
 	felt = FeltState.from_dict(d.felt)
 	last_result = {}
@@ -589,7 +594,12 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 	if res.events.any(func(e): return e.kind == "win" and e.label == "straight"):
 		table.obj_straight = true
 	table.prev_keys = keys.keys()
+	if res.take > best_spin:
+		best_spin_info = spin_breakdown(res)
 	best_spin = maxf(best_spin, res.take)
+	for e in res.events:
+		if e.kind in ["win", "bonus"] and e.get("chip", "") != "":
+			contrib[e.chip] = contrib.get(e.chip, 0.0) + e.amount
 	table.stack += res.stack
 	if felt.boss_is("drain") and table.stack > 0:
 		var d: int = mini(Content.DRAIN_PER_SPIN, table.stack)
@@ -666,6 +676,34 @@ func _clear_table() -> void:
 	message = "Paid! +$%d (%d base, %d spins left, %d comps)." % [reward, Content.CLEAR_CASH[info.table], info.spins_left, comps]
 	_open_shop(info)
 	table_cleared.emit(info)
+
+
+## The biggest parts of a spin, for the run summary: {take, pocket, parts: [[label, text]]}.
+func spin_breakdown(res: Dictionary) -> Dictionary:
+	var by := {}
+	for e in res.events:
+		if e.kind in ["win", "bonus"]:
+			var k: String = "Bets" if e.get("chip", "") == "bet" else (Content.CHIPS[e.chip].name if Content.CHIPS.has(e.get("chip", "")) else e.label.capitalize())
+			by[k] = by.get(k, 0.0) + e.amount
+	var parts := []
+	var keys: Array = by.keys()
+	keys.sort_custom(func(a, b): return by[a] > by[b])
+	for k in keys.slice(0, 4):
+		parts.append([k, "+%d" % int(by[k])])
+	for e in res.events:
+		if e.kind == "mult":
+			parts.append([e.label, "x%s" % (str(snappedf(e.amount, 0.01)))])
+	return {"take": int(res.take), "pocket": felt.board.label(res.pocket), "parts": parts.slice(0, 7)}
+
+
+## Chip kinds that scored the most this run: [[kind, take], ...], biggest first.
+func top_contributors(n: int = 3) -> Array:
+	var ks: Array = contrib.keys().filter(func(k): return k != "bet")
+	ks.sort_custom(func(a, b): return contrib[a] > contrib[b])
+	var out := []
+	for k in ks.slice(0, n):
+		out.append([k, int(contrib[k])])
+	return out
 
 
 ## Has this table's side objective been done (checked at the clear)?

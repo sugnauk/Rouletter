@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1266,6 +1266,51 @@ func test_onboarding() -> void:
 	check(vet.feature_on("event") and vet.table.objective != "", "veterans get everything from the start")
 	for k in ["free_chip", "job", "condition", "route", "event", "refine"]:
 		check(Story.TIPS.has(k), "Dolores explains %s" % k)
+
+
+func test_explosive() -> void:
+	# Conductor: the Kingmaker on 5 fires when the Conductor on 17 hits.
+	var c = felt("european", [["bet", "S17", 1], ["conductor", "S17", 1], ["kingmaker", "S5", 1]])
+	var base = felt("european", [["bet", "S17", 1], ["perm", "S17", 1]])
+	near(Resolver.resolve_spin(c, 17).take, Resolver.resolve_spin(base, 17).take * 1.5, "Conductor fires the Kingmaker elsewhere")
+	# Relay: other number chips score half their straight pay.
+	var r = felt("european", [["relay", "S17", 1], ["perm", "S5", 2]])
+	near(Resolver.resolve_spin(r, 17).take, 35.0 + 2 * 35.0 * 0.5, "Relay passes half a straight to each other chip")
+	# Fuse: +2 Take per level grown by other chips.
+	var fz = felt("european", [["fuse", "S20", 1], ["compounding", "S5", 1]])
+	near(Resolver.resolve_spin(fz, 9).take, 2.0, "Fuse turns a level of growth into +2")
+	# Crowd Pleaser: x(1 + 0.05 per level).
+	var cp = felt("european", [["perm", "S17", 4], ["perm", "S5", 6]])
+	var cpt: float = Resolver.resolve_spin(cp, 17).take
+	cp.house_rules.append("crowd_pleaser")
+	near(Resolver.resolve_spin(cp, 17).take, cpt * 1.5, "Crowd Pleaser scales with the felt's levels")
+	# Purist: x2 only when every winning bet is a straight-up.
+	var pu = felt("european", [["bet", "S17", 1]])
+	pu.house_rules.append("purist")
+	near(Resolver.resolve_spin(pu, 17).take, 70.0, "Purist doubles a straight-up spin")
+	pu.add_chip("bet", "RED", 1)
+	near(Resolver.resolve_spin(pu, 1).take, 0.0, "...not a spin an outside bet won (1 won, 1 lost)")
+	# High Stakes: x1.5 with 15+ chips riding.
+	var hs = felt("european", [["bet", "RED", 15]])
+	hs.house_rules.append("high_stakes")
+	near(Resolver.resolve_spin(hs, 1).take, 22.5, "High Stakes with 15 riding")
+	# Run summary: which chips scored, and the best spin's breakdown.
+	var run = new_run()
+	run.inventory = []
+	run.felt.add_chip("kingmaker", "S17", 1)
+	run.place_bet("S17", 2)
+	run.spin(17)
+	check(run.contrib.get("kingmaker", 0.0) > 0.0 and run.contrib.get("bet", 0.0) > 0.0, "contributions are tracked per chip")
+	check(run.best_spin_info.take > 0 and run.best_spin_info.parts.any(func(p): return p[0] == "Kingmaker"), "the best spin's breakdown names its chips and multipliers")
+	check(run.top_contributors()[0][0] == "kingmaker", "top contributors skip betting chips")
+	var d: Dictionary = run.to_dict()
+	var back = RunState.new()
+	check(back.from_dict(d) and back.contrib.has("kingmaker") and back.best_spin_info.take == run.best_spin_info.take, "the summary survives a save")
+	d.erase("contrib")
+	var old = RunState.new()
+	old.from_dict(d)
+	old.contrib["x"] = 1.0
+	check(RunState.new().contrib.is_empty(), "defaults aren't shared between runs")
 
 
 func test_new_rules() -> void:

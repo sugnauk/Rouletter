@@ -68,7 +68,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 					amt *= 0.5
 					res.log.rules.append("The Duchess: the %d-chip pile on %s pays half" % [c.value, c.bet])
 				take += amt
-				_event(res, "win", c.bet, amt, "straight" if b.type == "straight" else b.type)
+				_event(res, "win", c.bet, amt, "straight" if b.type == "straight" else b.type, "bet")
 				res.stack += c.value
 				_remove(res, w, c, "won")
 			elif zero_hit and outside and wildcards > 0:
@@ -114,7 +114,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			pamt *= 2.0
 			res.log.chips.append("Focused chip on %s scores double" % c.bet)
 		take += pamt
-		_event(res, "win", c.bet, pamt, "mirror" if mirrored else ("straight" if b.type == "straight" else b.type))
+		_event(res, "win", c.bet, pamt, "mirror" if mirrored else ("straight" if b.type == "straight" else b.type), c.kind)
 		if mirrored:
 			res.log.chips.append("Mirror on %s catches %s" % [c.bet, B.label(pocket)])
 		hits.append(c)
@@ -145,8 +145,17 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	var kings := []
 	var crowns := []
 	var aces := []
+	var conduct := 0
 	for c in hits:
 		match c.kind:
+			"conductor":
+				conduct += c.copies
+			"relay":
+				for oc in w.perm_chips():
+					if oc.id != c.id and Board.is_straight(oc.bet) and not oc in hits and oc.id != w.frozen_id:
+						var ra: float = oc.value * B.bet(oc.bet).payout * Content.RELAY_SHARE * c.copies
+						take += ra
+						_bonus(res, oc, ra, "relay")
 			"bridge":
 				var nb: float = Content.BRIDGE_PER_NUMBER * B.bet(c.bet).numbers.size() * c.value
 				take += nb
@@ -198,6 +207,19 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 					take += bonus
 					res.log.chips.append("Collector: +%d for crowding" % bonus)
 					_event(res, "bonus", c.bet, bonus, "collector")
+	# Conductor: every multiplier chip you own fires too (once per Conductor in the stack).
+	for i in range(conduct):
+		for oc in w.perm_chips():
+			if oc.id == w.frozen_id:
+				continue
+			match oc.kind:
+				"kingmaker":
+					kings.append([oc.value, oc.copies])
+				"crown":
+					crowns.append([oc.value, oc.copies])
+				"ace":
+					aces.append([oc.value, oc.copies])
+		res.log.chips.append("Conductor: every multiplier chip fires")
 	if zero_hit and wildcards > 0:
 		take += Content.WILDCARD_BONUS * wildcards
 		res.log.chips.append("Wildcard Zero: +%d" % int(Content.WILDCARD_BONUS * wildcards))
@@ -342,6 +364,18 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				res.log.rules.append("Inside Track: %s chip grows to %d" % [c.kind, c.value])
 				break
 
+	# Fuse: growth turns into score.
+	for fc in w.perm_chips():
+		if fc.kind == "fuse" and fc.id != w.frozen_id:
+			var grown := 0
+			for e in res.effects:
+				if e.type == "value" and e.delta > 0 and e.id != fc.id:
+					grown += e.delta
+			if grown > 0:
+				var fb: float = Content.FUSE_BONUS * grown * fc.value
+				take += fb
+				_bonus(res, fc, fb, "fuse")
+
 	# Table condition "Spread Out": bets covering all three dozens score +25%.
 	if w.condition == "regions" and take > 0.0:
 		var doz := {}
@@ -387,6 +421,29 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			take *= cm
 			res.log.chips.append("Column Crown x%.2f" % cm)
 			_mult(res, cm, "Column Crown")
+	if w.has_rule("crowd_pleaser") and take > 0.0:
+		var lv := 0
+		for pc in w.perm_chips():
+			lv += pc.value
+		var cpm: float = 1.0 + Content.CROWD_STEP * lv
+		if cpm > 1.0:
+			take *= cpm
+			res.log.rules.append("Crowd Pleaser x%.2f (%d levels)" % [cpm, lv])
+			_mult(res, cpm, "Crowd Pleaser")
+	var wins: Array = res.events.filter(func(e): return e.kind == "win")
+	if w.has_rule("purist") and take > 0.0 and not wins.is_empty() and wins.all(func(e): return e.label == "straight"):
+		take *= 2.0
+		res.log.rules.append("Purist: straight-ups only, x2")
+		_mult(res, 2.0, "Purist")
+	if w.has_rule("high_stakes") and take > 0.0:
+		var riding := 0
+		for bc in felt.chips:
+			if bc.is_bet():
+				riding += bc.value
+		if riding >= Content.HIGH_STAKES_CHIPS:
+			take *= 1.5
+			res.log.rules.append("High Stakes: %d chips riding, x1.5" % riding)
+			_mult(res, 1.5, "High Stakes")
 	if w.has_rule("double_down") and w.spin_no == 1 and take > 0.0:
 		take *= 2.0
 		res.log.rules.append("Double Down: the first spin scores double")
@@ -448,8 +505,9 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 
 ## Scoring events in resolution order, for the UI's count-up.
 ##   kind: win | bonus | loss | push | cash | mult
-static func _event(res: Dictionary, kind: String, key: String, amount: float, label: String) -> void:
-	res.events.append({"kind": kind, "key": key, "amount": amount, "label": label})
+## chip: the chip kind that scored it ("bet" for betting chips), for the run summary.
+static func _event(res: Dictionary, kind: String, key: String, amount: float, label: String, chip: String = "") -> void:
+	res.events.append({"kind": kind, "key": key, "amount": amount, "label": label, "chip": chip})
 
 
 ## Does a trigger chip (Content.CHIPS[...].trigger) fire on this pocket?
@@ -493,7 +551,7 @@ static func _triggered(t: Dictionary, B, own: int, pocket: int, covered: bool) -
 
 static func _bonus(res: Dictionary, c, amount: float, label: String) -> void:
 	res.log.chips.append("%s on %s: +%s" % [label.capitalize(), c.bet, _fmt(amount)])
-	_event(res, "bonus", c.bet, amount, label)
+	_event(res, "bonus", c.bet, amount, label, c.kind)
 
 
 static func _mult(res: Dictionary, m: float, label: String) -> void:

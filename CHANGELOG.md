@@ -3,6 +3,24 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.28
+- Builds can explode now:
+  - Three scaling House Rules:
+    - Crowd Pleaser: every scoring spin x(1 + 0.05 per level of permanent chips on your felt).
+    - Purist: x2 when every winning bet was a straight-up.
+    - High Stakes: x1.5 with 15+ chips riding.
+  - Three chain chips, where one chip sets off others:
+    - Conductor: when it hits, every multiplier chip you own fires too, wherever it sits.
+    - Relay: when it hits, your other number chips score half their straight-up pay.
+    - Fuse: +2 Take for every level your other chips grow that spin.
+  - New Almanac categories: Scaling Rules and Chain Chips, all with pixel icons.
+- Run summary: the end screen shows your build.
+  - The felt you finished with.
+  - Your top three chips by Take scored.
+  - Your best spin broken down by chip and multiplier.
+  - The run's seed.
+- Save image saves the summary as a PNG to share: a download on the web, your user folder on desktop.
+
 ## 0.0.27
 - Gentler first runs. Until you've cleared a night, the extra systems arrive one night at a time:
   - night 1 is just roulette, your kit and the free chip;

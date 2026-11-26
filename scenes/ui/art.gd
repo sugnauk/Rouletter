@@ -55,6 +55,12 @@ const GLYPHS := {
 ## Pixel sprites for items that used to be lettered tiles: 12 rows of 12 characters.
 ## Colours: see SPRITE_COLOURS ('.' is transparent).
 const SPRITES := {
+	"conductor": ["..........w.", ".........w..", "........w...", ".......w....", "......w.....", "..gg.w......", ".gyygg......", ".gyyyg......", ".gyyyg......", "..ggg.......", ".....rr.....", "....rrrr...."],
+	"relay": ["............", ".cc.........", "cccc........", ".cc..c......", ".....cc.....", "cccccccc....", ".....cc.....", ".....c..cc..", ".......cccc.", "........cc..", "............", "............"],
+	"fuse": [".........y..", "........yoy.", ".........o..", "........b...", ".......b....", "......b.....", "...kkkk.....", "..kkkkkk....", ".kkkkkkkk...", ".kkwkkkkk...", ".kkkkkkkk...", "..kkkkkk...."],
+	"crowd_pleaser": ["............", ".w..w..w..w.", "www.www.www.", ".w..w..w..w.", "............", ".y.y.y.y.y.y", "............", "rrrrrrrrrrrr", "r..........r", "r.yyyyyyyy.r", "r..........r", "rrrrrrrrrrrr"],
+	"purist": ["....wwww....", "..wwwwwwww..", ".wwkkkkkkww.", ".wwk....kww.", "wwk..rr..kww", "wwk.rrrr.kww", "wwk.rrrr.kww", "wwk..rr..kww", ".wwk....kww.", ".wwkkkkkkww.", "..wwwwwwww..", "....wwww...."],
+	"high_stakes": ["............", "....rrrr....", "...rwrrwr...", "....rrrr....", "...bbbbbb...", "..bwbbbbwb..", "...bbbbbb...", "..gggggggg..", ".gywggggwyg.", "..gggggggg..", ".rrrrrrrrrr.", "............"],
 	"odd_fellow": ["............", ".kkkkkkkkkk.", ".kwwwwwwwwk.", ".kwkkwwwwwk.", ".kwkkwwwwwk.", ".kwwwwkkwwk.", ".kwwwwkkwwk.", ".kwwwwwwkkk.", ".kwwwwwwkkk.", ".kwwwwwwwwk.", ".kkkkkkkkkk.", "............"],
 	"even_keel": ["......k.....", "......kw....", "......kww...", "......kwww..", "......kwwww.", "......kwwwww", "......k.....", "bbbbbbbbbbbb", ".bbbbbbbbbb.", "..bbbbbbbb..", ".BBB.BBB.BBB", "BBBBBBBBBBBB"],
 	"low_roller": ["....GGGG....", "....GGGG....", "....GGGG....", "....GGGG....", ".GGGGGGGGGG.", "..GGGGGGGG..", "...GGGGGG...", "....GGGG....", ".....GG.....", "............", "wwwwwwwwwwww", "dddddddddddd"],

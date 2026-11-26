@@ -5,12 +5,19 @@ const P := preload("res://scenes/ui/palette.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const Feats := preload("res://core/feats.gd")
+const FeltView := preload("res://scenes/ui/felt_view.gd")
+const Art := preload("res://scenes/ui/art.gd")
 
 var main
 var title_lbl: Label
 var msg_lbl: Label
 var stats_lbl: Label
 var values_lbl: Label
+var build_panel: Panel
+var felt_view
+var build_lbl: Label
+var build_canvas: Control
+var share_lbl: Label
 
 
 func setup() -> void:
@@ -24,6 +31,27 @@ func setup() -> void:
 	values_lbl = P.label(self, "", P.FONT, P.CREAM)
 	P.place(values_lbl, Vector2(160, 136))
 	P.place(P.button(self, "Continue", _continue, Vector2(120, 24)), Vector2(42, 300))
+	P.place(P.button(self, "Save image", _save_image, Vector2(100, 24)), Vector2(170, 300))
+	share_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
+	share_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	P.place(share_lbl, Vector2(42, 330), Vector2(330, 24))
+	# Your build: the felt you finished with, your top chips and the best spin's breakdown.
+	build_panel = Panel.new()
+	build_panel.add_theme_stylebox_override("panel", P.box(Color("#120c08"), P.LINE, 1))
+	P.place(build_panel, Vector2(392, 128), Vector2(240, 214))
+	add_child(build_panel)
+	var bt := P.label(build_panel, "YOUR BUILD", P.FONT_SMALL, P.GOLD)
+	P.place(bt, Vector2(6, 4))
+	felt_view = FeltView.new()
+	felt_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	felt_view.scale = Vector2(0.68, 0.68)
+	P.place(felt_view, Vector2(6, 16))
+	build_panel.add_child(felt_view)
+	build_canvas = Control.new()
+	build_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	P.place(build_canvas, Vector2(6, 96), Vector2(228, 112))
+	build_canvas.draw.connect(_draw_build)
+	build_panel.add_child(build_canvas)
 
 
 func refresh() -> void:
@@ -39,6 +67,11 @@ func refresh() -> void:
 		for b in ll.layout:
 			bets.append("%s x%d" % [_bet_label(b[0]), b[1]])
 		msg_lbl.text += "  Short by %d Take (%d of %d).  Your layout: %s." % [ll.short, ll.take, ll.target, ", ".join(bets) if not bets.is_empty() else "no bets"]
+	felt_view.run = main.run
+	felt_view.layout()
+	felt_view.queue_redraw()
+	build_canvas.queue_redraw()
+	share_lbl.text = "Seed %d%s" % [main.run.run_seed, ("  -  " + Content.CHALLENGES[main.run.challenge].name) if main.run.challenge != "" else ("  -  weekly " + main.run.weekly if main.run.weekly != "" else "")]
 	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Best spin", "Marker paid", "Left unpaid", "Enforcers beaten", "Markers earned", "Feats", "Next unlock"])
 	values_lbl.text = "\n".join([
 		main.run.felt.board.def.name,
@@ -54,6 +87,53 @@ func refresh() -> void:
 	])
 
 
+func _draw_build() -> void:
+	var c := build_canvas
+	var run = main.run
+	var font := P.font()
+	Art.text(c, font, Vector2(0, 8), "TOP CHIPS", 8, P.DIM)
+	var top: Array = run.top_contributors(3)
+	if top.is_empty():
+		Art.text(c, font, Vector2(0, 20), "no chips scored", 8, P.DIM)
+	var most: float = maxf(1.0, top[0][1]) if not top.is_empty() else 1.0
+	for i in range(top.size()):
+		var y := 14 + i * 14
+		Art.icon(c, top[i][0], Vector2(6, y + 5), 1)
+		Art.text(c, font, Vector2(16, y + 9), Content.CHIPS[top[i][0]].name, 8, P.CREAM)
+		var w: float = 50.0 * top[i][1] / most
+		c.draw_rect(Rect2(76, y + 3, w, 5), P.GOLD.darkened(0.2))
+		Art.text(c, font, Vector2(130, y + 9), "+%d" % top[i][1], 8, P.GOLD)
+	var b: Dictionary = run.best_spin_info
+	Art.text(c, font, Vector2(0, 62), "BEST SPIN" + ("  +%d on %s" % [b.take, b.pocket] if not b.is_empty() else ""), 8, P.DIM)
+	if not b.is_empty():
+		var parts: Array = b.parts
+		for i in range(mini(parts.size(), 6)):
+			var x := (i % 2) * 114
+			var y := 72 + (i / 2) * 12
+			Art.text(c, font, Vector2(x, y + 8), parts[i][0], 8, P.CREAM)
+			Art.text(c, font, Vector2(x + 104, y + 8), parts[i][1], 8, P.VIOLET if parts[i][1].begins_with("x") else P.GOLD)
+			if x == 0:
+				pass
+
+
+## Save a picture of this summary to share: a download on the web, a PNG in the user folder elsewhere.
+func _save_image() -> void:
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	var stamp := Time.get_datetime_string_from_system().replace(":", "-")
+	var fname := "rouletter_run_%s.png" % stamp
+	if OS.has_feature("web"):
+		JavaScriptBridge.download_buffer(img.save_png_to_buffer(), fname, "image/png")
+		share_lbl.text = "Saved %s (check your downloads)." % fname
+	else:
+		var path := "user://" + fname
+		if img.save_png(path) == OK:
+			share_lbl.text = "Saved to %s" % ProjectSettings.globalize_path(path)
+		else:
+			share_lbl.text = "Couldn't save the image."
+	Sfx.play("click")
+
+
 func _bet_label(key: String) -> String:
 	if key.begins_with("S") and not key.begins_with("SP") and not key.begins_with("ST"):
 		return main.run.felt.board.label(int(key.substr(1)))
@@ -67,7 +147,7 @@ func _names(ids: Array, name_of: Callable) -> String:
 	for i in ids:
 		out.append(name_of.call(i))
 	var txt := ", ".join(out)
-	return txt if txt.length() <= 60 else txt.substr(0, 57) + "..."
+	return txt if txt.length() <= 34 else txt.substr(0, 31) + "..."
 
 
 func _next_unlock() -> String:
@@ -76,7 +156,7 @@ func _next_unlock() -> String:
 		return "everything owned"
 	var m: int = main.profile.markers
 	if m >= nu.cost:
-		return "%s - ready to buy at the Pawn Shop!" % nu.name
+		return "%s (ready at the Pawn Shop)" % nu.name
 	var bar := ""
 	for i in range(nu.cost):
 		bar += "#" if i < m else "-"
