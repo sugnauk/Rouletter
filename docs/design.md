@@ -96,6 +96,9 @@ Full-run win rate: French 14%, European 18%, American 7%, Mini 17%, Triple Zero 
 
 CI: `.github/workflows/test-branch.yml` runs the tests and the smoke screenshots on every non-main push and PR (screenshots are the run's artifact); `deploy-web.yml` publishes `main` to Pages.
 
+## Marker grades (difficulty)
+`Content.GRADES` (9 grades). Winning at grade N opens N+1 (`profile.best_grade`); grades are cumulative: 2 Short Stack (-5 chips), 3 Tight Cage (+$1 cash prices), 4 Heavy Payments (+10%), 5 No Tips (no cash for spare spins), 6 Fast Tables (-1 spin at High Roller/Enforcer), 7 Mean Enforcers (+10% at boss tables), 8 Pricey Rerolls (start at $4), 9 Vance's Own (+10% more). The marker's face value grows 25% per grade. Sim (European, bot): ~18% / 11% (G3) / 6% (G4) / ~0% from G5; humans should go much further. `tools/sim.gd -- grade=N`.
+
 ## Polish pass (after the roadmap)
 - **Per-run marker** (see Story): HUD marker bar, loading cards, end-screen "paid / left".
 - **Juice:** chips fly from winning squares into the Take meter, a combo counter, NICE / BIG WIN / JACKPOT tiers (flash, slow-mo, coin rain, fanfare), PAID glow on the meter, near-miss shudder with "SO CLOSE", a table-clear reward tally, SOLD! pops, cash that counts up with coin ticks, a breathing SPIN button.

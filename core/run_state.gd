@@ -42,15 +42,17 @@ var favours: Array = []          ## Dealer favours waiting for the next table
 var vouchers: Array = []         ## run-wide perks from the Dealer
 var best_spin: float = 0.0       ## run summary: the biggest single spin
 var beaten: Array = []           ## run summary: Enforcers beaten this run
-var new_player := false          ## first runs: vendors open up one at a time (see _vendor_open)
+var new_player := false
+var grade: int = 0               ## marker grade (difficulty), see Content.GRADES          ## first runs: vendors open up one at a time (see _vendor_open)
 var total_take: float = 0.0
 var nights_cleared: int = 0
 var message: String = ""
 var last_result: Dictionary = {}
 
 
-func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1) -> void:
+func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1, grade_in: int = 0) -> void:
 	acts = acts_in
+	grade = clampi(grade_in, 0, Content.GRADES.size() - 1)
 	rng = GameRng.new(seed_in)
 	wheel_id = wheel
 	unlocked = unlocked_ids.duplicate() if not unlocked_ids.is_empty() else Profile.default_unlocks()
@@ -60,7 +62,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	inventory = []
 	for k in def.kit:
 		inventory.append(k.duplicate())
-	stack_size = Content.START_STACK
+	stack_size = Content.START_STACK - (5 if graded(1) else 0)
 	stack_buys = 0
 	stack_owed = 0
 	loan_pct = 0.0
@@ -94,7 +96,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
-	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player"]
+	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade"]
 
 
 ## Everything needed to pick the run up again later (only meaningful mid-run).
@@ -153,7 +155,21 @@ func current_target() -> int:
 	var target: int = int(round(Content.targets_for(night)[table_idx] * Wheels.get_def(wheel_id).get("target", 1.0)))
 	if felt.has_rule("rent_control"):
 		target = int(round(target * (1.0 - Content.RENT_CONTROL_CUT)))
+	var gm := 1.0
+	if graded(3):
+		gm *= 1.1
+	if graded(6) and table_idx == 2:
+		gm *= 1.1
+	if graded(8):
+		gm *= 1.1
+	if gm > 1.0:
+		target = int(ceil(target * gm))
 	return target
+
+
+## Is grade `n`'s twist in force? (Grades are cumulative.)
+func graded(n: int) -> bool:
+	return grade >= n
 
 
 ## The Enforcer waiting at this night's boss table.
@@ -169,7 +185,8 @@ func nights_total() -> int:
 # --- The run's marker: what you owe Mr. Vance tonight ------------------------------------
 
 func marker_total() -> int:
-	return Content.MARKER_ACT1 if acts == 1 else Content.MARKER_ACT2
+	var base: int = Content.MARKER_ACT1 if acts == 1 else Content.MARKER_ACT2
+	return int(round(base * (1.0 + Content.MARKER_GRADE_STEP * grade)))
 
 
 ## Each table's share of the marker is its base payment over the whole run's payments.
@@ -237,6 +254,8 @@ func _start_table() -> void:
 	felt.hit_streak = 0
 	felt.last_pocket = -99
 	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else Content.SPINS
+	if graded(5) and table_idx >= 1:
+		spins -= 1
 	if "patience" in vouchers:
 		spins += 1
 	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
@@ -441,7 +460,7 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 func _clear_table() -> void:
 	var t: float = table.take
 	var comps := mini(cash / Content.COMPS_PER, Content.COMPS_MAX)
-	var reward: int = Content.CLEAR_CASH[table_idx] + table.spins_left * Content.CASH_PER_SPIN_LEFT + comps
+	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
 	if "comp_card" in vouchers:
 		reward += Content.COMP_CARD_CASH
 	cash += reward
@@ -491,7 +510,7 @@ func _lose(why: String) -> void:
 
 func _open_shop() -> void:
 	phase = Phase.SHOP
-	shop = {"stock": [], "reroll": Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors()}
+	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors()}
 	_restock()
 
 
@@ -606,9 +625,12 @@ func price_of(item: Dictionary) -> int:
 		return item.price + Content.PIT_BOSS_STEP * felt.house_rules.size()
 	if item.get("currency", "cash") == "take":
 		return int(ceil(item.price * Content.targets_for(night)[0] / float(Content.NIGHT_BASE[0])))
+	var p: int = item.price
+	if item.get("currency", "cash") == "cash" and graded(2):
+		p += 1
 	if item.get("currency", "cash") == "cash" and "house_credit" in vouchers:
-		return maxi(1, item.price - 1)
-	return item.price
+		p = maxi(1, p - 1)
+	return p
 
 
 ## Chips you could still hand the Pit Boss without dropping below the minimum stack.

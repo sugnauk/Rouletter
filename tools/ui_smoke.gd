@@ -18,7 +18,10 @@ func _process(delta: float) -> void:
 	var run = main.run
 	var plan := [
 		[0.6, func(): shot("01_title")],
-		[0.7, func(): main.begin_flow()],
+		[0.7, func():
+			main.profile.best_grade = 2
+			main.screens.select.grade = 2
+			main.begin_flow()],
 		[1.6, func(): shot("02_intro_dialogue")],
 		[1.7, func(): _close_dialogue()],
 		[2.0, func(): shot("03_select")],

@@ -232,8 +232,8 @@ func begin_flow() -> void:
 		show_screen("select")
 
 
-func start_run(wheel: String, acts: int = 1) -> void:
-	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts)
+func start_run(wheel: String, acts: int = 1, grade: int = 0) -> void:
+	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts, mini(grade, profile.max_grade()))
 	run.new_player = profile.best_night == 0 and profile.wins == 0
 	run_feats = []
 	Sfx.play("click")
@@ -296,8 +296,8 @@ func _on_run_ended(won: bool) -> void:
 	check_feats("end", {"won": won})
 	var paid: int = run.marker_paid()
 	profile.add_history({"wheel": run.wheel_id, "acts": run.acts, "nights": run.nights_cleared,
-		"take": int(run.total_take), "best_spin": int(run.best_spin), "won": won})
-	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid)
+		"take": int(run.total_take), "best_spin": int(run.best_spin), "won": won, "grade": run.grade})
+	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid, run.grade)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
 		"paid": paid, "marker": run.marker_total(), "markers": res.markers, "feats": run_feats.duplicate(),
 		"best_spin": run.best_spin, "beaten": run.beaten.duplicate()}

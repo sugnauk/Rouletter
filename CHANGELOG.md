@@ -3,6 +3,10 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.8
+- Marker grades: a 9-step difficulty ladder. Win a run to open the next grade on the wheel screen. Each grade keeps the ones below it and adds a twist: Short Stack, Tight Cage, Heavy Payments, No Tips, Fast Tables, Mean Enforcers, Pricey Rerolls, Vance's Own Marker. Bigger grades carry a bigger marker.
+- Two new Feats: win on Grade 3+, and win on Grade 9.
+
 ## 0.0.7
 - Pause menu (Esc, or the MENU button at the table and in the Cage): Resume, Options, Abandon run (two clicks; counts as a loss), Quit to title (your run is kept for Continue).
 - Options: Reset progress (two clicks; keeps your options), and a Credits screen.

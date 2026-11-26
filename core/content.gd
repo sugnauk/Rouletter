@@ -99,6 +99,21 @@ const KINGMAKER_MULT := 1.5               ## Kingmaker: the spin's Take x1.5 whe
 const MOMENTUM_STEP := 0.25               ## Momentum: +25% per scoring spin in a row
 
 # --- Meta ------------------------------------------------------------------------------
+## Marker grades: the difficulty ladder. Winning at a grade opens the next. Each grade keeps
+## every twist of the grades below it.
+const GRADES := [
+	{"name": "House Marker", "desc": "The standard marker."},
+	{"name": "Short Stack", "desc": "You start every table with 5 fewer betting chips."},
+	{"name": "Tight Cage", "desc": "Everything sold for cash in the Cage costs $1 more."},
+	{"name": "Heavy Payments", "desc": "Every payment is 10% bigger."},
+	{"name": "No Tips", "desc": "No cash for spins left over when you clear a table."},
+	{"name": "Fast Tables", "desc": "High Roller and Enforcer tables have one spin fewer."},
+	{"name": "Mean Enforcers", "desc": "Enforcer tables ask 10% more."},
+	{"name": "Pricey Rerolls", "desc": "Rerolls in the Cage start at $4."},
+	{"name": "Vance's Own Marker", "desc": "Every payment is a further 10% bigger. Mr. Vance's personal paper."},
+]
+const MARKER_GRADE_STEP := 0.25          ## each grade adds 25% to the marker's face value
+
 ## Every run is one marker owed to Mr. Vance; each table cleared pays its share (weighted by
 ## that table's payment). Clearing the last night pays it in full.
 const MARKER_ACT1 := 1000000

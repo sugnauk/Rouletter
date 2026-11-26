@@ -2,6 +2,7 @@ extends SceneTree
 ## Headless balancing sim:  godot --headless --path . --script res://tools/sim.gd [-- runs=200 all act=2]
 ##   all    -> bot plays with every unlock (default: starting pool only)
 ##   act=2  -> Act II runs (8 nights, ending at the Owner)
+##   grade=N -> marker grade N (1-9, difficulty ladder)
 ## Prints clear rates per table for each wheel, using a simple greedy bot.
 
 const Board := preload("res://core/board.gd")
@@ -16,6 +17,7 @@ func _initialize() -> void:
 	var runs := 200
 	var all := false
 	var acts := 1
+	var grade := 0
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("runs="):
 			runs = int(a.substr(5))
@@ -23,6 +25,8 @@ func _initialize() -> void:
 			all = true
 		elif a.begins_with("act="):
 			acts = int(a.substr(4))
+		elif a.begins_with("grade="):
+			grade = int(a.substr(6)) - 1
 	var unlocks := Profile.default_unlocks()
 	if all:
 		for e in Profile.catalogue():
@@ -34,11 +38,11 @@ func _initialize() -> void:
 		print("  %-12s pockets %2d  even-money EV/unit %+.4f" % [id, f.board.pockets.size(), Resolver.expected_value(f).net / 2.0])
 	print("== Bot runs (%d per wheel, %s pool) ==" % [runs, "full" if all else "starting"])
 	for id in Wheels.ORDER:
-		sim_wheel(id, runs, unlocks, acts)
+		sim_wheel(id, runs, unlocks, acts, grade)
 	quit()
 
 
-func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1) -> void:
+func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: int = 0) -> void:
 	var reached := []
 	var cleared := []
 	var n: int = Content.NIGHTS if acts == 1 else Content.ACT2_NIGHTS
@@ -49,7 +53,7 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1) -> void:
 	var wins := 0
 	for s in range(runs):
 		var run = RunState.new()
-		run.start_run(5000 + s, wheel, unlocks, acts)
+		run.start_run(5000 + s, wheel, unlocks, acts, grade)
 		var guard := 0
 		while guard < 400:
 			guard += 1

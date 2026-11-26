@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
@@ -689,6 +689,29 @@ func test_abandon_reset_history() -> void:
 	check(p.history.size() == 10 and p.history[0].nights == 11, "history keeps the newest 10")
 	p.reset()
 	check(p.markers == 0 and p.feats.is_empty() and p.history.is_empty() and is_equal_approx(p.settings.music, 0.2), "reset wipes progress but keeps options")
+
+
+func test_grades() -> void:
+	var g0 = RunState.new()
+	g0.start_run(11, "european", Profile.default_unlocks(), 1, 0)
+	var g8 = RunState.new()
+	g8.start_run(11, "european", Profile.default_unlocks(), 1, 8)
+	check(g8.table.stack == g0.table.stack - 5, "Short Stack: 5 fewer chips")
+	check(g8.table.spins_left == g0.table.spins_left, "Fast Tables spare the Floor table")
+	g8.table_idx = 1
+	g8._start_table()
+	check(g8.table.spins_left == Content.SPINS - 1, "Fast Tables: a spin fewer at the High Roller")
+	check(g8.table.target > g0.table.target, "Heavy Payments and Vance's Own raise the payment")
+	check(g8.marker_total() == int(round(Content.MARKER_ACT1 * (1.0 + Content.MARKER_GRADE_STEP * 8))), "a bigger marker")
+	var item := {"type": "chip", "id": "perm", "price": 4, "currency": "cash", "vendor": "cashier"}
+	check(g8.price_of(item) == 5 and g0.price_of(item) == 4, "Tight Cage: +$1")
+	var p = Profile.new()
+	check(p.max_grade() == 0, "only grade 1 at first")
+	p.record_run(4, 300.0, true, 1, 0, 0)
+	check(p.max_grade() == 1, "a win opens the next grade")
+	p.record_run(4, 300.0, false, 1, 0, 1)
+	check(p.max_grade() == 1, "a loss doesn't")
+	check(Content.GRADES.size() == 9, "nine grades")
 
 
 func test_shop() -> void:
