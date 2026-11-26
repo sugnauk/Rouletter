@@ -346,7 +346,9 @@ func _buy(i: int) -> void:
 	var item: Dictionary = run.shop.stock[i]
 	if run.buy(i):
 		Sfx.play("buy")
-		main.fx.burst(counter.global_position + Vector2(26 + i * 66, 30), 18, [P.GOLD, P.CREAM, P.chip_color(item.id)])
+		var tp := _token_pos(i)
+		main.fx.burst(tp, 22, [P.GOLD, P.CREAM, P.chip_color(item.id)], 130.0)
+		main.fx.pop_text(tp - Vector2(0, 20), "SOLD!", P.GOLD)
 		if item.type == "chip":
 			selected_item = run.inventory.size() - 1
 			mode = "place"

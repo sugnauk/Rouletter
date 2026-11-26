@@ -39,6 +39,7 @@ var shake_t := 0.0
 var shake_amt := 0.0
 var pending_lines: Array = []
 var last_summary: Dictionary = {}
+var last_clear: Dictionary = {}    ## the last table_cleared info, for the reward tally
 
 
 func _ready() -> void:
@@ -218,6 +219,7 @@ func start_run(wheel: String, acts: int = 1) -> void:
 
 
 func _on_table_cleared(info: Dictionary) -> void:
+	last_clear = info
 	if info.boss:
 		var e: Dictionary = Content.ENFORCERS[info.enforcer]
 		pending_lines.append({"speaker": e.name, "text": e.defeat})

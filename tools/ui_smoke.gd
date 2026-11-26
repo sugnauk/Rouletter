@@ -35,6 +35,9 @@ func _process(delta: float) -> void:
 		[2.6, func(): shot("04_table_bets")],
 		[2.7, func(): main.screens.table._on_spin()],
 		[4.8, func(): shot("05a_counting")],
+		[6.2, func():
+			main.last_clear = {"take": 12.0, "target": 8, "table": 0, "spins_left": 3, "comps": 1, "reward": 7}
+			main.screens.table._show_tally()],
 		[7.0, func(): shot("05_after_spin")],
 		[7.1, func():
 			var guard := 0

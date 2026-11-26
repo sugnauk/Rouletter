@@ -52,6 +52,7 @@ var score_rows: Array = []      ## {kind, text, amount}
 var spin_score := 0.0
 var spin_score_vis := false
 var score_pop := 0.0
+var hits := 0                    ## scoring events this spin (the combo counter)
 var chance := 0.0
 var take_per_spin := 0.0
 
@@ -318,7 +319,11 @@ func _draw_hud(c: Control) -> void:
 	for i in range(1, 10):
 		var x: float = inner.position.x + floor(inner.size.x * i / 10.0)
 		c.draw_rect(Rect2(x, inner.position.y, 1, inner.size.y), Color(0, 0, 0, 0.35))
-	Art.text(c, font, Vector2(mr.get_center().x, 16), "TAKE %d / %d" % [int(shown_take), t.target], 8, P.CREAM if k < 0.55 else P.WOOD_DARK, true)
+	if shown_take >= t.target:
+		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 120.0)
+		c.draw_rect(mr.grow(1), Color(P.GOLD, 0.5 + 0.5 * g), false, 2.0)
+		c.draw_rect(mr.grow(3), Color(P.GOLD, 0.25 * g), false, 1.0)
+	Art.text(c, font, Vector2(mr.get_center().x, 16), ("PAID!  %d / %d" if shown_take >= t.target else "TAKE %d / %d") % [int(shown_take), t.target], 8, P.CREAM if k < 0.55 else P.WOOD_DARK, true)
 	# Spins as balls.
 	var total: int = t.spins_used + t.spins_left
 	for i in range(total):
@@ -408,6 +413,10 @@ func _draw_score(c: Control) -> void:
 	var big := "+%d" % int(round(spin_score))
 	var size := 16 if score_pop < 0.5 else 24
 	Art.text(c, tfont, Vector2(165, 30), big, size, P.GOLD if spin_score > 0 else P.DIM, true)
+	if hits >= 2:
+		var hue := fmod(Time.get_ticks_msec() / 900.0, 1.0)
+		var cc := Color.from_hsv(hue, 0.45, 1.0) if hits >= 4 else P.CYAN
+		Art.text(c, font, Vector2(c.size.x - 12 - font.get_string_size("x%d HITS" % hits, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 14), "x%d HITS" % hits, 8, cc)
 	var y := 52.0
 	for row in score_rows.slice(maxi(0, score_rows.size() - 8)):
 		var col: Color = {"win": P.GOOD, "bonus": P.CYAN, "loss": P.DANGER, "mult": P.VIOLET, "cash": P.GOLD, "push": P.DIM}.get(row.kind, P.CREAM)
@@ -515,10 +524,13 @@ func _on_spin() -> void:
 			main.shake(5.0, 0.5)
 			Sfx.play("bust")
 		else:
-			main.fx.stamp("PAID", P.GOLD, 1.6)
+			main.fx.stamp("PAID", P.GOLD, 1.2)
 			main.fx.coin_rain(90)
 			Sfx.play("clear")
-		await get_tree().create_timer(1.5).timeout
+			if not main.fast_ui:
+				await get_tree().create_timer(0.9).timeout
+				_show_tally()
+		await get_tree().create_timer(1.5 if main.fast_ui else 2.8).timeout
 		spinning = false
 		main.route()
 	else:
@@ -553,6 +565,8 @@ func _play_count(res: Dictionary, before: float, target: int) -> void:
 	var lost := 0.0
 	var delay := 0.24
 	var combo := 0
+	hits = 0
+	var meter_at := Vector2(MID_X + 150, 12)
 	# Build up first: wins and bonuses, then multipliers, then the losses tick off.
 	var order := {"win": 0, "bonus": 1, "cash": 2, "push": 3, "mult": 4, "loss": 5}
 	var events: Array = res.events.duplicate()
@@ -568,6 +582,8 @@ func _play_count(res: Dictionary, before: float, target: int) -> void:
 				felt_view.pop(key)
 				felt_view.float_text(key, "+%d" % int(e.amount), P.GOLD)
 				fx.burst(at, 6 + mini(20, int(e.amount / 4.0)), [P.GOLD, P.CREAM])
+				fx.fly(at, meter_at, P.GOLD, 2 + mini(6, int(e.amount / 6.0)))
+				hits += 1
 				score_rows.append({"kind": "win", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": _chip_icon(key)})
 				Sfx.play("win", 1.0 + 0.09 * combo)
 				combo += 1
@@ -575,6 +591,8 @@ func _play_count(res: Dictionary, before: float, target: int) -> void:
 				gross += e.amount
 				felt_view.float_text(key, "+%d" % int(e.amount), P.CYAN)
 				fx.burst(at, 8, [P.CYAN, P.CREAM])
+				fx.fly(at, meter_at, P.CYAN, 2)
+				hits += 1
 				score_rows.append({"kind": "bonus", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": _chip_icon(key)})
 				Sfx.play("win", 1.0 + 0.09 * combo)
 				combo += 1
@@ -611,18 +629,72 @@ func _play_count(res: Dictionary, before: float, target: int) -> void:
 	# Slam the spin's Take into the meter.
 	var after: float = before + res.take
 	if res.take > 0.0:
-		var big: bool = res.take >= target * 0.4
+		var ratio: float = res.take / maxf(1.0, target)
 		meter_pulse = 1.0
-		if big:
-			main.shake(4.0, 0.35)
-			fx.burst(Vector2(MID_X + 150, 12), 40, [P.GOLD, P.CREAM, P.GOOD], 140.0)
+		if ratio >= 1.0:
+			# One spin paid the whole table: the full jackpot treatment.
+			fx.banner("JACKPOT!", P.GOLD, 1.6, 100, 24)
+			fx.flash(0.7)
+			main.shake(6.0, 0.5)
+			fx.coin_rain(60)
+			fx.burst(meter_at, 60, [P.GOLD, P.CREAM, P.GOOD, P.CYAN], 170.0)
 			Sfx.play("big_win")
+			Engine.time_scale = 0.45
+			await get_tree().create_timer(0.35, true, false, true).timeout
+			Engine.time_scale = 1.0
+		elif ratio >= 0.4:
+			fx.banner("BIG WIN", P.GOLD, 1.2, 100, 16)
+			fx.flash(0.3)
+			main.shake(4.0, 0.35)
+			fx.burst(meter_at, 40, [P.GOLD, P.CREAM, P.GOOD], 140.0)
+			Sfx.play("big_win")
+		elif ratio >= 0.15:
+			fx.banner("NICE", P.GOOD, 0.8, 100, 8)
 		var tw := create_tween()
 		tw.tween_method(func(v: float): shown_take = v, before, after, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		await tw.finished
 	else:
 		shown_take = after
+		_near_miss(res)
 	await get_tree().create_timer(0.25).timeout
+
+
+## The reward breakdown after a table is paid.
+func _show_tally() -> void:
+	var run = main.run
+	var info: Dictionary = main.last_clear
+	if info.is_empty():
+		return
+	var rows := [
+		["PAYMENT", "%d / %d" % [int(info.take), info.target], P.CREAM],
+		["BASE PAY", "+$%d" % Content.CLEAR_CASH[info.table], P.GOLD],
+	]
+	if info.spins_left > 0:
+		rows.append(["%d SPIN%s LEFT" % [info.spins_left, "" if info.spins_left == 1 else "S"], "+$%d" % (info.spins_left * Content.CASH_PER_SPIN_LEFT), P.GOLD])
+	if info.comps > 0:
+		rows.append(["COMPS", "+$%d" % info.comps, P.GOLD])
+	var spare: int = maxi(0, int(info.take - info.target))
+	if spare > 0:
+		rows.append(["SPARE TAKE", "+%d" % spare, P.VIOLET])
+	rows.append(["MARKER LEFT", "$" + P.money(run.marker_left()) if run.marker_left() > 0 else "PAID IN FULL", P.DANGER if run.marker_left() > 0 else P.GOOD])
+	main.fx.show_tally("TABLE CLEARED  +$%d" % info.reward, rows)
+
+
+## The ball landed right next to one of your numbers: let the player feel it.
+func _near_miss(res: Dictionary) -> void:
+	var run = main.run
+	var B = run.felt.board
+	for c in run.felt.chips:
+		if not Board.is_straight(c.bet):
+			continue
+		var n := Board.straight_number(c.bet)
+		if n == res.pocket:
+			continue
+		if B.wheel_distance(n, res.pocket) == 1 or res.pocket in B.neighbours(n):
+			felt_view.near(c.bet)
+			main.fx.pop_text(felt_view.global_position + felt_view.key_center(c.bet) - Vector2(0, 8), "SO CLOSE", P.CREAM)
+			Sfx.play("lose", 0.8)
+			return
 
 
 func _bet_name(key: String) -> String:

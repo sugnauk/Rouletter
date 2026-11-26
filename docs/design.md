@@ -4,11 +4,11 @@ A roulette roguelite. **The wheel is always fair, and the felt is what you build
 
 ## Story (light noir)
 All scenes live in `core/story.gd` with an id and a Journal title; `profile.seen_beats` records what you've seen.
-1974, the Gilded Ace casino. **Each run is one marker**: you start it owing Mr. Vance $1,000,000 ($5,000,000 in Act II). Every table is a payment due; clearing it pays that table's share of the marker (weighted by its payment), missing one ends the run, and clearing the last night pays the marker in full. The HUD shows what's left; the title screen shows only lifetime stats and Markers. Story beats unlock as it shrinks. Enforcers are Vance's people. Data lives in `core/story.gd` and the Enforcers in `core/content.gd`.
+1974, the Gilded Ace casino. **Each run is one marker**: you start it owing Mr. Vance $1,000,000 ($5,000,000 in Act II). Every table is a payment due; clearing it pays that table's share of the marker (weighted by its payment), missing one ends the run, and clearing the last night pays the marker in full. The HUD shows what's left; the title screen shows only lifetime stats and Markers. Story beats unlock as you progress (runs, nights reached, wins). Enforcers are Vance's people. Data lives in `core/story.gd` and the Enforcers in `core/content.gd`.
 
 ## Run loop
 - **4 Nights × 3 tables:** Floor, then High Roller, then Enforcer. Clearing Night 4 wins the run.
-- **Act II, the Floor Above** (opens once Act I's $1M marker is paid): pick ACT II on the wheel screen and the run carries on upstairs for nights 5-8 (Private Room, Velvet Room, Enforcer), against three new Enforcers and finally the Owner, Mr. Vance, at his own table. Take pays Act I's marker first, then Act II's $5M marker.
+- **Act II, the Floor Above** (opens after your first Act I win): pick ACT II on the wheel screen and the run carries on upstairs for nights 5-8 (Private Room, Velvet Room, Enforcer), against three new Enforcers and finally the Owner, Mr. Vance, at his own table. Act II runs carry a $5M marker.
 - **Table:** reach the **Take** target within **6 spins**. Each table hands you a **betting stack** (25 chips, which you can upgrade).
   - Winning bets score `value × payout` and the stake returns to your stack.
   - Losing bets are gone, and **their value comes off that spin's Take** (floored at 0). A spin scores what it paid minus what it cost, so hedging (red + black, or covering the board) scores nothing.

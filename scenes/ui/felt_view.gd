@@ -23,6 +23,7 @@ var hover_key: String = ""
 var targets: Array = []          ## keys to highlight (upgrade placement)
 var flashes: Dictionary = {}     ## key -> seconds left
 var pops: Dictionary = {}        ## key -> seconds left (chip placed)
+var nears: Dictionary = {}       ## key -> seconds left (near miss shudder)
 var floaters: Array = []         ## {text, pos, t, col}
 var cell_w: float = 24.0
 var marks := false               ## colour-blind aid: a diamond on every red square
@@ -115,6 +116,10 @@ func flash(key: String, t: float = 0.8) -> void:
 	flashes[key] = t
 
 
+func near(key: String) -> void:
+	nears[key] = 0.5
+
+
 func pop(key: String) -> void:
 	pops[key] = 0.25
 
@@ -131,7 +136,7 @@ func _process(delta: float) -> void:
 			bet_clicked.emit(press_key, MOUSE_BUTTON_RIGHT)
 			press_key = ""
 	var dirty := false
-	for d in [flashes, pops]:
+	for d in [flashes, pops, nears]:
 		for k in d.keys():
 			d[k] -= delta
 			dirty = true
@@ -221,6 +226,9 @@ func _draw() -> void:
 			bg = bg.lerp(P.CYAN, 0.45)
 		if flashes.has(k):
 			bg = bg.lerp(P.GOLD, clampf(flashes[k], 0.0, 0.7))
+		if nears.has(k):
+			bg = bg.lerp(P.DANGER, 0.5 * nears[k] / 0.5)
+			r.position.x += round(sin(nears[k] * 60.0) * 1.5)
 		var inner := r.grow(-1.0)
 		draw_rect(inner, bg)
 		# Felt nap: a sparse dither so the cloth doesn't read as flat UI.
