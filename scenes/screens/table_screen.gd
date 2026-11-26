@@ -211,7 +211,8 @@ func _on_undo() -> void:
 		return
 	var last: Dictionary = bet_history.pop_back()
 	if run.unbet(last.key, last.amount) > 0:
-		Sfx.play("chip_remove")
+		_chips_home(last.key)
+		Sfx.play("undo")
 	refresh()
 
 
@@ -220,9 +221,21 @@ func _on_clear() -> void:
 	if spinning or main.dialogue.is_open():
 		return
 	bet_history.clear()
+	var keys: Array = run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return c.bet)
 	if run.clear_bets():
-		Sfx.play("chip_remove")
+		for k in keys:
+			_chips_home(k)
+		Sfx.play("clear_all")
 		refresh()
+
+
+## Where the betting stack sits (the chip towers in the left column), for chips flying to/from it.
+const STACK_AT := Vector2(110, 330)
+
+
+## Chips going back from a square to the stack.
+func _chips_home(key: String) -> void:
+	main.fx.fly(main.fx.local(felt_view.key_global(key)), STACK_AT, P.CREAM, 2)
 
 
 func _status(s: String) -> void:
@@ -242,6 +255,20 @@ func _process(delta: float) -> void:
 		if cash > shown_cash and int(next) != int(shown_cash):
 			Sfx.play("cash", 1.4)  # a coin tick for every dollar counted up
 		shown_cash = next
+	# Music tension: rises on the last two balls and when the payment is within reach.
+	var tb: Dictionary = main.run.table
+	if main.run.phase == RunState.Phase.TABLE and not tb.is_empty():
+		var need: float = tb.target - tb.take
+		var lvl := 0.0
+		if tb.spins_left <= 1:
+			lvl = 1.0
+		elif tb.spins_left == 2:
+			lvl = 0.6
+		if need > 0.0 and need <= tb.target * 0.3:
+			lvl = maxf(lvl, 0.5)
+		Sfx.set_tension(lvl)
+	else:
+		Sfx.set_tension(0.0)
 	# The SPIN button breathes while it's ready and bets are down.
 	if not spin_btn.disabled and _has_bets():
 		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
@@ -548,16 +575,21 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	if button == MOUSE_BUTTON_RIGHT:
 		if run.take_back(key):
 			bet_history = bet_history.filter(func(h): return h.key != key)
-			Sfx.play("chip_remove")
+			_chips_home(key)
+			Sfx.play("refund")
 		return
 	if button != MOUSE_BUTTON_LEFT:
 		return
 	if selected_item >= 0:
+		var kind: String = run.inventory[selected_item].kind
+		var twin: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == kind)
 		if run.place_chip(selected_item, key):
 			selected_item = -1
 			felt_view.pop(key)
-			main.fx.burst(main.fx.local(felt_view.key_global(key)), 8, [P.GOLD, P.CREAM], 60.0)
-			Sfx.play("chip_place")
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 8 if not twin else 20, [P.GOLD, P.CREAM] if not twin else [P.GOOD, P.GOLD, P.CREAM], 60.0)
+			if twin:
+				main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
+			Sfx.play("stack" if twin else "chip_place")
 		else:
 			_status("That chip can't go there.")
 		return
@@ -565,6 +597,7 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	if run.place_bet(key, amt):
 		bet_history.append({"key": key, "amount": amt})
 		felt_view.pop(key)
+		main.fx.fly(STACK_AT, main.fx.local(felt_view.key_global(key)), Art.denom_color(amt), 1)
 		Sfx.play("chip_place")
 	elif run.is_called_spin():
 		_status("Big Sal calls this spin. No new bets.")

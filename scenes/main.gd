@@ -129,6 +129,8 @@ func show_screen(n: String) -> void:
 	if n == "table" or n == "shop":
 		save_run()
 	Sfx.play_music("enforcer" if n == "table" and not run.table.is_empty() and run.table.boss else "lounge")
+	if n != "table":
+		Sfx.set_tension(0.0)
 
 
 # --- Run saves: the run in progress is kept next to the profile ---------------------------

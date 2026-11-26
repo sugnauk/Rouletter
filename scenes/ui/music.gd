@@ -33,7 +33,35 @@ static func _hz(midi: float) -> float:
 	return 440.0 * pow(2.0, (midi - 69.0) / 12.0)
 
 
+## The tension layer: a heartbeat kick and a ticking clock, in time with `base` ("lounge" or
+## "enforcer") and the same length, so it can be faded in on top while the table gets tight.
+static func synth_tension(base: String) -> AudioStreamWAV:
+	var tense := base == "enforcer"
+	var bpm := 112.0 if tense else 92.0
+	var beat := 60.0 / bpm
+	var bars: Array = ENFORCER_BARS if tense else LOUNGE_BARS
+	var n := int(bars.size() * 4 * beat * RATE)
+	var s := PackedFloat32Array()
+	s.resize(n)
+	for q in range(bars.size() * 4):
+		var t0 := q * beat
+		# Heartbeat: a low double thump on every beat.
+		_pluck(s, t0, 0.18, 55.0, 0.5, 14.0)
+		_pluck(s, t0 + 0.16, 0.14, 52.0, 0.32, 16.0)
+		# Clock: a dry tick on every eighth.
+		for k in range(2):
+			var tt := t0 + k * beat / 2.0
+			_vibe(s, tt, 0.04, 2600.0 if k == 0 else 2100.0, 0.05)
+		# A rising pedal note across each bar, for unease.
+		if q % 4 == 0:
+			var root: int = bars[(q / 4) % bars.size()][0]
+			_pad(s, t0, beat * 4.0, _hz(root + 13), 0.035)
+	return _finish(s)
+
+
 static func synth(track: String) -> AudioStreamWAV:
+	if track.ends_with("_tension"):
+		return synth_tension(track.trim_suffix("_tension"))
 	var tense := track == "enforcer"
 	var bpm := 112.0 if tense else 92.0
 	var beat := 60.0 / bpm
@@ -73,7 +101,12 @@ static func synth(track: String) -> AudioStreamWAV:
 			var m: int = melody[(b * 4 + q) % melody.size()]
 			if m > 0:
 				_vibe(s, t0 + q * beat, beat * 1.4, _hz(m), 0.10)
-	# Gentle soft-clip and fade the seam so the loop is click-free.
+	return _finish(s)
+
+
+## Soft-clip, fade the loop seam and pack into a looping 16-bit WAV.
+static func _finish(s: PackedFloat32Array) -> AudioStreamWAV:
+	var n := s.size()
 	for i in range(n):
 		s[i] = tanh(s[i] * 1.2) * 0.8
 	var fade := int(0.02 * RATE)

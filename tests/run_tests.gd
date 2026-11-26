@@ -1047,11 +1047,13 @@ func test_music_synth() -> void:
 			loud = maxi(loud, absi(w.data.decode_s16(i)))
 		check(loud > 3000, "%s is audible" % track)
 		print("  music %s synthesised in %d ms" % [track, Time.get_ticks_msec() - t0])
+		var tw = Music.synth(track + "_tension")
+		check(tw.data.size() == w.data.size() and tw.loop_mode == AudioStreamWAV.LOOP_FORWARD, "%s tension layer matches the loop length" % track)
 
 
 func test_sfx_synth() -> void:
 	var Sfx := preload("res://scenes/ui/sfx.gd")
-	for cue in ["click", "chip_place", "chip_remove", "spin", "ball_drop", "win", "big_win", "mult", "lose", "cash", "buy", "clear", "bust", "jackpot", "feat", "near", "unlock", "sting"]:
+	for cue in ["click", "chip_place", "chip_remove", "spin", "ball_drop", "win", "big_win", "mult", "lose", "cash", "buy", "clear", "bust", "jackpot", "feat", "near", "unlock", "sting", "stack", "refund", "clear_all", "undo"]:
 		var w = Sfx.synth(cue)
 		var loud := 0
 		if w != null:

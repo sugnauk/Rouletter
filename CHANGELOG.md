@@ -3,6 +3,13 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.16
+- Distinct sounds for each felt action:
+  - placing a bet, and stacking a chip on its twin (with a "LEVEL UP!" pop)
+  - taking a bet back, Undo, and clearing the felt
+- Chips now fly visibly between your stack and the felt when you bet, take back, undo or clear.
+- The music follows the table. A tension layer (a heartbeat and a ticking clock, in time with the band) fades in on the last two balls and when the payment is within reach. It drops away when the table is paid.
+
 ## 0.0.15
 - Spins now play out in three beats:
   - The pocket is revealed and lights up.

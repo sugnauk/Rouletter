@@ -13,6 +13,9 @@ var muted := false
 var sfx_volume := 1.0           ## 0..1, from Options
 var music_volume := 0.6         ## 0..1, from Options
 var music: AudioStreamPlayer
+var tension_player: AudioStreamPlayer
+var tension := 0.0            ## 0..1 target for the tension layer (set by the table)
+var _tension_now := 0.0
 var _tracks: Dictionary = {}
 var current_track := ""
 
@@ -25,6 +28,22 @@ func _ready() -> void:
 	music = AudioStreamPlayer.new()
 	music.volume_db = MUSIC_DB
 	add_child(music)
+	tension_player = AudioStreamPlayer.new()
+	tension_player.volume_db = -80.0
+	add_child(tension_player)
+
+
+## How tight the table is (0 calm .. 1 last ball / payment within reach). Fades smoothly.
+func set_tension(level: float) -> void:
+	tension = clampf(level, 0.0, 1.0)
+
+
+func _process(delta: float) -> void:
+	if tension_player == null or tension_player.stream == null:
+		return
+	_tension_now = move_toward(_tension_now, tension, delta * 0.8)
+	var lin := _tension_now * music_volume
+	tension_player.volume_db = MUSIC_DB + linear_to_db(maxf(0.0001, lin)) if lin > 0.001 else -80.0
 
 
 ## Switch the background loop ("lounge" / "enforcer"), synthesising it the first time.
@@ -35,15 +54,22 @@ func play_music(track: String) -> void:
 	if not _tracks.has(track):
 		_tracks[track] = Music.load_track(track)
 	music.stream = _tracks[track]
+	var tk := track + "_tension"
+	if not _tracks.has(tk):
+		_tracks[tk] = Music.synth(tk)
+	tension_player.stream = _tracks[tk]
 	_apply_music_volume()
 	if music_volume > 0.0:
 		music.play()
+		tension_player.play()  # started together so the layer stays in time
 
 
 ## Synthesise a track ahead of time so switching to it later doesn't hitch.
 func preload_track(track: String) -> void:
 	if not _tracks.has(track):
 		_tracks[track] = Music.load_track(track)
+	if not _tracks.has(track + "_tension"):
+		_tracks[track + "_tension"] = Music.synth(track + "_tension")
 
 
 func set_volumes(music_v: float, sfx_v: float) -> void:
@@ -61,8 +87,10 @@ func _apply_music_volume() -> void:
 	music.volume_db = MUSIC_DB + linear_to_db(maxf(0.0001, music_volume))
 	if music_volume <= 0.0:
 		music.stop()
+		tension_player.stop()
 	elif not music.playing and music.stream != null:
 		music.play()
+		tension_player.play()
 
 
 func play(cue: String, pitch: float = 1.0) -> void:
@@ -157,6 +185,25 @@ static func synth(cue: String) -> AudioStreamWAV:
 				_tone(s, 0.4, 0.9, f, 0.18, "square")
 			for i in range(10):
 				_tone(s, 0.45 + i * 0.07, 0.08, 2600.0 + (i % 3) * 400.0, 0.12, "sine")
+		"stack":
+			# Two chips clacking together, then a rising chirp: a level-up.
+			_noise(s, 0.0, 0.02, 0.5)
+			_tone(s, 0.0, 0.05, 2400.0, 0.3, "sine")
+			_noise(s, 0.06, 0.02, 0.45)
+			_tone(s, 0.06, 0.05, 2600.0, 0.3, "sine")
+			_tone(s, 0.12, 0.18, 1046.5, 0.25, "square", 1568.0)
+		"refund":
+			# Chips sliding back to the stack.
+			_noise(s, 0.0, 0.08, 0.25)
+			_tone(s, 0.0, 0.12, 1600.0, 0.2, "sine", 1000.0)
+		"clear_all":
+			# A sweep of chips off the felt.
+			for i in range(5):
+				_noise(s, i * 0.025, 0.03, 0.35 - i * 0.05)
+			_tone(s, 0.0, 0.25, 1800.0, 0.18, "sine", 700.0)
+		"undo":
+			_tone(s, 0.0, 0.06, 1200.0, 0.22, "square")
+			_tone(s, 0.05, 0.08, 900.0, 0.18, "square")
 		"sting":
 			# A brassy two-chord stab for exceptional moments.
 			for f in [523.3, 659.3, 784.0]:
