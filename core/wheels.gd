@@ -45,7 +45,7 @@ const WHEELS := {
 	},
 	"mini": {
 		"name": "Mini Wheel", "numbers": 12, "zeros": [0], "order": MINI_ORDER, "red": RED_12,
-		"rules": [], "cash": 2, "kit": [{"kind": "bridge", "value": 1}], "unlock": 4, "target": 1.05,
+		"rules": [], "cash": 2, "kit": [{"kind": "bridge", "value": 1}], "unlock": 4, "target": 1.2,
 		"style": "INSIDE BETS: splits, corners and streets",
 		"desc": "Thirteen pockets on a 3x4 felt. Hits come often but pay small; a Bridge makes your splits and corners count.",
 	},

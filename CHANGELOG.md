@@ -3,6 +3,9 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.24
+- Balance: Mini wheel payments x1.05 -> x1.2. With its Bridge starter it was winning far more often than the other wheels (balance bot: 62% -> 45%).
+
 ## 0.0.23
 - Art pass: the 31 items that showed two-letter tiles now have real pixel icons (a die, a sailboat, an owl, a piggy bank, a clover, a pocket watch and more). So do the four bridge rules.
 - New Feats:

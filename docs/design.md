@@ -131,7 +131,7 @@ CI: `.github/workflows/test-branch.yml` runs the tests and the smoke screenshots
   - Starter kits sold at the Pawn Shop (`STARTERS`).
   - Continue-run details on the title screen, and per-wheel Feats including the Grand Tour.
 - **Art:** pixel sprites (`Art.SPRITES`, 12x12 character grids) replaced the lettered tiles.
-- **Balance (bot, 300 runs, full pool, v0.0.21):** French 35%, European 35%, American 21%, Mini 62%, Triple Zero 21%, Sunrise 13%, Cheater's 4%. Mini is the outlier.
+- **Balance (bot, 300 runs, full pool, v0.0.21):** French 35%, European 35%, American 21%, Mini 45% (payments raised to x1.2 in v0.0.24, from 62%), Triple Zero 21%, Sunrise 13%, Cheater's 4%.
 
 ## Known gaps and next steps
 - Late-game scaling is mostly additive. It needs more multiplicative synergies (Balatro-style) so builds can explode.
