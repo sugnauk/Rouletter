@@ -364,8 +364,11 @@ func _select(i: int) -> void:
 func _buy(i: int) -> void:
 	var run = main.run
 	var item: Dictionary = run.shop.stock[i]
+	var owned_twin: bool = item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", ""))
 	if run.buy(i):
 		main.profile.note_used(item.id)
+		if owned_twin:
+			main.tip("level", true)
 		Sfx.play("buy")
 		var tp := _token_pos(i)
 		main.fx.burst(tp, 22, [P.GOLD, P.CREAM, P.chip_color(item.id)], 130.0)

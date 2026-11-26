@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -634,6 +634,27 @@ func test_version() -> void:
 	re.compile("^\\d+\\.\\d+\\.\\d+$")
 	check(re.search(Version.VERSION) != null, "version is MAJOR.MINOR.PATCH (%s)" % Version.VERSION)
 	check(Version.label().begins_with("v" + Version.VERSION), "title label shows the version")
+
+
+func test_staged_vendors() -> void:
+	var run = new_run()
+	run.new_player = true
+	check(run._pick_vendors() == ["cashier"], "first night: only the Cashier")
+	run.night = 1
+	for i in range(10):
+		var v: Array = run._pick_vendors()
+		check(v.size() == 2 and v[1] == "pit_boss", "night 2: the Pit Boss joins")
+	run.beaten = ["sal"]
+	var seen := {}
+	for i in range(40):
+		seen[run._pick_vendors()[1]] = true
+	check(seen.has("loan_shark") and seen.has("dealer"), "after an Enforcer: Loan Shark and Dealer too")
+	run.new_player = false
+	run.night = 0
+	run.beaten = []
+	check(run._pick_vendors().size() == 2, "returning players get two windows from the start")
+	for k in Story.TIPS:
+		check(Story.TIPS[k].id.begins_with("tip_") and not Story.TIPS[k].lines.is_empty(), "tip %s" % k)
 
 
 func test_shop() -> void:

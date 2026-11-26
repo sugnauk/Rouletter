@@ -3,6 +3,10 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.2
+- New players meet the Cage one window at a time: only the Cashier on night 1, the Pit Boss from night 2, the Loan Shark and Dealer after your first Enforcer.
+- One-time tips from Dolores the first time you see a flawed chip, a rare item, spare Take, or buy a chip you can level up.
+
 ## 0.0.1
 First numbered build. Everything up to now:
 - **Table:** split, street, corner and line bets on the felt's lines; bets repeat each spin; Undo, Clear and 1/2/3 chip keys; touch tap-to-bet and hold-to-take-back.

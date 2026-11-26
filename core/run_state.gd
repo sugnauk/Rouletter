@@ -42,6 +42,7 @@ var favours: Array = []          ## Dealer favours waiting for the next table
 var vouchers: Array = []         ## run-wide perks from the Dealer
 var best_spin: float = 0.0       ## run summary: the biggest single spin
 var beaten: Array = []           ## run summary: Enforcers beaten this run
+var new_player := false          ## first runs: vendors open up one at a time (see _vendor_open)
 var total_take: float = 0.0
 var nights_cleared: int = 0
 var message: String = ""
@@ -93,7 +94,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
-	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten"]
+	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player"]
 
 
 ## Everything needed to pick the run up again later (only meaningful mid-run).
@@ -486,11 +487,24 @@ func _open_shop() -> void:
 
 ## Who is working the Cage this visit: the Cashier, plus others drawn from the unlocked pool.
 ## They stay for the whole visit (rerolls refresh their stock, not the staff).
+## New players meet the Cage a window at a time: only the Cashier on night 1, the Pit Boss
+## from night 2, the Loan Shark and Dealer once an Enforcer has been beaten.
+func _vendor_open(v: String) -> bool:
+	if not new_player:
+		return true
+	match v:
+		"pit_boss":
+			return night >= 1
+		"loan_shark", "dealer":
+			return not beaten.is_empty()
+	return true
+
+
 func _pick_vendors() -> Array:
 	var vendors := [Content.ALWAYS_VENDOR]
 	var pool := []
 	for v in Content.VENDORS:
-		if v != Content.ALWAYS_VENDOR and (Content.VENDORS[v].unlock == 0 or v in unlocked):
+		if v != Content.ALWAYS_VENDOR and (Content.VENDORS[v].unlock == 0 or v in unlocked) and _vendor_open(v):
 			pool.append(v)
 	pool = rng.shuffle(pool)
 	while vendors.size() < Content.VENDORS_PER_VISIT and not pool.is_empty():

@@ -49,6 +49,8 @@ func _process(delta: float) -> void:
 			main.route()],
 		[9.5, func(): _close_dialogue()],
 		[9.6, func(): shot("06_shop")],
+		[9.65, func(): _staff(["cashier"])],
+		[9.75, func(): shot("06e_shop_cashier_only")],
 		[9.8, func(): _staff(["cashier", "fence"])],
 		[10.0, func(): shot("06b_shop_fence")],
 		[10.1, func(): _staff(["cashier", "loan_shark"])],

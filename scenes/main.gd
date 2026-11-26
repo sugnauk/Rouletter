@@ -197,7 +197,13 @@ func route() -> void:
 				var intro: Dictionary = Story.VENDOR_INTROS.get(v, {})
 				if not intro.is_empty() and intro.id not in profile.seen_beats:
 					_queue_scene(intro)
-			go("shop", "THE CAGE", " and ".join(names) + " are open", P.GOLD)
+			if run.overflow > 0:
+				tip("spare")
+			if run.shop.stock.any(func(it): return it.get("flaw", "") != ""):
+				tip("flaw")
+			if run.shop.stock.any(func(it): return it.type in ["chip", "upgrade", "rule"] and Content.rarity_of(it.id) != "common"):
+				tip("rarity")
+			go("shop", "THE CAGE", " and ".join(names) + (" is open" if names.size() == 1 else " are open"), P.GOLD)
 		_:
 			if run.phase == RunState.Phase.VICTORY:
 				go("end", "THE OWNER FALLS" if run.acts == 2 else "PAID IN FULL", "The Floor Above is yours, for tonight" if run.acts == 2 else "Mr. Vance almost smiles", P.GOOD)
@@ -217,6 +223,7 @@ func begin_flow() -> void:
 
 func start_run(wheel: String, acts: int = 1) -> void:
 	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts)
+	run.new_player = profile.best_night == 0 and profile.wins == 0
 	run_feats = []
 	Sfx.play("click")
 	if Story.TUTORIAL.table.id not in profile.seen_beats:
@@ -248,6 +255,19 @@ func _on_table_cleared(info: Dictionary) -> void:
 		pending_lines.append({"speaker": e.name, "text": e.defeat})
 		if run.phase == RunState.Phase.SHOP:
 			_queue_scene(Story.interlude(run.night + 1, profile))
+
+
+## Queue a one-time tip (Story.TIPS) if it hasn't been shown before.
+func tip(key: String, now: bool = false) -> void:
+	var t: Dictionary = Story.TIPS[key]
+	if t.id in profile.seen_beats:
+		return
+	if now:
+		profile.seen_beats.append(t.id)
+		save_profile()
+		say(t.lines)
+	else:
+		_queue_scene(t)
 
 
 ## Queue a story scene to play after the next loading card, and remember it for the Journal.
