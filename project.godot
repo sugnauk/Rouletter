@@ -27,7 +27,7 @@ window/size/viewport_height=360
 window/size/mode=3
 window/size/window_width_override=1280
 window/size/window_height_override=720
-window/stretch/mode="viewport"
+window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=0
 window/stretch/scale_mode="integer"
@@ -44,5 +44,6 @@ theme/default_font_subpixel_positioning=0
 
 [rendering]
 
+environment/defaults/default_clear_color=Color(0.0784314, 0.0509804, 0.0588235, 1)
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"

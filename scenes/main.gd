@@ -37,7 +37,7 @@ var last_summary: Dictionary = {}
 
 func _ready() -> void:
 	theme = P.make_theme()
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var game := get_node_or_null("/root/Game")
 	if game != null:
 		run = game.run
@@ -70,7 +70,7 @@ func _ready() -> void:
 	crt = CanvasLayer.new()
 	crt.layer = 10
 	var rect := ColorRect.new()
-	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/crt.gdshader")

@@ -295,11 +295,17 @@ func _draw_gauges(c: Control) -> void:
 	var stack: int = run.table.stack
 	Art.text(c, font, Vector2(4, 50), "STACK", 8, P.DIM)
 	Art.text(c, P.title_font(), Vector2(4, 66), "%d" % stack, 8, P.CREAM)
-	var towers := mini(6, int(ceil(stack / 10.0)))
-	for ti in range(towers):
-		var in_tower := mini(10, stack - ti * 10)
-		for j in range(in_tower):
-			Art.chip(c, Vector2(56 + ti * 19, 112 - j * 3), 7.0, Art.denom_color(1))
+	# Break the stack into casino denominations (blue 10, red 5, white 1), at most 10 chips per tower.
+	var counts := {10: stack / 10, 5: (stack % 10) / 5, 1: stack % 5}
+	var ti := 0
+	for d in [10, 5, 1]:
+		var left: int = counts[d]
+		while left > 0 and ti < 6:
+			var in_tower := mini(10, left)
+			for j in range(in_tower):
+				Art.chip(c, Vector2(56 + ti * 19, 112 - j * 3), 7.0, Art.denom_color(d))
+			left -= in_tower
+			ti += 1
 	if stack == 0:
 		Art.text(c, font, Vector2(56, 100), "EMPTY", 8, P.DANGER)
 
