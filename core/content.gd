@@ -10,7 +10,7 @@ const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
 const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
 const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
 ## Take target of each night's first table (nights 5-8 are Act II only).
-const NIGHT_BASE := [8, 20, 45, 80, 120, 170, 230, 300]
+const NIGHT_BASE := [8, 21, 52, 96, 140, 195, 260, 340]
 const TABLE_MULT := [1.0, 1.4, 1.8]      ## Floor / High Roller / Enforcer
 const SPINS := 6
 const START_STACK := 25                 ## betting chips handed out at each table

@@ -35,10 +35,10 @@ Payout formula: `numbers / numbers covered − 1`, so every plain bet loses exac
 | French | 37 | 2.7% (1.35% even-money) | La Partage built in, starts with a Permanent x2, payments ×0.9 | free |
 | European | 37 | 2.7% | Starts with a Magnet | free |
 | American | 38 | 5.3% | 00 is a second zero square; +$4 | 3 Markers |
-| Mini | 13 (3×4 felt) | 7.7% | Small payouts, frequent hits, payments ×1.3 | 4 Markers |
+| Mini | 13 (3×4 felt) | 7.7% | Small payouts, frequent hits, payments ×1.05 | 4 Markers |
 | Triple Zero | 39 | 7.7% | Starts with a Wildcard Zero; zero chips trigger 3× as often | 6 Markers |
 | Sunrise | 37 | 2.7% | Momentum built in, starts with a Kingmaker; payments ×1.15 | 5 Markers |
-| Cheater's | 36 | 0% | No zero at all; payments ×1.35 | 8 Markers |
+| Cheater's | 36 | 0% | No zero at all; payments ×1.25 | 8 Markers |
 
 ## Content
 Every entry has an originality `note` in `core/content.gd`.
@@ -84,8 +84,8 @@ godot --headless --path . --script res://tools/sim.gd -- runs=300 [all]
 godot --path . --windowed -- smoke=<dir> profile=user://smoke_profile.json   # screenshots of every screen
 ```
 
-## Balance snapshot (greedy bot, 300 runs per wheel, starting pool)
-Full-run win rate: French 11%, European 13%, American 8%, Mini 11%, Triple Zero 5%. Per-table clear rates are mostly 70–95%. The bot is naive (it doesn't plan placements or pick shop items well), so a human should do noticeably better. Tune the constants at the top of `core/content.gd`, plus `target` in `core/wheels.gd`.
+## Balance snapshot (sim bot, 400 runs per wheel, starting pool, v0.0.6)
+Full-run win rate: French 14%, European 18%, American 7%, Mini ~6-10%, Triple Zero 4%, Sunrise 4%, Cheater's ~0%. Per-table clear rates are mostly 75-95%. The bot spreads chips over fresh numbers, buys cash items, Dealer perks and (when its stack can afford it) Pit Boss rules, and never borrows; a human should do noticeably better. Night bases are 8 / 21 / 52 / 96 (Act II 140 / 195 / 260 / 340). Tune the constants at the top of `core/content.gd`, plus `target` in `core/wheels.gd`.
 
 ## Roadmap ("The Floor Above")
 1. Done: vendor Cage (Cashier, Pit Boss), title card and loading cards, Undo and touch controls, branch CI.

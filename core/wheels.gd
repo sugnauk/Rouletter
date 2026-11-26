@@ -42,7 +42,7 @@ const WHEELS := {
 	},
 	"mini": {
 		"name": "Mini Wheel", "numbers": 12, "zeros": [0], "order": MINI_ORDER, "red": RED_12,
-		"rules": [], "cash": 2, "kit": [], "unlock": 4, "target": 1.15,
+		"rules": [], "cash": 2, "kit": [], "unlock": 4, "target": 1.05,
 		"desc": "Thirteen pockets on a 3x4 felt. Hits come often but pay small; every square counts.",
 	},
 	"triple_zero": {
@@ -57,8 +57,8 @@ const WHEELS := {
 	},
 	"no_zero": {
 		"name": "Cheater's Wheel", "numbers": 36, "zeros": [], "order": NO_ZERO_ORDER, "red": RED_36,
-		"rules": [], "cash": 0, "kit": [], "unlock": 8, "target": 1.35,
-		"desc": "No zero at all: every bet is perfectly fair. Mr. Vance makes up for it with payments 35% bigger.",
+		"rules": [], "cash": 0, "kit": [], "unlock": 8, "target": 1.25,
+		"desc": "No zero at all: every bet is perfectly fair. Mr. Vance makes up for it with payments 25% bigger.",
 	},
 }
 
