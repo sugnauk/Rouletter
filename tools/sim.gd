@@ -169,7 +169,12 @@ func bot_bet(run) -> void:
 	if need <= run.table.stack * 1.2 and run.can_bet_on("DOZ1"):
 		keys = ["DOZ1"]
 	else:
-		var fav := favourite_numbers(run)
+		# Novel wheels: a crooked wheel's fat pockets, or the Carousel's hot arc, come first.
+		var fav := []
+		for n in run.felt.weights.keys() + run.felt.arc_pockets():
+			if n > 0 and n not in fav:
+				fav.append(n)
+		fav += favourite_numbers(run).filter(func(n): return n not in fav)
 		keys = []
 		for n in fav:
 			if keys.size() < 2 and run.can_bet_on(Board.straight_key(n)):

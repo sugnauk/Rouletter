@@ -18,6 +18,18 @@ const ROW_H := 22.0
 const STRIP_H := 15.0
 const ZERO_W := 20.0
 const COL_W := 22.0
+## The vertical felt (portrait): numbers run down the screen in three roomy columns.
+const VGRID_LEN := 300.0
+const VROW_H := 48.0
+const VSTRIP_H := 30.0
+const VZERO_W := 22.0
+const VCOL_W := 20.0
+var vertical := false
+var grid_len := GRID_W
+var row_h := ROW_H
+var strip_h := STRIP_H
+var zero_w := ZERO_W
+var col_w := COL_W
 
 var run
 var rects: Dictionary = {}
@@ -61,34 +73,53 @@ func layout() -> void:
 	rail_col = Color(wd.get("rail", "#7a5a2a"))
 	rects.clear()
 	line_rects.clear()
+	# Landscape: numbers run left to right. Vertical (portrait screens): the same layout is built
+	# with roomier sizes, then turned on its side so numbers run top to bottom, outside boxes on the left.
+	grid_len = VGRID_LEN if vertical else GRID_W
+	row_h = VROW_H if vertical else ROW_H
+	strip_h = VSTRIP_H if vertical else STRIP_H
+	zero_w = VZERO_W if vertical else ZERO_W
+	col_w = VCOL_W if vertical else COL_W
 	var B = run.felt.board
-	cell_w = floor(GRID_W / B.cols)   # small boards (the Mini wheel's 4 columns) widen to fill the same space
+	cell_w = floor(grid_len / B.cols)   # small boards (the Mini wheel's 4 columns) widen to fill the same space
 	var grid_w: float = cell_w * B.cols
 	var nz: int = B.zeros.size()
-	var zh: float = ROW_H * 3.0 / nz
+	var zh: float = row_h * 3.0 / nz
 	for i in range(nz):
-		rects[Board.straight_key(B.zeros[i])] = Rect2(0, i * zh, ZERO_W, zh)
+		rects[Board.straight_key(B.zeros[i])] = Rect2(0, i * zh, zero_w, zh)
 	for n in range(1, B.numbers + 1):
-		var x: float = ZERO_W + Board.grid_col(n) * cell_w
-		var y: float = (2 - Board.grid_row(n)) * ROW_H
-		rects[Board.straight_key(n)] = Rect2(x, y, cell_w, ROW_H)
+		var x: float = zero_w + Board.grid_col(n) * cell_w
+		var y: float = (2 - Board.grid_row(n)) * row_h
+		rects[Board.straight_key(n)] = Rect2(x, y, cell_w, row_h)
 	for r in range(3):
-		rects["COL%d" % (r + 1)] = Rect2(ZERO_W + grid_w, (2 - r) * ROW_H, COL_W, ROW_H)
-	var y2 := ROW_H * 3.0
+		rects["COL%d" % (r + 1)] = Rect2(zero_w + grid_w, (2 - r) * row_h, col_w, row_h)
+	var y2 := row_h * 3.0
 	for d in range(3):
-		rects["DOZ%d" % (d + 1)] = Rect2(ZERO_W + d * grid_w / 3.0, y2, grid_w / 3.0, STRIP_H)
+		rects["DOZ%d" % (d + 1)] = Rect2(zero_w + d * grid_w / 3.0, y2, grid_w / 3.0, strip_h)
 	var evens := ["LOW", "EVEN", "RED", "BLACK", "ODD", "HIGH"]
 	for i in range(6):
-		rects[evens[i]] = Rect2(ZERO_W + i * grid_w / 6.0, y2 + STRIP_H, grid_w / 6.0, STRIP_H)
+		rects[evens[i]] = Rect2(zero_w + i * grid_w / 6.0, y2 + strip_h, grid_w / 6.0, strip_h)
 	if run.has_feature("call_bets"):
 		var calls := ["VOI", "TIE", "ORP"]
 		for i in range(3):
-			rects[calls[i]] = Rect2(ZERO_W + i * grid_w / 3.0, y2 + STRIP_H * 2.0, grid_w / 3.0, STRIP_H)
+			rects[calls[i]] = Rect2(zero_w + i * grid_w / 3.0, y2 + strip_h * 2.0, grid_w / 3.0, strip_h)
 	_layout_lines(B, cell_w)
-	var h: float = y2 + STRIP_H * (3.0 if run.has_feature("call_bets") else 2.0)
-	custom_minimum_size = Vector2(ZERO_W + grid_w + COL_W, h).ceil()
+	var h: float = y2 + strip_h * (3.0 if run.has_feature("call_bets") else 2.0)
+	custom_minimum_size = Vector2(zero_w + grid_w + col_w, h).ceil()
+	if vertical:
+		_turn(h)
 	size = custom_minimum_size
 	queue_redraw()
+
+
+## Turn the landscape layout on its side: landscape x runs down the screen, and the rows read
+## left to right with the outside boxes on the left (like a real table seen from the end).
+func _turn(h: float) -> void:
+	for d in [rects, line_rects]:
+		for k in d:
+			var r: Rect2 = d[k]
+			d[k] = Rect2(h - r.end.y, r.position.x, r.size.y, r.size.x)
+	custom_minimum_size = Vector2(custom_minimum_size.y, custom_minimum_size.x)
 
 
 ## Clickable zones on the lines between squares: corners where four squares meet, splits on an
@@ -96,34 +127,39 @@ func layout() -> void:
 func _layout_lines(B, cw: float) -> void:
 	zone = ZONE_TOUCH if DisplayServer.is_touchscreen_available() else ZONE
 	var hz := zone / 2.0
-	var floor_y := ROW_H * 3.0
+	var floor_y := row_h * 3.0
 	for c in range(B.cols):
 		var b := c * 3 + 1
-		var x0: float = ZERO_W + c * cw
+		var x0: float = zero_w + c * cw
 		var xr: float = x0 + cw
 		_zone("ST%d" % b, Rect2(x0 + hz, floor_y - hz, cw - zone, zone))
 		if c < B.cols - 1:
 			_zone("LN%d" % b, Rect2(xr - hz, floor_y - hz, zone, zone))
 			for r in range(3):
-				var top: float = (2 - r) * ROW_H
-				_zone("SP%d_%d" % [b + r, b + r + 3], Rect2(xr - hz, top + hz, zone, ROW_H - zone))
+				var top: float = (2 - r) * row_h
+				_zone("SP%d_%d" % [b + r, b + r + 3], Rect2(xr - hz, top + hz, zone, row_h - zone))
 				if r < 2:
 					_zone("CO%d" % (b + r), Rect2(xr - hz, top - hz, zone, zone))
 		for r in range(2):
-			var edge: float = (2 - r) * ROW_H
+			var edge: float = (2 - r) * row_h
 			_zone("SP%d_%d" % [b + r, b + r + 1], Rect2(x0 + hz, edge - hz, cw - zone, zone))
 	# Zero splits sit on the boundary between the zeros and the first column, one slot per zero.
 	var nz: int = B.zeros.size()
 	for i in range(nz):
 		for j in range(3):
-			var top: float = (2 - j) * ROW_H
-			var slot: float = ROW_H / nz
-			_zone("SP%d_%d" % [B.zeros[i], j + 1], Rect2(ZERO_W - hz, top + i * slot + (hz if nz == 1 else 0.0), zone, slot - (zone if nz == 1 else 0.0)))
+			var top: float = (2 - j) * row_h
+			var slot: float = row_h / nz
+			_zone("SP%d_%d" % [B.zeros[i], j + 1], Rect2(zero_w - hz, top + i * slot + (hz if nz == 1 else 0.0), zone, slot - (zone if nz == 1 else 0.0)))
 
 
 func _zone(key: String, r: Rect2) -> void:
 	if run.felt.board.has_bet(key):
 		line_rects[key] = r
+
+
+## An outside-box strip (thin, so chips sit to one side of its label).
+func _is_strip(r: Rect2) -> bool:
+	return r.size.x <= strip_h + 1.0 if vertical else r.size.y <= strip_h + 1.0
 
 
 func rect_of(k: String) -> Rect2:
@@ -226,6 +262,8 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2(-2, -2), size + Vector2(4, 4)), rail_col)
 	var held := not legal.is_empty() or not twins.is_empty()   ## placing something: dim where it can't go
 	var glow := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 160.0)
+	var arc: Array = run.felt.arc_pockets()
+	var next_arc: Array = run.felt.arc_pockets(1)
 	var covered := {}
 	if hover_key != "" and B.has_bet(hover_key) and B.is_line_bet(hover_key):
 		for n in B.bet(hover_key).numbers:
@@ -280,11 +318,20 @@ func _draw() -> void:
 			up = run.felt.bet_upgrades.get(k, "")
 		if up != "":
 			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(r.size.x - 2, 2)), _upgrade_color(up))
+		if Board.is_straight(k):
+			var sn := Board.straight_number(k)
+			if run.felt.weight(sn) > 1:   # Crooked Wheel: a fat pocket
+				draw_rect(Rect2(r.end - Vector2(12, 8), Vector2(11, 7)), P.GOLD)
+				draw_string(font, r.end - Vector2(11, 2), "x%d" % run.felt.weight(sn), HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT_SMALL, P.WOOD_DARK)
+			if sn in arc:   # Carousel: inside the hot arc (and, faintly, where it goes next)
+				draw_rect(Rect2(r.position.x + 1, r.end.y - 3, r.size.x - 2, 2), P.GOLD)
+			elif sn in next_arc:
+				draw_rect(Rect2(r.position.x + 1, r.end.y - 2, r.size.x - 2, 1), Color(P.GOLD, 0.45))
 		var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x
 		var ty: float = r.position.y + (8.0 if Board.is_straight(k) else r.size.y - 4.0)
 		var tcol: Color = P.CREAM if run.can_bet_on(k) or Board.is_straight(k) else P.DIM
 		var tx: float = floor(r.get_center().x - tw / 2.0)
-		if not Board.is_straight(k) and r.size.y <= STRIP_H + 1.0 and not run.felt.chips_on(k).is_empty():
+		if not Board.is_straight(k) and _is_strip(r) and not run.felt.chips_on(k).is_empty():
 			tx = r.position.x + 3.0  # make room for the chips on the right of a strip
 		draw_string(font, Vector2(tx, floor(ty)), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, tcol)
 		_draw_chips(k, r, font)
@@ -380,7 +427,7 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id, "mod": c.mod,
 			"fresh": run.fresh.has(str(c.id))})
 	var is_line := line_rects.has(k)
-	var rad := 5.0 if (is_line or r.size.y <= STRIP_H + 1.0 or not Board.is_straight(k)) else 6.0
+	var rad := 5.0 if (is_line or _is_strip(r) or not Board.is_straight(k)) else 6.0
 	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
 	var n := entries.size()
 	var spacing := minf(2.0 * rad - 1.0, (r.size.x - 2.0 * rad - 2.0) / maxf(1.0, n - 1.0)) if not is_line else 6.0
@@ -390,7 +437,7 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		first = r.get_center() - Vector2((n - 1) * spacing / 2.0, 0)
 	elif Board.is_straight(k):
 		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.end.y - 7.0)
-	elif r.size.y <= STRIP_H + 1.0:
+	elif _is_strip(r):
 		first = Vector2(r.end.x - 7.0 - (n - 1) * spacing, r.get_center().y)  # strips: chips hug the right edge
 	else:
 		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.position.y + 7.0)  # columns: chips above the label
@@ -513,10 +560,15 @@ func describe(k: String) -> String:
 		return ""
 	var B = run.felt.board
 	var b: Dictionary = B.bet(k)
-	var payout: float = b.payout
+	var payout: float = run.felt.payout_of(k)
 	var ptxt := str(int(payout)) if is_equal_approx(payout, round(payout)) else "%.2f" % payout
+	var hw := 0
+	for p in b.numbers:
+		hw += run.felt.weight(p)
 	var s := "%s  pays %s:1, hits %d in %d" % [B.label(Board.straight_number(k)) if Board.is_straight(k) else _outside_name(k), ptxt,
-		b.numbers.size(), B.pockets.size()]
+		hw, run.felt.total_weight()]
+	if B.def.get("twin", false):
+		s += " per ball"
 	var up := ""
 	if Board.is_straight(k):
 		up = run.felt.square_upgrades.get(Board.straight_number(k), "")

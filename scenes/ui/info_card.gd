@@ -133,11 +133,17 @@ static func for_chip(c, run = null) -> Dictionary:
 
 ## "Pays on 18 of 37 spins (49%)": how often a chip on the felt scores anything.
 static func hit_chance(felt, c) -> String:
-	var n: int = Preview.chip_pays_on(felt, c.id).size()
-	var total: int = felt.board.pockets.size()
-	if n <= 0 or total <= 0:
+	var ps: Array = Preview.chip_pays_on(felt, c.id)
+	if ps.is_empty():
 		return ""
-	return "Pays on %d of %d spins (%d%%)." % [n, total, int(round(100.0 * n / total))]
+	var q := 0.0
+	for p in ps:
+		q += felt.pocket_chance(p)
+	if felt.board.def.get("twin", false):   # either of two balls
+		return "Pays on %d of %d pockets: %d%% of spins (2 balls)." % [ps.size(), felt.board.pockets.size(), int(round(100.0 * (1.0 - pow(1.0 - q, 2))))]
+	if not felt.weights.is_empty():
+		return "Pays on %d of %d pockets (%d%% with the crooked ones)." % [ps.size(), felt.board.pockets.size(), int(round(100.0 * q))]
+	return "Pays on %d of %d spins (%d%%)." % [ps.size(), felt.board.pockets.size(), int(round(100.0 * q))]
 
 
 ## A chip waiting in the rack ({kind, value, flaw?, mod?, copies?}).

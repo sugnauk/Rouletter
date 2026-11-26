@@ -50,6 +50,16 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 		fx.burst(pocket_pos, 26, [P.GOLD, P.CREAM, P.RED])
 	else:
 		fx.pop_text(pocket_pos - Vector2(0, 10), "%s %s" % [B.label(res.pocket), B.colour_name(res.pocket).to_upper()], P.CREAM, 0.8)
+	if res.has("pocket2"):   # Twin Ball: the gold ball's pocket too
+		var k2 := Board.straight_key(res.pocket2)
+		felt_view.flash(k2, 1.4)
+		var p2: Vector2 = fx.local(felt_view.key_global(k2))
+		if res.pocket2 == res.pocket:
+			fx.banner("TWIN!", P.GOLD, 1.3, 112, 24)
+			fx.burst(p2, 40, [P.GOLD, P.CREAM, P.CYAN], 150.0)
+			Sfx.play("jackpot")
+		else:
+			fx.pop_text(p2 - Vector2(0, 10), "%s %s" % [B.label(res.pocket2), B.colour_name(res.pocket2).to_upper()], P.GOLD, 0.8)
 	if res.zero_tax:
 		fx.banner("ORO TAKES 10%", P.DANGER, 1.2, 140, 8)
 		before *= 1.0 - Content.ZERO_TAX

@@ -3,6 +3,30 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.44
+- **New wheels that change how a spin works,** not just how many zeros there are:
+  - **Twin Ball:**
+    - Two balls drop every spin (the second one is gold), and a bet wins if either lands on it.
+    - A lost stake is only charged once.
+    - Both balls in one pocket is **TWIN!**: the spin's Take x3.
+    - Four spins a table, with bigger payments.
+  - **Crooked Wheel:**
+    - Four pockets are three times as wide. You can see them on the wheel, and they're marked x3 on the felt.
+    - They come in far more often, and their payouts follow the true odds, so every bet stays fair.
+    - They move to new numbers at every table: chase them or stay put.
+  - **Carousel:**
+    - A gold arc of seven pockets glows on the wheel and steps round after every spin. A ball inside it doubles the spin.
+    - The felt underlines the arc and, faintly, where it's going next.
+    - Momentum is built in, and you start with a Kingmaker.
+- **Fewer look-alikes:**
+  - American and Triple Zero are merged into the **Zero Wheel** (0, 00 and 000, with a Sentinel, a Wildcard Zero and +$2).
+  - Sunrise has given way to the Carousel.
+  - Now every wheel in the selector plays differently.
+- **Saves and Feats:**
+  - Old saves, unlocks and Feats carry across.
+  - New Feats: Seeing Double (Twin Ball), Bent Pins (Crooked), Carousel Rider.
+- **Hit chances** account for crooked pockets and both balls.
+
 ## 0.0.43
 - **Start steady, hunt numbers later.** A single number hits 1 spin in 37, so a lone number chip often went whole tables without scoring. The run now grows from safe bets into big ones on its own, without any gating by night:
   - **Four new box chips** sit on the outside boxes. They hit about half the time (or a third) but pay small:

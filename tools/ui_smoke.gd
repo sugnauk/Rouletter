@@ -439,7 +439,47 @@ func _process(delta: float) -> void:
 		[48.8, func():
 			_close_dialogue()
 			shot("47_upstairs_balls")],
-		[49.0, func(): get_tree().quit()],
+		[49.0, func():
+			main.profile.unlocked.append_array(["twin", "crooked", "carousel"])
+			main.show_screen("select")
+			main.screens.select.selected = "twin"
+			main.screens.select.refresh()],
+		[49.4, func(): shot("48_select_twin")],
+		[49.5, func():
+			main.run.start_run(12, "twin", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.run.place_bet("RED", 3)
+			main.run.place_bet("S17", 2)
+			main.run.place_bet("DOZ2", 2)
+			main.show_screen("table")],
+		[50.3, func():
+			_close_dialogue()
+			main.screens.table._on_spin()],
+		[52.6, func(): shot("49_twin_count")],
+		[54.5, func():
+			main.run.start_run(13, "crooked", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.show_screen("table")],
+		[55.3, func():
+			_close_dialogue()
+			var fat: Array = main.run.felt.weights.keys()
+			main.run.place_bet("S%d" % fat[0], 3)
+			main.screens.table.refresh()
+			main.screens.table.felt_view.hover_key = "S%d" % fat[0]
+			main.screens.table._on_hover("S%d" % fat[0])],
+		[55.6, func(): shot("50_crooked_table")],
+		[55.7, func():
+			main.run.start_run(14, "carousel", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.show_screen("table")],
+		[56.5, func():
+			_close_dialogue()
+			main.screens.table.refresh()],
+		[56.8, func(): shot("51_carousel_table")],
+		[57.0, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

@@ -344,6 +344,15 @@ func _chips_home(key: String) -> void:
 	main.fx.fly(main.fx.local(felt_view.key_global(key)), STACK_AT, P.CREAM, 2)
 
 
+## The novel wheels' state on the wheel drawing: crooked widths, the Carousel's arc.
+func _sync_wheel(run) -> void:
+	wheel_view.weights = run.felt.weights
+	wheel_view.arc = run.felt.arc_pockets()
+	wheel_view.next_arc = run.felt.arc_pockets(1)
+	wheel_view.twin = run.felt.board.def.get("twin", false)
+	wheel_view.queue_redraw()
+
+
 func _status(s: String) -> void:
 	status_lbl.text = s if s != "" else _hint()
 
@@ -402,16 +411,18 @@ func refresh() -> void:
 		felt_view.layout()
 		wheel_view.board = run.felt.board
 		board_id = bid
-	var tk := "%d-%d-%d" % [run.rng.seed_value, run.night, run.table_idx]
+	var tk := "%d-%s-%d-%d" % [run.run_seed, run.wheel_id, run.night, run.table_idx]
 	if tk != table_key:
 		table_key = tk
 		history = []
 		score_rows = []
 		spin_score_vis = false
 		wheel_view.result = -99
+		wheel_view.result2 = -99
 		log_box.clear()
 		log_box.append_text("[color=#f2c14e]%s[/color]\n" % run.message)
 	felt_view.targets = []
+	_sync_wheel(run)
 	felt_view.queue_redraw()
 	var t: Dictionary = run.table
 	if not spinning:
@@ -885,17 +896,19 @@ func _on_spin() -> void:
 	spin_score = 0.0
 	spin_score_vis = false
 	receipt = ""
-	var pockets: Array = run.felt.board.pockets
-	var pocket: int = pockets[run.rng.range_i(0, pockets.size() - 1)]
-	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9)
+	var pocket: int = run._draw_pocket()
+	var pocket2: int = run._draw_pocket() if run.felt.board.def.get("twin", false) else -99
+	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9, pocket2)
 	await wheel_view.spin_done
 	Sfx.play("ball_drop")
 	var ctx := {"before": run.table.take, "target": run.table.target, "spins_before": run.table.spins_left,
 		"stakes": run.felt.bet_stakes(), "layout": run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return [c.bet, c.value])}
-	var res: Dictionary = run.spin(pocket)
+	var res: Dictionary = run.spin(pocket, pocket2)
 	main.check_feats("spin", {"res": res, "staked": ctx.stakes, "target": ctx.target, "before": ctx.before,
 		"spins_before": ctx.spins_before, "cleared": run.phase == RunState.Phase.SHOP or run.phase == RunState.Phase.VICTORY})
 	history.append(pocket)
+	if pocket2 != -99:
+		history.append(pocket2)
 	history_view.queue_redraw()
 	await count.play(res, ctx)
 	_log(res)
