@@ -148,7 +148,14 @@ func _set_mode(m: String) -> void:
 
 
 func _next() -> void:
-	if main.run.leave_shop():
+	if main.run.has_unplaced_chips():
+		status_lbl.text = "Place the chips in your rack before you leave."
+		Sfx.play("click")
+		if selected_item < 0:
+			selected_item = 0
+			refresh()
+			status_lbl.text = "Place the chips in your rack before you leave."
+	elif main.run.leave_shop():
 		Sfx.play("click")
 		main.route()
 	else:

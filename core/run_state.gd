@@ -399,6 +399,16 @@ func pick_up(chip_id: int) -> bool:
 	return true
 
 
+## True while a rack chip is waiting that could go somewhere on the felt. The UI makes you
+## place those before leaving the Cage or spinning.
+func has_unplaced_chips() -> bool:
+	for item in inventory:
+		for k in felt.board.all_bet_keys():
+			if can_place_chip(item.kind, k):
+				return true
+	return false
+
+
 func leave_shop() -> bool:
 	if phase != Phase.SHOP or shop.pending_upgrade != "":
 		return false

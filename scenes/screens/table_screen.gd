@@ -183,7 +183,7 @@ func refresh() -> void:
 		take_per_spin = ev.take
 		chance = Odds.hit_chance(run.felt, t.target - t.take, t.spins_left)
 	spin_btn.disabled = spinning or run.phase != RunState.Phase.TABLE
-	spin_btn.text = "CALLED SPIN" if run.is_called_spin() else "SPIN"
+	spin_btn.text = "CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN")
 	_refresh_tokens()
 	if t.boss:
 		var e: Dictionary = Content.ENFORCERS[t.enforcer]
@@ -410,6 +410,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_spin() -> void:
 	var run = main.run
 	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
+		return
+	if run.has_unplaced_chips():
+		_status("Place the chips in your rack before you spin.")
+		if selected_item < 0:
+			selected_item = 0
+			_refresh_tokens()
 		return
 	spinning = true
 	spin_btn.disabled = true
