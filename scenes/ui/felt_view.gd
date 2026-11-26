@@ -5,7 +5,8 @@ extends Control
 signal bet_clicked(key: String, button: int)
 signal bet_hovered(key: String)
 signal bet_held(key: String)
-signal rack_dropped(index: int, key: String)   ## a rack chip was dragged onto a spot        ## touch: a long press on a square
+signal rack_dropped(index: int, key: String)   ## a rack chip was dragged onto a spot
+signal stock_dropped(index: int, key: String)  ## a Cage counter item was dragged onto a spot (drag to buy)        ## touch: a long press on a square
 
 const P := preload("res://scenes/ui/palette.gd")
 const Board := preload("res://core/board.gd")
@@ -149,7 +150,7 @@ func float_text(key: String, text: String, col: Color = P.GOLD) -> void:
 
 
 func _process(delta: float) -> void:
-	if (ghost != "" and hover_key != "") or (run != null and not run.fresh.is_empty()):
+	if (ghost != "" and hover_key != "") or not legal.is_empty() or not twins.is_empty() or (run != null and not run.fresh.is_empty()):
 		queue_redraw()
 	if run != null and (not ring_keys.is_empty() or run.felt.perm_chips().any(func(c): return Content.rarity_of(c.kind) == "legendary")):
 		queue_redraw()
@@ -223,6 +224,8 @@ func _draw() -> void:
 	var font := P.font()
 	draw_rect(Rect2(Vector2(-3, -3), size + Vector2(6, 6)), rail_col.darkened(0.45))
 	draw_rect(Rect2(Vector2(-2, -2), size + Vector2(4, 4)), rail_col)
+	var held := not legal.is_empty() or not twins.is_empty()   ## placing something: dim where it can't go
+	var glow := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 160.0)
 	var covered := {}
 	if hover_key != "" and B.has_bet(hover_key) and B.is_line_bet(hover_key):
 		for n in B.bet(hover_key).numbers:
@@ -248,7 +251,9 @@ func _draw() -> void:
 		if k in targets:
 			bg = bg.lerp(P.CYAN, 0.45)
 		if preview.has(k):
-			bg = bg.lerp(preview[k], 0.42)
+			bg = bg.lerp(preview[k], 0.8)
+		if legal.has(k) or twins.has(k):
+			bg = bg.lerp(P.GOOD if twins.has(k) else P.GOLD, 0.12 + 0.08 * glow)
 		if flashes.has(k):
 			bg = bg.lerp(P.GOLD, clampf(flashes[k], 0.0, 0.7))
 		if nears.has(k):
@@ -284,9 +289,11 @@ func _draw() -> void:
 		draw_string(font, Vector2(tx, floor(ty)), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, tcol)
 		_draw_chips(k, r, font)
 		if twins.has(k):
-			draw_rect(r.grow(-1.0), P.GOOD, false, 2.0)
+			draw_rect(r.grow(-1.0), Color(P.GOOD, glow), false, 2.0)
 		elif legal.has(k):
-			draw_rect(r.grow(-1.0), Color(P.GOLD, 0.55), false, 1.0)
+			draw_rect(r.grow(-1.0), Color(P.GOLD, glow), false, 2.0)
+		elif held:
+			draw_rect(r, Color(0, 0, 0, 0.55))
 	_draw_line_zones(font)
 	_draw_ghost(font)
 	for f in floaters:
@@ -314,9 +321,9 @@ func _draw_ghost(font: Font) -> void:
 		draw_line(c + Vector2(-4, 4), c + Vector2(4, -4), P.DANGER, 2.0)
 
 
-## Drag a chip from the rack onto the felt.
+## Drag a chip from the rack (or an item off the Cage counter) onto the felt.
 func _can_drop_data(at: Vector2, data) -> bool:
-	if not (data is Dictionary and data.has("rack")):
+	if not (data is Dictionary and (data.has("rack") or data.has("stock"))):
 		return false
 	var k := key_at(at)
 	if k != hover_key:
@@ -327,18 +334,25 @@ func _can_drop_data(at: Vector2, data) -> bool:
 
 
 func _drop_data(at: Vector2, data) -> void:
-	rack_dropped.emit(int(data.rack), key_at(at))
+	if data.has("stock"):
+		stock_dropped.emit(int(data.stock), key_at(at))
+	else:
+		rack_dropped.emit(int(data.rack), key_at(at))
 
 
 func _draw_line_zones(font: Font) -> void:
+	var glow := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 160.0)
 	for k in line_rects:
 		var r: Rect2 = line_rects[k]
+		if legal.has(k) or twins.has(k):
+			draw_rect(r, Color(P.GOOD if twins.has(k) else P.GOLD, 0.35 * glow))
+			draw_rect(r, Color(P.GOOD if twins.has(k) else P.GOLD, glow), false, 1.0)
 		if k == hover_key:
 			draw_rect(r, Color(P.GOLD, 0.45))
 			draw_rect(r, P.GOLD, false, 1.0)
 		elif preview.has(k):
-			draw_rect(r, Color(preview[k], 0.55))
-		elif run.felt.chips_on(k).is_empty():
+			draw_rect(r, Color(preview[k], 0.85))
+		elif run.felt.chips_on(k).is_empty() and legal.is_empty() and twins.is_empty():
 			draw_rect(Rect2(r.get_center().floor() - Vector2(1, 1), Vector2(2, 2)), Color(P.CREAM, 0.3))
 		if flashes.has(k):
 			draw_rect(r, Color(P.GOLD, clampf(flashes[k], 0.0, 0.7)))

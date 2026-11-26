@@ -6,6 +6,7 @@
 ## `t` is the table screen.
 
 const P := preload("res://scenes/ui/palette.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
@@ -78,10 +79,13 @@ func refresh_offer(run) -> void:
 				for p in Preview.pays_on(run.felt, o.id, Preview.rep_key(run.felt, o.id)):
 					t.felt_view.preview[Board.straight_key(p)] = P.CYAN
 			t.felt_view.queue_redraw()
+			t.main.card_near(tok, InfoCard.for_offer(o.id, "FREE CHIP  " + Content.DIRECTIONS[o.dir].to_upper(), "Free: click to take it, then place it."))
 		tok.hover_exit = func():
+			t.main.hide_card()
 			t.felt_view.preview = {}
 			t.felt_view.queue_redraw()
 		tok.pressed.connect(func():
+			t.main.hide_card()
 			if run.take_table_offer(i):
 				t.main.profile.note_seen(o.id)
 				t.main.profile.note_used(o.id)

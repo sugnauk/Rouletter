@@ -495,6 +495,51 @@ func item_desc(item: Dictionary) -> String:
 	return Content.HOUSE_RULES[item.id].desc
 
 
+## Why a counter item can't be bought right now ("" when it can).
+func buy_block(i: int) -> String:
+	if i < 0 or i >= shop.stock.size():
+		return "Gone."
+	var item: Dictionary = shop.stock[i]
+	if item.sold:
+		return "Sold."
+	if shop.get("pending_upgrade", "") != "":
+		return "Place your felt upgrade first."
+	if not can_afford(item):
+		match item.get("currency", "cash"):
+			"take":
+				return "Not enough spare Take."
+			"stack":
+				return "Your next stack can't spare the chips."
+		return "Not enough cash."
+	if item.type == "rule" and felt.house_rules.size() >= relic_slots():
+		return "Your House Rule slots are full."
+	return ""
+
+
+## Drag-to-buy: buy counter item `i` straight onto felt spot `key`.
+## A chip is bought and placed there ("placed"), or bought into the rack when the spot can't
+## take it ("rack"). A felt upgrade is only bought when the spot can take it ("placed").
+## Anything else is bought as usual ("bought"). "" = nothing was bought.
+func buy_onto(i: int, key: String) -> String:
+	if buy_block(i) != "":
+		return ""
+	var item: Dictionary = shop.stock[i]
+	match item.type:
+		"chip":
+			if not buy(i):
+				return ""
+			if key != "" and place_chip(inventory.size() - 1, key):
+				return "placed"
+			return "rack"
+		"upgrade":
+			if key not in _targets_for(item.id):
+				return ""
+			if not buy(i):
+				return ""
+			return "placed" if apply_upgrade(key) else "bought"
+	return "bought" if buy(i) else ""
+
+
 func buy(i: int) -> bool:
 	if phase != Phase.SHOP or shop.pending_upgrade != "" or i < 0 or i >= shop.stock.size():
 		return false

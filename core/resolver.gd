@@ -109,6 +109,8 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			res.log.rules.append("%s chip on %s pays nothing (Enforcer)" % [c.kind, c.bet])
 			_event(res, "push", c.bet, 0.0, "frozen" if c.id == w.frozen_id else "off the books")
 			continue
+		if not Content.CHIPS[c.kind].get("pays_odds", true):
+			continue  # Hedge: insurance, not a bet
 		var pamt := _score(w, c, b, pocket, res)
 		if w.boss_is("cold_red") and b.type == "straight" and B.is_red(pocket):
 			pamt *= 0.5

@@ -8,6 +8,7 @@ extends Control
 ## (Feats live in the Pawn Shop, next to the unlocks they pay for.)
 
 const P := preload("res://scenes/ui/palette.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Art := preload("res://scenes/ui/art.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
@@ -155,7 +156,13 @@ func _collection() -> void:
 			tok.selected = used
 			tok.dim = not known and not used
 			tok.badge = ("%dM" % table[id].unlock) if is_locked else ("" if known or used else "?")
-			tok.hover_target = func(_s): _item_detail(id, table, known, used, is_locked)
+			tok.hover_target = func(_s):
+				_item_detail(id, table, known, used, is_locked)
+				if known or used:
+					var cd: Dictionary = InfoCard.for_id(id)
+					if not cd.is_empty():
+						main.card_near(tok, cd)
+			tok.hover_exit = main.hide_card
 			tok.pressed.connect(func(): _item_detail(id, table, known, used, is_locked))
 			flow.add_child(tok)
 	summary_lbl.text = "COLLECTION  %d / %d seen  -  %d bought  -  Feats and unlocks are in the Pawn Shop." % [seen_all, total, bought_all]
@@ -174,6 +181,9 @@ func _item_detail(id: String, table: Dictionary, known: bool, used: bool, is_loc
 	var rar: String = Content.rarity_of(id)
 	var tags: Array = Content.tags_of(id).map(func(t): return Content.TAG_NAMES.get(t, t))
 	var lines := [e.desc]
+	var fine: String = InfoCard.chip_detail(id) if Content.CHIPS.has(id) or Content.UPGRADES.has(id) else str(e.get("more", ""))
+	if fine != "":
+		lines.append(fine)
 	if tags.size() > 0:
 		lines.append("Works with: " + ", ".join(tags) + ".")
 	lines.append(("%s.  " % rar.capitalize()) + ("Bought at least once." if used else "Seen, never bought."))

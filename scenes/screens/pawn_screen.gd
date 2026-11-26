@@ -6,6 +6,7 @@ extends Control
 ##   - GOALS: every Feat, grouped, with what each pays and which unlock it would bring in reach
 
 const P := preload("res://scenes/ui/palette.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Art := preload("res://scenes/ui/art.gd")
 const Profile := preload("res://core/profile.gd")
 const Feats := preload("res://core/feats.gd")
@@ -185,6 +186,10 @@ func _refresh_unlocks() -> void:
 				if not owned and prof.markers < e.cost:
 					txt += "\nEarn %d more Markers: %s" % [e.cost - prof.markers, _feat_list(_feats_for(e.cost - prof.markers))]
 				detail.text = txt
+				var cd: Dictionary = InfoCard.for_id(id, state.to_upper())
+				if not cd.is_empty():
+					main.card_near(tok, cd)
+			tok.hover_exit = main.hide_card
 			tok.pressed.connect(_buy.bind(id))
 	lines_view.queue_redraw()
 

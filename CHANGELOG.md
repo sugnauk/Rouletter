@@ -3,6 +3,31 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.42
+- **Drag to buy, Balatro-style.** Drag an item off the Cage counter:
+  - **A chip onto the felt:** bought and placed in one move. It stays free to move until the spin.
+  - **A felt upgrade onto a lit spot:** bought and laid there.
+  - **Anything onto the glowing "DROP HERE TO BUY" box** over your rack and House Rules: bought into the rack, rules or perks.
+  - **If you can't afford it,** it won't lift, and its card says why.
+  - Click, then BUY still works.
+- **See where a chip can go.** While you hold or drag a chip, every spot it fits pulses gold (green where it would level up a twin), and everywhere else is dimmed. The status line says the rule in words, e.g. "Goes on an even-money box: red, black, odd, even, high or low."
+- **Info cards everywhere:** free chips, everything on the Cage counter, opening, bonus and stash picks, Refine paths, and Pawn Shop and Casebook tiles. The same card shows:
+  - the one-line effect;
+  - where it goes and how it scales;
+  - the fine print;
+  - how it fits your build;
+  - its price.
+- **Shorter descriptions:** every chip, rule, upgrade, favour and voucher is now one short line. The rules detail lives on the card.
+- **Table HUD:**
+  - the balls count sits under the wheel ("BALLS 4/6");
+  - cash is just "$4";
+  - your betting-chip stack lies right under the felt;
+  - the speed and MENU buttons moved up into the top bar;
+  - the LOG button is gone (click the score panel's receipt for the full calculation);
+  - "where it pays" previews now clearly recolour the felt.
+- **The Take bar fills as the count plays.** Each win pours in with rising coin ticks, a multiplier surges it, a loss drains it. A sparkling leading edge, "HALFWAY", and a gold flash and "PAID!" the moment you cross the payment. (Fastest speed still does one quick fill.)
+- **Hedge fixed:** it never pays its box's odds now (it was paying on a hit as well). It's insurance: every spin its box misses, +2 Take per level.
+
 ## 0.0.41
 - Placements aren't final until the next spin. Any chip you place, in the Cage or at the table, can be picked back up for free until you spin:
   - **In the Cage:** click it (or right-click it) and it's back in your hand, ready to put somewhere else. MOVE is also free for these chips.

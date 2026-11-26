@@ -42,6 +42,8 @@ var picked_ref = null
 var buy_btn             ## BUY in the description panel (a marquee button)
 var choice: Panel = null   ## the pick-one overlay (opening pick / early-clear bonus / refine)
 var refine_id := -1        ## the chip waiting for a Refine path
+var drag_stock := -1       ## the counter item being dragged (drag to buy), or -1
+var buy_zones: Array = []  ## "DROP TO BUY" targets over the rack and the House Rules, shown while dragging
 
 
 func setup() -> void:
@@ -102,6 +104,7 @@ func setup() -> void:
 		selected_item = i
 		mode = "place"
 		_place_selected(k))
+	felt_view.stock_dropped.connect(_on_stock_dropped)
 	add_child(felt_view)
 	P.place(P.label(self, "YOUR CHIPS", P.FONT_SMALL, P.DIM), Vector2(304, 152))
 	mode_box = HBoxContainer.new()
@@ -121,6 +124,123 @@ func setup() -> void:
 	status_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
 	status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(status_lbl, Vector2(304, 300), Vector2(330, 50))
+	for r in [Rect2(302, 184, 334, 112), Rect2(6, 182, 292, 50)]:
+		var z := Control.new()
+		P.place(z, r.position, r.size)
+		z.visible = false
+		z.set_drag_forwarding(Callable(), func(_at, data): return data is Dictionary and data.has("stock"),
+			func(_at, data): _on_stock_dropped(int(data.stock), ""))
+		z.draw.connect(_draw_buy_zone.bind(z))
+		add_child(z)
+		buy_zones.append(z)
+
+
+## The glowing "DROP TO BUY" target shown while an item is dragged off the counter.
+func _draw_buy_zone(z: Control) -> void:
+	var r := Rect2(Vector2.ZERO, z.size)
+	var glow := 0.55 + 0.45 * sin(t * 7.0)
+	z.draw_rect(r, Color(0.06, 0.04, 0.02, 0.78))
+	z.draw_rect(r, Color(P.GOLD, 0.10 + 0.08 * glow))
+	for i in range(0, int(r.size.x), 8):   # marching dashes along the edges
+		var o := (i + int(t * 24.0)) % int(r.size.x)
+		z.draw_rect(Rect2(o, 0, 4, 2), Color(P.GOLD, glow))
+		z.draw_rect(Rect2(r.size.x - o - 4, r.size.y - 2, 4, 2), Color(P.GOLD, glow))
+	for i in range(0, int(r.size.y), 8):
+		var o := (i + int(t * 24.0)) % int(r.size.y)
+		z.draw_rect(Rect2(r.size.x - 2, o, 2, 4), Color(P.GOLD, glow))
+		z.draw_rect(Rect2(0, r.size.y - o - 4, 2, 4), Color(P.GOLD, glow))
+	var label := "DROP HERE TO BUY"
+	if drag_stock >= 0 and drag_stock < main.run.shop.stock.size():
+		label = "DROP HERE TO BUY  %s" % main.run.price_text(main.run.shop.stock[drag_stock])
+	Art.text(z, P.title_font(), Vector2(r.size.x / 2.0, r.size.y / 2.0 + 4), label, 8, P.GOLD.lerp(P.CREAM, glow * 0.5), true)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END and drag_stock >= 0:
+		_end_stock_drag()
+
+
+func _end_stock_drag() -> void:
+	drag_stock = -1
+	for z in buy_zones:
+		z.visible = false
+	if main.run.phase == RunState.Phase.SHOP:
+		_mark_felt()
+
+
+## Light the felt for whatever you're holding: a felt upgrade to lay, or a rack chip.
+func _mark_felt() -> void:
+	var run = main.run
+	if run.shop.get("pending_upgrade", "") != "":
+		Placing.mark_keys(felt_view, run.upgrade_targets())
+	else:
+		Placing.mark(felt_view, run, selected_item if mode == "place" else -1)
+
+
+func _start_stock_drag(i: int) -> void:
+	var run = main.run
+	drag_stock = i
+	picked = -1
+	main.hide_card()
+	var item: Dictionary = run.shop.stock[i]
+	match item.type:
+		"chip":
+			Placing.mark_kind(felt_view, run, item.id, item.get("flaw", ""))
+			status_lbl.text = "Drop %s on a lit spot to buy and place it, or on your rack. %s" % [Content.CHIPS[item.id].name, Content.place_hint(item.id)]
+		"upgrade":
+			Placing.mark_keys(felt_view, run._targets_for(item.id))
+			status_lbl.text = "Drop %s on a lit spot to buy and lay it. %s" % [Content.UPGRADES[item.id].name, Content.place_hint(item.id)]
+		_:
+			Placing.clear(felt_view)
+			status_lbl.text = "Drop it on the glowing box to buy it."
+	for z in buy_zones:
+		z.visible = true
+		z.queue_redraw()
+
+
+## Drag to buy: an item from the counter dropped on the felt (`key`) or a buy zone ("").
+func _on_stock_dropped(i: int, key: String) -> void:
+	var run = main.run
+	if run.phase != RunState.Phase.SHOP or i < 0 or i >= run.shop.stock.size():
+		return
+	var item: Dictionary = run.shop.stock[i]
+	var block: String = run.buy_block(i)
+	var tp := _token_pos(i)
+	var owned_twin: bool = item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", ""))
+	var twin_here: bool = item.type == "chip" and key != "" and run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == item.id)
+	var got: String = run.buy_onto(i, key)
+	_end_stock_drag()
+	if got == "":
+		Sfx.play("click")
+		refresh()
+		if block != "":
+			status_lbl.text = block
+		elif item.type == "upgrade":
+			status_lbl.text = "%s can't go there. %s" % [Content.UPGRADES[item.id].name, Content.place_hint(item.id)]
+		return
+	picked = -1
+	main.profile.note_used(item.id)
+	Sfx.play("buy")
+	if got == "placed" and key != "":
+		var at: Vector2 = main.fx.local(felt_view.key_global(key))
+		felt_view.pop(key)
+		main.fx.burst(at, 24, [P.GOLD, P.CREAM, P.chip_color(item.id)], 120.0)
+		main.fx.pop_text(at - Vector2(0, 12), "LEVEL UP!" if twin_here else "SOLD!", P.GOOD if twin_here else P.GOLD)
+		Sfx.play("stack" if twin_here else "chip_place")
+		selected_item = 0 if not run.inventory.is_empty() else -1
+	else:
+		main.fx.burst(tp, 22, [P.GOLD, P.CREAM, P.chip_color(item.id)], 130.0)
+		main.fx.pop_text(tp - Vector2(0, 20), "SOLD!", P.GOLD)
+		if item.type == "chip":
+			selected_item = run.inventory.size() - 1
+			mode = "place"
+			if owned_twin:
+				main.tip("level", true)
+		elif item.type == "rule":
+			main.fx.banner(Content.HOUSE_RULES[item.id].name.to_upper(), P.GOLD, 1.0, 120, 8)
+	refresh()
+	if got == "rack" and key != "":
+		status_lbl.text = "%s can't go there, so it's in your rack. %s" % [Content.CHIPS[item.id].name, Content.place_hint(item.id)]
 
 
 func _process(delta: float) -> void:
@@ -136,8 +256,7 @@ func _draw_cage() -> void:
 	# Header plaque.
 	Art.plaque(c, Rect2(8, 3, 150, 20))
 	Art.text(c, font, Vector2(83, 17), "THE CAGE", 8, P.CREAM, true)
-	Art.icon(c, "cash", Vector2(176, 13), 1)
-	Art.text(c, font, Vector2(186, 18), "$%d" % run.cash, 16, P.GOLD)
+	Art.text(c, font, Vector2(170, 18), "$%d" % run.cash, 16, P.GOLD)
 	if run.overflow > 0 or "dealer" in run.shop.get("vendors", []):
 		Art.text(c, P.font(), Vector2(250, 12), "SPARE TAKE", 8, P.DIM)
 		Art.text(c, P.font(), Vector2(250, 22), str(run.overflow), 8, P.VIOLET)
@@ -180,6 +299,9 @@ func _plate(c: Control, w: Rect2, y: float, text: String, col: Color) -> void:
 func _hint() -> String:
 	if main.run.shop.get("pending_upgrade", "") != "":
 		return "Click a glowing spot on the felt to lay your %s." % Content.UPGRADES[main.run.shop.pending_upgrade].name
+	if mode == "place" and selected_item >= 0 and selected_item < main.run.inventory.size():
+		var kind: String = main.run.inventory[selected_item].kind
+		return "Holding %s. %s Click a lit spot; right-click puts it down." % [Content.CHIPS[kind].name, Content.place_hint(kind)]
 	match mode:
 		"move":
 			return "Click one of your chips on the felt to pick it up ($%d; free for chips placed since the last spin), then place it again." % Content.RELOCATE_PRICE
@@ -194,7 +316,7 @@ func _hint() -> String:
 				return "The Cashier handles trade-ins, and the Cashier isn't on."
 			return "Click one of your chips: the Cashier swaps it for a related chip ($%d), same square, same level." % Content.CONVERT_PRICE
 	if main.run.inventory.is_empty():
-		return "Click an item on the counter to look at it; click it again (or BUY) to buy it."
+		return "Drag an item off the counter onto the felt or your rack to buy it (or click it, then BUY)."
 	return "Click a chip in your rack, then a lit spot on the felt (or drag it there). Right-click puts it down."
 
 
@@ -362,7 +484,7 @@ func _refresh_choice(run) -> void:
 				else:
 					_describe("Can't refine", "Not enough cash ($%d)." % Content.REFINE_PRICE)
 				refine_id = -1
-				refresh())
+				refresh(), InfoCard.for_text(rf.name, "REFINE PATH  $%d" % Content.REFINE_PRICE, rf.desc, rc.kind, "One path per chip. It stays if you move the chip."))
 		var cb := P.button(choice, "Cancel", func():
 			refine_id = -1
 			refresh(), Vector2(60, 16), P.FONT_SMALL)
@@ -385,7 +507,8 @@ func _refresh_choice(run) -> void:
 						mode = "place"
 					refresh()
 				else:
-					_describe("No room", "Your House Rule slots are full. Take a chip instead."))
+					_describe("No room", "Your House Rule slots are full. Take a chip instead."),
+				InfoCard.for_rule(it.id) if is_rule else InfoCard.for_offer(it.id, "ENFORCER'S STASH", "Free. Place it on the felt."))
 	elif not offer.is_empty():
 		title.text = "ON THE HOUSE: PICK ONE"
 		for i in range(offer.size()):
@@ -400,7 +523,8 @@ func _refresh_choice(run) -> void:
 					if o.type == "chip":
 						selected_item = run.inventory.size() - 1
 						mode = "place"
-					refresh())
+					refresh(),
+				InfoCard.for_rule(o.id) if o.type == "rule" else InfoCard.for_offer(o.id, "ON THE HOUSE", "Free. Place it on the felt."))
 		var sk := P.button(choice, "No thanks", func():
 			run.skip_offer()
 			refresh(), Vector2(70, 16), P.FONT_SMALL)
@@ -460,7 +584,7 @@ func _refresh_choice(run) -> void:
 					refresh())
 
 
-func _choice_option(row: Control, icon: String, head: String, name: String, body: String, pick: Callable) -> void:
+func _choice_option(row: Control, icon: String, head: String, name: String, body: String, pick: Callable, card: Dictionary = {}) -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
 	col.custom_minimum_size = Vector2(82, 0)
@@ -470,8 +594,14 @@ func _choice_option(row: Control, icon: String, head: String, name: String, body
 	var tok = Token.new(icon, Vector2(46, 46))
 	tok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	tok.rarity = Content.rarity_of(icon)
-	tok.hover_target = func(_s): _describe(name, body)
-	tok.pressed.connect(pick)
+	var cd: Dictionary = card if not card.is_empty() else InfoCard.for_text(name, head, body, icon)
+	tok.hover_target = func(_s):
+		_describe(name, body)
+		main.card_near(tok, cd)
+	tok.hover_exit = main.hide_card
+	tok.pressed.connect(func():
+		main.hide_card()
+		pick.call())
 	col.add_child(tok)
 	var n := P.label(col, name, P.FONT_SMALL, P.CREAM)
 	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -537,12 +667,19 @@ func _build_windows(run) -> void:
 			var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE", "loan": "LOAN",
 				"favour": "FAVOUR (next table)", "voucher": "VOUCHER (whole run)"}[item.type]
 			var vname: String = Content.VENDORS[v].name
-			tok.hover_target = func(_s): _describe_stock(i)
+			tok.hover_target = func(_s):
+				_describe_stock(i)
+				if drag_stock < 0:
+					main.card_near(tok, InfoCard.for_stock(run, i))
 			tok.hover_exit = func():
+				main.hide_card()
 				felt_view.preview = {}
 				felt_view.queue_redraw()
 				if picked >= 0:
 					_describe_stock(picked)
+			if run.buy_block(i) == "":
+				tok.drag_data = {"stock": i}
+				tok.drag_started = _start_stock_drag.bind(i)
 			if i == run.shop.get("reserved", -1) and not item.sold:
 				tok.badge = "HOLD"
 			tok.selected = i == picked or (i == run.shop.get("reserved", -1) and not item.sold)
@@ -653,7 +790,8 @@ func _refresh_rack() -> void:
 		tok.hover_exit = main.hide_card
 		tok.pressed.connect(_select.bind(i))
 		rack.add_child(tok)
-	Placing.mark(felt_view, main.run, selected_item if mode == "place" else -1)
+	if drag_stock < 0:
+		_mark_felt()
 
 
 func _select(i: int) -> void:

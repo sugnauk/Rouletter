@@ -35,6 +35,8 @@ var hud: Control
 var history_view: Control
 var score_view: Control
 var gauge_view: Control
+var balls_view: Control   ## "BALLS 4/6" under the wheel
+var stack_view: Control   ## your betting-chip stack, lying under the felt
 var spin_btn: Button
 var clear_btn: Button
 var undo_btn: Button
@@ -57,6 +59,7 @@ var selected_item := -1
 var spinning := false
 var shown_take := 0.0
 var meter_pulse := 0.0
+var meter_paid_flash := 0.0     ## the gold flash when the meter crosses the payment line
 var board_id := ""
 var announced := ""
 var table_key := ""
@@ -90,7 +93,8 @@ func setup() -> void:
 	hud = _canvas(Vector2(0, 0), Vector2(640, 24), _draw_hud)
 
 	wheel_view = WheelView.new()
-	P.place(wheel_view, Vector2(4, 24), Vector2(176, 176))
+	P.place(wheel_view, Vector2(4, 24), Vector2(176, 166))
+	balls_view = _canvas(Vector2(4, 190), Vector2(176, 13), _draw_balls)
 	add_child(wheel_view)
 	spin_btn = P.button(self, "SPIN", _on_spin, Vector2(168, 22), P.FONT)
 	spin_btn.add_theme_font_override("font", P.title_font())
@@ -107,6 +111,7 @@ func setup() -> void:
 	clear_btn = P.button(self, "CLEAR", _on_clear, Vector2(44, 14), P.FONT_SMALL)
 	P.place(clear_btn, Vector2(MID_X + 284, 134))
 	gauge_view = _canvas(Vector2(4, 232), Vector2(176, 124), _draw_gauges)
+	stack_view = _canvas(Vector2(MID_X, 134), Vector2(232, 14), _draw_stack)
 
 	felt_view = FeltView.new()
 	P.place(felt_view, Vector2(MID_X, 32))
@@ -136,19 +141,17 @@ func setup() -> void:
 	log_box.add_theme_stylebox_override("normal", P.box(Color(0.03, 0.06, 0.04, 0.96), P.LINE.darkened(0.4)))
 	P.place(log_box, Vector2(MID_X, 184), Vector2(330, 170))
 	add_child(log_box)
-	var lb := P.button(self, "LOG", func(): log_box.visible = not log_box.visible, Vector2(30, 12), P.FONT_SMALL)
-	P.place(lb, Vector2(MID_X + 298, 186))
 
 	P.place(P.label(self, "BET CHIP", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 26))
 	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 12), P.FONT_SMALL)
-	P.place(mb, Vector2(RIGHT_X + 72, 24))
+	P.place(mb, Vector2(RIGHT_X + 72, 6))
 	# Fast-forward: Normal > Fast >> Fastest >>> (F on the keyboard).
 	speed_btn = P.button(self, ">", func():
 		main.cycle_speed()
 		speed_btn.text = Profile.SPEEDS[main.speed()].label, Vector2(26, 12), P.FONT_SMALL)
 	speed_btn.tooltip_text = ""
 	speed_btn.mouse_entered.connect(func(): _status("Game speed: %s. Click (or press F) to change." % Profile.SPEEDS[main.speed()].name))
-	P.place(speed_btn, Vector2(RIGHT_X + 44, 24))
+	P.place(speed_btn, Vector2(RIGHT_X + 44, 6))
 	denom_box = HBoxContainer.new()
 	denom_box.add_theme_constant_override("separation", 4)
 	P.place(denom_box, Vector2(RIGHT_X, 36))
@@ -227,6 +230,9 @@ func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
 
 
 func _hint() -> String:
+	if selected_item >= 0 and selected_item < main.run.inventory.size():
+		var kind: String = main.run.inventory[selected_item].kind
+		return "Holding %s. %s" % [Content.CHIPS[kind].name, Content.place_hint(kind)]
 	if DisplayServer.is_touchscreen_available():
 		return "Tap: bet %d   Hold: edit (take back, -chip, pin, clear area)" % bet_size
 	return "Click: bet %d  Right: take back  Shift: -%d  Ctrl: clear area  Alt: pin" % [bet_size, bet_size]
@@ -330,7 +336,7 @@ func _mark_clearing() -> void:
 
 
 ## Where the betting stack sits (the chip towers in the left column), for chips flying to/from it.
-const STACK_AT := Vector2(110, 330)
+const STACK_AT := Vector2(MID_X + 60, 141)   ## where betting chips fly from / back to (the stack under the felt)
 
 
 ## Chips going back from a square to the stack.
@@ -346,6 +352,7 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	meter_pulse = maxf(0.0, meter_pulse - delta * 2.5)
+	meter_paid_flash = maxf(0.0, meter_paid_flash - delta * 1.2)
 	score_pop = maxf(0.0, score_pop - delta * 5.0)
 	var cash: int = main.run.cash
 	if shown_cash < 0.0:
@@ -376,6 +383,8 @@ func _process(delta: float) -> void:
 	else:
 		spin_btn.modulate = Color.WHITE
 	hud.queue_redraw()
+	stack_view.queue_redraw()
+	balls_view.queue_redraw()
 	if spinning:
 		score_view.queue_redraw()
 
@@ -598,7 +607,7 @@ func _draw_hud(c: Control) -> void:
 	Art.plaque(c, Rect2(4, 3, 176, 18))
 	Art.text(c, font, Vector2(92, 16), "NIGHT %d  %s" % [run.night + 1, run.table_name().to_upper()], 8, P.CREAM, true)
 	# Take meter.
-	var mr := Rect2(MID_X, 3, 300, 18)
+	var mr := Rect2(MID_X, 3, 330, 18)
 	Art.plaque(c, mr, true)
 	var inner := Rect2(mr.position + Vector2(3, 3), mr.size - Vector2(6, 6))
 	c.draw_rect(inner, P.BLACK)
@@ -606,6 +615,16 @@ func _draw_hud(c: Control) -> void:
 	var fill := Color("#e0a82e").lerp(P.CREAM, meter_pulse * 0.6)
 	c.draw_rect(Rect2(inner.position, Vector2(floor(inner.size.x * k), inner.size.y)), fill)
 	c.draw_rect(Rect2(inner.position, Vector2(floor(inner.size.x * k), 2)), fill.lightened(0.4))
+	if meter_pulse > 0.05 and k > 0.0 and k < 1.0:   # the bright leading edge, sparkling as it fills
+		var ex: float = inner.position.x + floor(inner.size.x * k)
+		c.draw_rect(Rect2(ex - 2, inner.position.y, 2, inner.size.y), Color(1, 1, 1, meter_pulse))
+		var ms := Time.get_ticks_msec() / 60
+		for i in range(4):
+			var sx: float = ex - 1 + ((ms * 7 + i * 13) % 7) - 3
+			var sy: float = inner.position.y - 3 + ((ms * 5 + i * 11) % (int(inner.size.y) + 6))
+			c.draw_rect(Rect2(sx, sy, 1, 1), Color(P.CREAM, meter_pulse))
+	if meter_paid_flash > 0.0:
+		c.draw_rect(inner, Color(P.CREAM, meter_paid_flash * 0.7))
 	for i in range(1, 10):
 		var x: float = inner.position.x + floor(inner.size.x * i / 10.0)
 		c.draw_rect(Rect2(x, inner.position.y, 1, inner.size.y), Color(0, 0, 0, 0.35))
@@ -615,17 +634,54 @@ func _draw_hud(c: Control) -> void:
 		c.draw_rect(mr.grow(3), Color(P.GOLD, 0.25 * g), false, 1.0)
 	var mtxt: String = ("PAID!  %d / %d" % [int(shown_take), t.target]) if shown_take >= t.target else ("TAKE %d / %d   NEED %d" % [int(shown_take), t.target, int(ceil(t.target - shown_take))])
 	Art.text(c, font, Vector2(mr.get_center().x, 16), mtxt, 8, P.CREAM if k < 0.55 else P.WOOD_DARK, true)
-	# Spins as balls.
-	var total: int = t.spins_used + t.spins_left
+	# Cash.
+	Art.text(c, font, Vector2(RIGHT_X + 2, 16), "$%d" % int(round(shown_cash if shown_cash >= 0.0 else run.cash)), 8, P.CREAM if shown_cash >= 0.0 and int(shown_cash) != run.cash else P.GOLD)
+
+
+## The balls left at this table, as a row under the wheel.
+func _draw_balls(c: Control) -> void:
+	var run = main.run
+	if run.table.is_empty():
+		return
+	var td: Dictionary = run.table
+	var total: int = td.spins_used + td.spins_left
+	var font := P.font()
+	var label := "BALLS %d/%d" % [td.spins_left, total]
+	Art.text(c, font, Vector2(4, 10), label, 8, P.DANGER if td.spins_left <= 1 else P.CREAM)
+	var x0: float = 8.0 + font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var step: float = minf(10.0, (c.size.x - x0 - 4.0) / maxf(1.0, total))
 	for i in range(total):
-		var p := Vector2(MID_X + 308 + i * 9, 12)
-		if i < t.spins_left:
+		var p := Vector2(x0 + 4 + i * step, 6).floor()
+		if i < td.spins_left:
 			Art.icon(c, "spin", p, 1)
 		else:
 			c.draw_circle(p, 3.5, P.DIM.darkened(0.4), false, 1.0, false)
-	# Cash.
-	Art.icon(c, "cash", Vector2(RIGHT_X + 52, 12), 1)
-	Art.text(c, font, Vector2(RIGHT_X + 62, 16), "$%d" % int(round(shown_cash if shown_cash >= 0.0 else run.cash)), 8, P.CREAM if shown_cash >= 0.0 and int(shown_cash) != run.cash else P.GOLD)
+
+
+## The betting-chip stack, lying on its side under the felt: one sliver per chip, in casino
+## denominations (blue 10, red 5, white 1), with the count.
+func _draw_stack(c: Control) -> void:
+	var run = main.run
+	if run.table.is_empty():
+		return
+	var stack: int = run.table.stack
+	var font := P.font()
+	Art.text(c, font, Vector2(0, 10), "STACK", 8, P.DIM)
+	Art.text(c, P.title_font(), Vector2(30, 11), "%d" % stack, 8, P.CREAM if stack > 0 else P.DANGER)
+	var x := 54.0
+	var counts := {10: stack / 10, 5: (stack % 10) / 5, 1: stack % 5}
+	for d in [10, 5, 1]:
+		for j in range(counts[d]):
+			if x > c.size.x - 3:
+				break
+			var col: Color = Art.denom_color(d)
+			c.draw_rect(Rect2(x, 1, 3, 12), col.darkened(0.5))
+			c.draw_rect(Rect2(x, 2, 3, 10), col)
+			c.draw_rect(Rect2(x, 6, 3, 2), Color(1, 1, 1, 0.3))
+			x += 4.0
+		x += 4.0
+	if stack == 0:
+		Art.text(c, font, Vector2(54, 10), "EMPTY", 8, P.DANGER)
 
 
 func _draw_gauges(c: Control) -> void:
@@ -648,23 +704,6 @@ func _draw_gauges(c: Control) -> void:
 	Art.text(c, font, Vector2(168 - font.get_string_size(owed, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 46), owed, 8, P.DANGER.lerp(P.GOLD, clampf(float(mp) / mt, 0.0, 1.0)))
 	c.draw_rect(Rect2(4, 49, 168, 4), P.BLACK)
 	c.draw_rect(Rect2(5, 50, floor(166.0 * clampf(float(mp) / mt, 0.0, 1.0)), 2), P.GOLD)
-	# The stack as a physical tower of chips.
-	var stack: int = run.table.stack
-	Art.text(c, font, Vector2(4, 66), "STACK", 8, P.DIM)
-	Art.text(c, P.title_font(), Vector2(4, 82), "%d" % stack, 8, P.CREAM)
-	# Break the stack into casino denominations (blue 10, red 5, white 1), at most 10 chips per tower.
-	var counts := {10: stack / 10, 5: (stack % 10) / 5, 1: stack % 5}
-	var ti := 0
-	for d in [10, 5, 1]:
-		var left: int = counts[d]
-		while left > 0 and ti < 6:
-			var in_tower := mini(10, left)
-			for j in range(in_tower):
-				Art.chip(c, Vector2(56 + ti * 19, 114 - j * 3), 7.0, Art.denom_color(d))
-			left -= in_tower
-			ti += 1
-	if stack == 0:
-		Art.text(c, font, Vector2(56, 100), "EMPTY", 8, P.DANGER)
 
 
 func _draw_history(c: Control) -> void:

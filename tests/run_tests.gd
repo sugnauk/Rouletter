@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -809,8 +809,11 @@ func test_big_content_batch() -> void:
 	near(j3.take, 3.0 * 35.0, "...pays at its full level")
 	check(j3.felt_after.chips[0].value == 1, "...then empties")
 	var hg = felt("european", [["hedge", "RED", 1]])
-	near(Resolver.resolve_spin(hg, 2).take, 1.0, "Hedge: +1 when red misses")
-	near(Resolver.resolve_spin(hg, 1).take, 1.0, "...and the red pays normally when it hits")
+	near(Resolver.resolve_spin(hg, 2).take, 2.0, "Hedge: +2 when red misses")
+	var hg2 = felt("european", [["hedge", "RED", 3]])
+	near(Resolver.resolve_spin(hg2, 2).take, 6.0, "Hedge: +2 per level on a miss")
+	var hg3 = felt("european", [["hedge", "RED", 3]])
+	near(Resolver.resolve_spin(hg3, 1).take, 0.0, "Hedge: pays nothing when its box hits")
 	var ws = felt("european", [["wheel_spoke", "S32", 1]])
 	near(Resolver.resolve_spin(ws, 19).take, 4.0, "Wheel Spoke: two pockets away")
 	near(Resolver.resolve_spin(ws, 4).take, 0.0, "...three is too far")
@@ -1478,6 +1481,52 @@ func test_run_report() -> void:
 	run.place_bet("S17", 1)
 	run.spin(5)
 	check(run.run_report().contains("LOST") and run.run_report().contains("Result: lost"), "a loss is reported")
+
+
+func test_concise_text() -> void:
+	# Item descriptions stay one short line; the long rules live in "more" / place_hint.
+	var too_long := []
+	for table in [Content.CHIPS, Content.UPGRADES, Content.HOUSE_RULES, Content.FAVOURS, Content.VOUCHERS, Content.REFINES]:
+		for id in table:
+			if str(table[id].desc).length() > 60:
+				too_long.append(id)
+	check(too_long.is_empty(), "every item description is 60 characters or fewer %s" % [too_long])
+	check(Content.place_hint("hedge").contains("even-money"), "place hint: Hedge on an even-money box")
+	check(Content.place_hint("sentinel").contains("zero"), "place hint: zero chips")
+	check(Content.place_hint("ace").contains("black"), "place hint: Ace on black")
+	check(Content.place_hint("crown").contains("column"), "place hint: Crown on a column")
+	check(Content.place_hint("bridge").contains("line"), "place hint: Bridge on a line")
+	check(Content.place_hint("perm").contains("any number or bet"), "place hint: Permanent anywhere")
+	check(Content.place_hint("magnet") == "Goes on any number.", "place hint: plain number chips")
+	check(Content.place_hint("lucky_colour").contains("even-money") and Content.place_hint("gold_trim").contains("column"), "place hint: upgrades")
+	check(Content.place_hint("la_partage") == "", "no place hint for House Rules")
+	check(Content.scale_hint("black_cat") != "" and Content.scale_hint("mint") == "", "scale hints come from data")
+
+
+func test_drag_buy() -> void:
+	var run = new_run()
+	run.phase = RunState.Phase.SHOP
+	run.cash = 50
+	run.shop = {"stock": [
+		{"type": "chip", "id": "hedge", "price": 5, "vendor": "cashier", "currency": "cash", "sold": false},
+		{"type": "chip", "id": "perm", "price": 4, "vendor": "cashier", "currency": "cash", "sold": false},
+		{"type": "upgrade", "id": "lucky_colour", "price": 5, "vendor": "cashier", "currency": "cash", "sold": false},
+		{"type": "rule", "id": "rent_control", "price": 6, "vendor": "cashier", "currency": "cash", "sold": false},
+	], "reroll": 2, "pending_upgrade": "", "vendors": ["cashier"]}
+	var inv0: int = run.inventory.size()
+	check(run.buy_onto(0, "RED") == "placed" and run.cash == 45, "drag a Hedge onto red: bought and placed")
+	var hc = run.felt.chips_on("RED")
+	check(hc.size() == 1 and hc[0].kind == "hedge" and run.is_fresh(hc[0].id), "...and it's provisional")
+	check(run.inventory.size() == inv0, "...not left in the rack")
+	check(run.buy_onto(1, "") == "rack" and run.inventory[-1].kind == "perm", "a chip dropped on the buy zone goes to the rack")
+	check(run.buy_onto(2, "S5") == "" and not run.shop.stock[2].sold and run.cash == 41, "an upgrade dropped where it can't go isn't bought")
+	check(run.buy_onto(2, "ODD") == "placed" and run.felt.bet_upgrades.get("ODD", "") == "lucky_colour", "an upgrade dropped on a legal spot is bought and applied")
+	check(run.shop.pending_upgrade == "", "...with nothing left pending")
+	check(run.buy_block(0) == "Sold.", "sold items say so")
+	run.cash = 0
+	check(run.buy_block(3) == "Not enough cash." and run.buy_onto(3, "") == "", "can't drag-buy what you can't afford")
+	run.cash = 50
+	check(run.buy_onto(3, "") == "bought" and "rent_control" in run.felt.house_rules, "rules drop into the House Rules")
 
 
 func test_provisional_placement() -> void:
