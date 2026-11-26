@@ -42,7 +42,15 @@ var press_key := ""             ## touch: square under the finger, pending tap v
 var press_t := 0.0
 
 
+## This wheel's felt and rail colours (each wheel has its own table skin).
+var felt_col: Color = P.FELT
+var rail_col: Color = P.WOOD
+
+
 func layout() -> void:
+	var wd: Dictionary = run.felt.board.def
+	felt_col = Color(wd.get("felt", "#0f5233"))
+	rail_col = Color(wd.get("rail", "#7a5a2a"))
 	rects.clear()
 	line_rects.clear()
 	var B = run.felt.board
@@ -204,15 +212,15 @@ func _draw() -> void:
 		return
 	var B = run.felt.board
 	var font := P.font()
-	draw_rect(Rect2(Vector2(-3, -3), size + Vector2(6, 6)), P.WOOD_DARK)
-	draw_rect(Rect2(Vector2(-2, -2), size + Vector2(4, 4)), P.WOOD)
+	draw_rect(Rect2(Vector2(-3, -3), size + Vector2(6, 6)), rail_col.darkened(0.45))
+	draw_rect(Rect2(Vector2(-2, -2), size + Vector2(4, 4)), rail_col)
 	var covered := {}
 	if hover_key != "" and B.has_bet(hover_key) and B.is_line_bet(hover_key):
 		for n in B.bet(hover_key).numbers:
 			covered[Board.straight_key(n)] = true
 	for k in rects:
 		var r: Rect2 = rects[k]
-		var bg: Color = P.FELT
+		var bg: Color = felt_col
 		var text := ""
 		var fsize := P.FONT_SMALL
 		if Board.is_straight(k):
@@ -223,7 +231,7 @@ func _draw() -> void:
 		else:
 			text = _outside_name(k)
 			if not run.can_bet_on(k):
-				bg = P.FELT_DARK
+				bg = felt_col.darkened(0.3)
 		if k == hover_key:
 			bg = bg.lightened(0.18)
 		elif covered.has(k):

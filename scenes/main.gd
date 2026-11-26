@@ -128,7 +128,10 @@ func show_screen(n: String) -> void:
 	screens[n].call("refresh")
 	if n == "table" or n == "shop":
 		save_run()
-	Sfx.play_music("enforcer" if n == "table" and not run.table.is_empty() and run.table.boss else "lounge")
+	if n == "end" and last_summary.get("won", false):
+		Sfx.play_music("victory")
+	else:
+		Sfx.play_music("enforcer" if n == "table" and not run.table.is_empty() and run.table.boss else "lounge")
 	if n != "table":
 		Sfx.set_tension(0.0)
 

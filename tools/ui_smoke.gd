@@ -257,7 +257,15 @@ func _process(delta: float) -> void:
 			main.save_run()
 			main.show_screen("title")],
 		[33.5, func(): shot("29_title_continue")],
-		[33.7, func(): get_tree().quit()],
+		[33.7, func():
+			main.transition.play("NIGHT 3", "Big Sal  -  Every 3rd spin is called.", func(): pass, Color("#e05252"), "Big Sal")],
+		[34.6, func(): shot("30_enforcer_card")],
+		[36.3, func():
+			main.run.start_run(5, "french", main.profile.unlocked)
+			main.run.table_offer = []
+			main.show_screen("table")],
+		[36.7, func(): shot("31_french_felt")],
+		[36.9, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

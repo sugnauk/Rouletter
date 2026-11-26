@@ -1558,7 +1558,7 @@ func test_profile() -> void:
 
 func test_music_synth() -> void:
 	var Music := preload("res://scenes/ui/music.gd")
-	for track in ["lounge", "enforcer"]:
+	for track in ["lounge", "enforcer", "victory"]:
 		var t0 := Time.get_ticks_msec()
 		var w = Music.synth(track)
 		var secs: float = w.data.size() / 2.0 / Music.RATE
@@ -1574,13 +1574,16 @@ func test_music_synth() -> void:
 
 func test_sfx_synth() -> void:
 	var Sfx := preload("res://scenes/ui/sfx.gd")
-	for cue in ["click", "chip_place", "chip_remove", "spin", "ball_drop", "win", "big_win", "mult", "lose", "cash", "buy", "clear", "bust", "jackpot", "feat", "near", "unlock", "sting", "stack", "refund", "clear_all", "undo"]:
+	for cue in ["click", "chip_place", "chip_remove", "spin", "ball_drop", "win", "big_win", "mult", "lose", "cash", "buy", "clear", "bust", "jackpot", "feat", "near", "unlock", "sting", "stack", "refund", "clear_all", "undo", "enforcer:Big Sal", "enforcer:The Auditor"]:
 		var w = Sfx.synth(cue)
 		var loud := 0
 		if w != null:
 			for i in range(0, w.data.size(), 2):
 				loud = maxi(loud, absi(w.data.decode_s16(i)))
 		check(w != null and loud > 2000, "sfx '%s' synthesises audible audio (peak %d)" % [cue, loud])
+	check(Sfx.synth("enforcer:Big Sal").data != Sfx.synth("enforcer:Velvet").data, "every Enforcer has their own sting")
+	for w in Wheels.ORDER:
+		check(Wheels.get_def(w).has("felt") and Wheels.get_def(w).has("rail"), "%s has its own felt" % w)
 
 
 func test_story_beats() -> void:

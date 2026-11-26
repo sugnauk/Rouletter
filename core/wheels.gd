@@ -26,42 +26,49 @@ const ORPHELINS_12 := [8, 7, 3, 11]
 
 const WHEELS := {
 	"french": {
+		"felt": "#1d3f6e", "rail": "#5a3a1e",
 		"name": "French Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
 		"rules": ["la_partage"], "cash": 0, "kit": [{"kind": "perm", "value": 2}, {"kind": "hedge", "value": 1}], "unlock": 0, "target": 0.85,
 		"style": "SAFETY NET: outside bets that rarely sting",
 		"desc": "Single zero, La Partage built in (even-money bets lose only half on zero). A Permanent x2 and a Hedge for your red/black box. Forgiving.",
 	},
 	"european": {
+		"felt": "#0f5233", "rail": "#7a5a2a",
 		"name": "European Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
 		"rules": [], "cash": 0, "kit": [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}], "unlock": 0,
 		"style": "NUMBERS: a few straight-ups that hit hard",
 		"desc": "The classic single-zero wheel. A Magnet and a Permanent chip: pick your numbers and make them count.",
 	},
 	"american": {
+		"felt": "#1d6b38", "rail": "#6b2a1e",
 		"name": "American Wheel", "numbers": 36, "zeros": [0, -1], "order": AMERICAN_ORDER, "red": RED_36,
 		"rules": [], "cash": 4, "kit": [{"kind": "sentinel", "value": 1}], "unlock": 3,
 		"style": "ZERO CHIPS: make the house's pockets yours",
 		"desc": "Two zeros: worse odds, but 00 is a second home for zero chips. A Sentinel to guard one, and +$4.",
 	},
 	"mini": {
+		"felt": "#4a2a6a", "rail": "#3a2a4a",
 		"name": "Mini Wheel", "numbers": 12, "zeros": [0], "order": MINI_ORDER, "red": RED_12,
 		"rules": [], "cash": 2, "kit": [{"kind": "bridge", "value": 1}], "unlock": 4, "target": 1.2,
 		"style": "INSIDE BETS: splits, corners and streets",
 		"desc": "Thirteen pockets on a 3x4 felt. Hits come often but pay small; a Bridge makes your splits and corners count.",
 	},
 	"triple_zero": {
+		"felt": "#1e1e26", "rail": "#4a4a52",
 		"name": "Triple Zero", "numbers": 36, "zeros": [0, -1, -2], "order": TRIPLE_ORDER, "red": RED_36,
 		"rules": [], "cash": 0, "kit": [{"kind": "wildcard_zero", "value": 1}, {"kind": "spare_key", "value": 1}], "unlock": 6,
 		"style": "ZERO ECONOMY: every zero is payday",
 		"desc": "0, 00 and 000. The worst odds in the casino, but zero chips trigger three times as often. Wildcard Zero and a Spare Key.",
 	},
 	"sunrise": {
+		"felt": "#7a3a12", "rail": "#8a5a2a",
 		"name": "Sunrise Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
 		"rules": ["momentum"], "cash": 0, "kit": [{"kind": "kingmaker", "value": 1}], "unlock": 5, "target": 1.15,
 		"style": "MULTIPLIERS: stack them, then land the big one",
 		"desc": "The last wheel before dawn. Momentum built in and a Kingmaker to start, but payments are 15% bigger.",
 	},
 	"no_zero": {
+		"felt": "#5a0f1e", "rail": "#2a1a14",
 		"name": "Cheater's Wheel", "numbers": 36, "zeros": [], "order": NO_ZERO_ORDER, "red": RED_36,
 		"rules": [], "cash": 0, "kit": [], "house": ["satin_gloves"], "unlock": 8, "target": 1.25,
 		"style": "EVEN MONEY: red, black, odd, even at a fair price",

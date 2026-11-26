@@ -3,6 +3,19 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.31
+- Every Enforcer has a musical sting: a low stab and a four-note motif from a dark scale, worked out from their name. It plays as their card comes up.
+- Enforcer entrances: the loading card before a boss table holds longer. A spotlight snaps on, their portrait slides in out of the dark, and a red bar sweeps under the name.
+- A victory theme: a brisk major-key version of the lounge band with a horn line, playing on the end screen when you pay the marker in full.
+- Each wheel has its own table skin:
+  - French: blue felt.
+  - European: classic green.
+  - American: bright green with a red rail.
+  - Mini: purple.
+  - Triple Zero: charcoal.
+  - Sunrise: burnt orange.
+  - Cheater's: crimson.
+
 ## 0.0.30
 - Where the money came from: every dollar in a run is logged by source (starting cash, base pay, balls left, comps, side jobs, chips like Mint, Dealer favours, loans and more).
   - The end screen has a MONEY tab beside YOUR BUILD.
