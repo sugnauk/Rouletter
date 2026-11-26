@@ -111,8 +111,45 @@ func _ready() -> void:
 	show_screen("title" if fast_ui else "card")
 
 
+## The part of the window that's really on screen, as fractions of it: {top, height, width}.
+## On phones the browser can make the page taller than what's visible (iPhone Safari's bars);
+## the web build measures window.visualViewport to find out. 1.0 everywhere else.
+var visible_frac := {"top": 0.0, "height": 1.0, "width": 1.0}
+var _view_poll := 0.0
+
+
+## Fit the 640x360 play area into the visible part of the window. It's centred, as before,
+## unless the screen is cut off (or the player asked for Screen fit), when it shrinks to fit and
+## sits at the top of what's visible, so nothing ends up under a toolbar or off the bottom.
 func _recenter() -> void:
-	frame.position = ((size - Vector2(640, 360)) / 2.0).floor()
+	var fit: float = clampf(float(profile.settings.get("fit", 1.0)), Profile.FIT_MIN, 1.0) if profile != null else 1.0
+	var vis_pos := Vector2(0, size.y * visible_frac.top)
+	var vis_size := Vector2(size.x * visible_frac.width, size.y * visible_frac.height)
+	var s: float = minf(1.0, minf(vis_size.x / 640.0, vis_size.y / 360.0)) * fit
+	var clipped: bool = visible_frac.height < 0.999 or visible_frac.top > 0.001
+	frame.scale = Vector2(s, s)
+	var used := Vector2(640, 360) * s
+	var x: float = vis_pos.x + (vis_size.x - used.x) / 2.0
+	var y: float = vis_pos.y + ((vis_size.y - used.y) / 2.0 if not (clipped or fit < 0.999) else 0.0)
+	frame.position = Vector2(x, y).floor()
+
+
+## Web only: ask the page how much of the canvas is actually visible.
+func _measure_view() -> void:
+	if not OS.has_feature("web"):
+		return
+	# JavaScriptBridge only hands back plain values, so the page answers with "height,top,width".
+	var raw = JavaScriptBridge.eval("(function(){var v=window.visualViewport;var h=window.innerHeight||1,w=window.innerWidth||1;" +
+		"if(!v)return '1,0,1';return [Math.min(1,v.height/h),Math.max(0,v.offsetTop/h),Math.min(1,v.width/w)].join(',');})()", true)
+	if not (raw is String):
+		return
+	var r: PackedStringArray = raw.split(",")
+	if r.size() < 3:
+		return
+	var nf := {"top": clampf(float(r[1]), 0.0, 0.5), "height": clampf(float(r[0]), 0.5, 1.0), "width": clampf(float(r[2]), 0.5, 1.0)}
+	if absf(nf.height - visible_frac.height) > 0.005 or absf(nf.top - visible_frac.top) > 0.005 or absf(nf.width - visible_frac.width) > 0.005:
+		visible_frac = nf
+		_recenter()
 
 
 func _on_run_changed() -> void:
@@ -368,6 +405,10 @@ func save_profile() -> void:
 
 
 func _process(delta: float) -> void:
+	_view_poll -= delta
+	if _view_poll <= 0.0:
+		_view_poll = 0.5
+		_measure_view()
 	if shake_t > 0.0:
 		shake_t -= delta
 		var a := int(ceil(shake_amt * clampf(shake_t / 0.3, 0.0, 1.0)))
@@ -434,6 +475,7 @@ func abandon_run() -> void:
 func set_option(key: String, value) -> void:
 	profile.settings[key] = value
 	crt.visible = profile.settings.crt
+	_recenter()
 	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
 	save_profile()
 	if screens.has(current) and screens[current].visible:

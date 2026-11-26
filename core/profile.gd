@@ -30,7 +30,11 @@ const HISTORY_MAX := 10
 var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
-const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false, "fast_spins": false}
+const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false, "fast_spins": false,
+	"fit": 1.0}
+## Screen fit: shrink the play area (and pin it to the top) when a phone browser hides part of it.
+const FIT_MIN := 0.7
+const FIT_STEP := 0.05
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 var save_path: String = DEFAULT_PATH
 

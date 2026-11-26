@@ -3,6 +3,13 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.33
+- Fixed: on iPhone Safari (landscape), the game could slide under the address bar and run off the bottom of the screen, hiding your stack, chips and SPIN.
+  - The page is now pinned to the screen and can't scroll or bounce.
+  - The game measures the part of the screen that's really visible and fits itself into it.
+- New option, Screen fit (Options, also from the in-game MENU): shrink the game to 95-70% and pin it to the top, for any browser that still hides part of it.
+- Add to Home Screen: the web build is now an installable app. On iPhone, Share > Add to Home Screen opens it full screen in landscape, with no Safari bars at all. The title screen says so on the web.
+
 ## 0.0.32
 - Under the hood, so the next round of features is safer to build:
   - The run is split in two: `core/run_table.gd` (state, saves, tables, spins) and `core/run_state.gd` (the Cage), which extends it.

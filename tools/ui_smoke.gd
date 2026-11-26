@@ -265,7 +265,22 @@ func _process(delta: float) -> void:
 			main.run.table_offer = []
 			main.show_screen("table")],
 		[36.7, func(): shot("31_french_felt")],
-		[36.9, func(): get_tree().quit()],
+		[36.9, func():
+			# A phone browser hiding the bottom 25% of the page: the play area must fit what's visible.
+			main.visible_frac = {"top": 0.08, "height": 0.75, "width": 1.0}
+			main._recenter()
+			var bottom: float = main.frame.position.y + 360.0 * main.frame.scale.y
+			var vis_bottom: float = main.size.y * (0.08 + 0.75)
+			print("FIT CHECK ", "OK" if bottom <= vis_bottom + 1.0 and main.frame.position.y >= main.size.y * 0.08 - 1.0 else "FAIL", " ", bottom, " <= ", vis_bottom)],
+		[37.1, func(): shot("32_clipped_screen_fit")],
+		[37.2, func():
+			main.visible_frac = {"top": 0.0, "height": 1.0, "width": 1.0}
+			main.set_option("fit", 0.85)
+			main.show_screen("options")],
+		[37.5, func(): shot("33_options_screen_fit")],
+		[37.7, func():
+			main.set_option("fit", 1.0)
+			get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
