@@ -1,0 +1,53 @@
+# Runs the unit tests and the UI smoke screenshots on every push to a branch other than main
+# and on pull requests, so branch work is checked before it is merged and deployed.
+# Screenshots of every screen are uploaded as the "screenshots" artifact of the run.
+name: Test branch
+
+on:
+  push:
+    branches-ignore: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Godot
+        run: |
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          wget -q "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          chmod +x godot
+          rm -f *.zip
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
+
+      - name: Import project
+        run: ./godot --headless --path . --import
+
+      - name: Run tests
+        run: ./godot --headless --path . --script res://tests/run_tests.gd
+
+      - name: UI smoke screenshots
+        run: |
+          mkdir -p shots
+          LIBGL_ALWAYS_SOFTWARE=1 timeout 180 xvfb-run -a -s "-screen 0 1280x720x24" \
+            ./godot --path . --rendering-method gl_compatibility --rendering-driver opengl3 \
+            --resolution 1280x720 -- smoke="$PWD/shots" profile=user://smoke_profile.json
+          ls shots
+          test "$(ls shots/*.png | wc -l)" -ge 10
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: shots/
