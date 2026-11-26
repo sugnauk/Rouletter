@@ -128,13 +128,20 @@ func take_table_offer(i: int) -> bool:
 	if phase != Phase.TABLE or i < 0 or i >= table_offer.size():
 		return false
 	inventory.append({"kind": table_offer[i].id, "value": 1})
+	note("Free chip: took %s (offered %s)" % [Content.CHIPS[table_offer[i].id].name, _offer_names()])
 	table_offer = []
 	changed.emit()
 	return true
 
 
 func skip_table_offer() -> void:
+	if not table_offer.is_empty():
+		note("Free chip: passed (offered %s)" % _offer_names())
 	table_offer = []
+
+
+func _offer_names() -> String:
+	return ", ".join(table_offer.map(func(o): return Content.CHIPS[o.id].name))
 	changed.emit()
 
 
@@ -508,6 +515,7 @@ func buy(i: int) -> bool:
 		_:
 			cash -= price_of(item)
 	item.sold = true
+	note("Cage: bought %s for %s" % [item_name(item), price_text(item)])
 	match item.type:
 		"chip":
 			var inv := {"kind": item.id, "value": 1}
@@ -598,6 +606,7 @@ func sell_chip(chip_id: int) -> bool:
 	var got := int(Content.CHIPS[c.kind].price * c.copies * Content.SELL_SHARE * (Content.FENCE_SHARE if c.flaw != "" else 1.0))
 	cash += got
 	log_cash("Sold chips", got)
+	fresh.erase(str(chip_id))
 	felt.remove(chip_id)
 	changed.emit()
 	return true
@@ -605,6 +614,8 @@ func sell_chip(chip_id: int) -> bool:
 
 ## Pick a placed chip back up into the inventory to move it.
 func pick_up(chip_id: int) -> bool:
+	if is_fresh(chip_id):   # placed since the last spin: moving it is free
+		return unplace(chip_id)
 	var c = felt.find(chip_id)
 	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky" or cash < Content.RELOCATE_PRICE:
 		return false

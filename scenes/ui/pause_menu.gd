@@ -43,7 +43,7 @@ func _ready() -> void:
 		close()
 		main.open_options(true), Vector2(140, 22))
 	fast_btn = P.button(box, "", func():
-		main.set_option("fast_spins", not main.profile.settings.get("fast_spins", false))
+		main.cycle_speed()
 		_label_fast(), Vector2(140, 22))
 	abandon_btn = P.button(box, "Abandon run", _abandon, Vector2(140, 22))
 	P.button(box, "Quit to title", func():
@@ -52,7 +52,8 @@ func _ready() -> void:
 
 
 func _label_fast() -> void:
-	fast_btn.text = "Fast spins: %s" % ("ON" if main.profile.settings.get("fast_spins", false) else "OFF")
+	var sp: Dictionary = preload("res://core/profile.gd").SPEEDS[main.speed()]
+	fast_btn.text = "Speed: %s  %s" % [sp.name.to_upper(), sp.label]
 
 
 func open() -> void:

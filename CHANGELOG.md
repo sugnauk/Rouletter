@@ -3,6 +3,84 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.41
+- Placements aren't final until the next spin. Any chip you place, in the Cage or at the table, can be picked back up for free until you spin:
+  - **In the Cage:** click it (or right-click it) and it's back in your hand, ready to put somewhere else. MOVE is also free for these chips.
+  - **At the table:** right-click it, or hold it on a touch screen and choose "Pick up chip".
+  - **Stacked onto a twin:** only the chip you just added comes back off; the rest of the stack stays.
+  - **Sticky:** even Sticky chips can be repositioned until the spin.
+  - **How to tell:** chips placed this turn have a dashed cyan ring and say NEW on their info card.
+  - Spinning locks every placement in. Older chips still cost $2 to move in the Cage.
+
+## 0.0.40
+- The Mini wheel's felt now fills the same space as every other wheel, at the table and in the Cage. Its four columns of numbers are wider squares instead of a small felt with empty space around it.
+- On a busy Cage counter, price tags are shortened to fit the narrower tokens (e.g. the Loan Shark's "+15%").
+
+## 0.0.39
+- **No more accidental buys.** Clicking an item in the Cage now selects it: it lights up, and the panel shows what it does, how it fits your build, and a BUY button with its price. Click it again (or BUY) to buy it. Right-click or long-press still holds an item through a reroll.
+- **See what your chips do.** Point at (or tap) any of these and a card pops up beside it:
+  - a chip on the felt: its level, how many are stacked, any refine or flaw, and what it does (plus any other chips on that spot);
+  - a chip in your rack;
+  - a House Rule or a voucher.
+- **Smoother placing:**
+  - While you hold a chip from the rack, every spot it can go is outlined. Spots where its twin already sits glow green, because it'll level up there.
+  - The chip follows your pointer as a ghost (a red cross where it can't go).
+  - You can drag a chip from the rack straight onto the felt.
+  - Right-click puts the held chip back down.
+  - After you place a chip, the next one in your rack is picked up automatically.
+
+## 0.0.38
+- Playtest kit:
+  - **Copy report:** a new button on the end screen copies the whole run as text, ready to paste. It covers:
+    - each table, with its payment, Take, spins, the straight-up / inside / outside mix, condition, route and side job;
+    - every free chip taken or passed, and every Cage purchase;
+    - where the money came from, the top chips, and the final felt and House Rules.
+  - `docs/playtest.md`: a one-page guide for testers (what to play, what to answer), plus what to watch for.
+  - `docs/balance_report.md`: the balance bot's view. The finding to watch: about a third of the bot's lost runs end on the very first table.
+  - `tools/sim.gd -- report` prints item buy rates, Enforcer and condition clear rates, and where runs end.
+
+## 0.0.37
+- The Casebook replaces the Almanac, the Journal and run History. One screen, four tabs:
+  - **COLLECTION:** every chip, felt upgrade, House Rule and Dealer perk, as icon tiles grouped by family.
+    - Each family shows seen, bought and locked counts and a progress bar.
+    - Seen tiles are bright, bought tiles have a gold frame, and locked tiles show their Marker cost.
+    - Tap a tile for its description, what it works with and its rarity. A locked one takes you to the Pawn Shop.
+  - **STORY:** every story scene, by chapter (Prologue, The story, Faces in the Cage, Between nights), with a count per chapter. Click a page to replay it.
+  - **HOW TO PLAY:** ten short guide pages covering every part of the game. "Hear it from Dolores" replays her lines for that topic.
+  - **RUNS:** your last 10 runs (hover one for its key chips and seed) and this week's weekly-challenge results (click one to copy its share code).
+- The title menu is now Pawn Shop, Casebook, How to Play, Options, Credits and Quit.
+
+## 0.0.36
+- The Pawn Shop is now the hub for everything about Markers: earning them and spending them.
+  - **Top bar:** your Markers and a progress bar to the next unlock you can buy. If you're short, it names the Feats that would earn the rest.
+  - **UNLOCKS tab:** the unlock tree. Hovering an unlock you can't afford yet lists the Feats that would pay for it. Clicking one you can't afford says how many Markers you need and how to get them.
+  - **GOALS tab:** every Feat, grouped into Spins, Tables, Enforcers, Runs, Wheels and Challenges.
+    - Each group has a progress bar and the Markers still left to earn.
+    - Each Feat shows its reward.
+    - A gold arrow marks any Feat that would, on its own, pay for the next unlock.
+- The separate Feats screen is gone; the title menu's "Feats" button became "Almanac" until the Casebook arrives.
+
+## 0.0.35
+- Casino-marquee look: every button is now a lit sign. They have a black lacquer face, gold trim and a ring of light bulbs.
+  - At rest the bulbs glow warm and twinkle.
+  - On hover they chase round the border.
+  - On a press they all flash.
+  - Big "hero" buttons (NEW RUN, DEAL ME IN) breathe with a slow pulse.
+- A new home screen:
+  - **The sign:** "ROULETTER" is a neon sign in a frame of chasing bulbs. It flickers now and then, like an old tube.
+  - **Markers board:** shows your Markers and a progress bar to the next Pawn Shop unlock. Click it to go straight to the Pawn Shop.
+  - **NEW RUN** is a big pulsing plaque, with CONTINUE beside it.
+  - **The run you left** sits on a ticket stub: wheel, night, where you are, marker left, cash, seed and key chips.
+  - **The wheel** spins under a soft spotlight, with chips tumbling past now and then.
+  - **Everything else** is in a tidy grid of smaller marquees.
+
+## 0.0.34
+- The game takes its time now. At the new default speed (Normal), the wheel spin, the count, chips flying, banners and screen transitions all play about 1.5x slower.
+- Fast-forward: a > / >> / >>> button next to MENU at the table and in the Cage (or press F) cycles Normal, Fast and Fastest.
+  - Fast is the old speed.
+  - Fastest is the old Fast spins (a short wheel spin and a brisk count).
+  - The pause menu and Options have the same setting. If you had Fast spins on, you start on Fastest.
+
 ## 0.0.33
 - Fixed: on iPhone Safari (landscape), the game could slide under the address bar and run off the bottom of the screen, hiding your stack, chips and SPIN.
   - The page is now pinned to the screen and can't scroll or bounce.

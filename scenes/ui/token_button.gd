@@ -18,6 +18,8 @@ var level := 0               ## > 1: a "LV n" tag on the token
 var hover_target: Callable
 var hover_exit: Callable      ## optional: called when the pointer leaves
 var long_pressed: Callable    ## optional: a touch held for half a second (instead of a press)
+var drag_data = null          ## optional: dragging this token hands this to a drop target (rack -> felt)
+var drag_started: Callable    ## optional: called when a drag begins
 var _hold := -1.0
 
 
@@ -80,6 +82,21 @@ func _draw() -> void:
 		draw_rect(Rect2(p - Vector2(1, 1), Vector2(3, 3)), Color.WHITE)
 	if disabled or dim:
 		draw_rect(r.grow(-1), Color(0, 0, 0, 0.45))
+
+
+func _get_drag_data(_at: Vector2):
+	if drag_data == null:
+		return null
+	_hold = -1.0
+	var pv := Control.new()
+	var id := icon_id
+	pv.draw.connect(func():
+		pv.draw_circle(Vector2.ZERO, 9.0, Color(0, 0, 0, 0.4), true, -1.0, false)
+		Art.icon(pv, id, Vector2.ZERO, 1))
+	set_drag_preview(pv)
+	if drag_started.is_valid():
+		drag_started.call()
+	return drag_data
 
 
 func _process(delta: float) -> void:

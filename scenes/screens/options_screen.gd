@@ -8,7 +8,7 @@ const ITEMS := [
 	["cb_marks", "Colour-blind marks", "A small cross on every red square of the felt, so red and black don't rely on colour alone."],
 	["cards", "Loading cards", "The themed cards between screens. Off switches screens instantly."],
 	["shake", "Screen shake", "Shake on big wins and busts."],
-	["fast_spins", "Fast spins", "A short wheel spin and a brisk count. Big moments still get their beat."],
+	["speed", "Game speed", "Normal takes its time. Fast is brisk. Fastest also cuts the wheel spin and the count short. The >> button at the table (or F) switches it."],
 	["zoom_felt", "Tap-to-zoom felt", "Clicking the felt first zooms it in, so splits and corners are easy to hit. Always on for touch screens."],
 ]
 
@@ -73,7 +73,10 @@ func refresh() -> void:
 	reset_btn.visible = main.options_return == "" or main.options_return == "title"
 	for k in buttons:
 		var val = main.profile.settings.get(k, false)
-		if val is bool:
+		if k == "speed":
+			var sp: Dictionary = preload("res://core/profile.gd").SPEEDS[main.speed()]
+			buttons[k][0].text = "%s:  %s  %s" % [buttons[k][1], sp.name.to_upper(), sp.label]
+		elif val is bool:
 			buttons[k][0].text = "%s:  %s" % [buttons[k][1], "ON" if val else "OFF"]
 		else:
 			var bars := int(round(val * 10.0))
@@ -109,5 +112,8 @@ func _nudge_fit(d: int) -> void:
 
 
 func _toggle(key: String) -> void:
+	if key == "speed":
+		main.cycle_speed()
+		return
 	Sfx.play("click")
 	main.set_option(key, not main.profile.settings.get(key, false))

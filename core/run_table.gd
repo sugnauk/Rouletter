@@ -30,6 +30,8 @@ var unlocked: Array = []
 var cash: int = 0
 var inventory: Array = []        ## unplaced permanent chips: {kind, value}
 var cash_log: Dictionary = {}    ## run summary: where the money came from (source -> dollars)
+var fresh: Dictionary = {}       ## chips placed since the last spin (provisional, free to pick up): str(id) -> {value, copies, whole}
+var report: Array = []           ## playtest report: one readable line per table, free pick and Cage buy
 var contrib: Dictionary = {}     ## run summary: Take scored per chip kind ("bet" for betting chips)
 var best_spin_info: Dictionary = {}   ## run summary: the biggest spin's breakdown
 var table_offer: Array = []      ## the free pick-1-of-3 special chip waiting at this table
@@ -98,6 +100,8 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 		inventory = [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}]
 		cash += Content.FENCE_RUN_CASH
 	cash_log = {"Starting cash": cash}
+	report = []
+	fresh = {}
 	for r in def.get("house", []):
 		felt.house_rules.append(r)
 	stack_size = Content.START_STACK - (5 if graded(1) else 0)
@@ -180,7 +184,7 @@ static func parse_seed(text: String) -> int:
 const SAVE_VERSION := 2   ## run save format (see migrate())
 
 ## Saved too, but optional, so saves from before they existed still load.
-const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [],
+const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [], "report": [], "fresh": {},
 	"contrib": {}, "best_spin_info": {}, "cash_log": {}}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
@@ -598,11 +602,50 @@ func place_chip(index: int, key: String) -> bool:
 		if not c.is_bet() and c.kind == item.kind and c.flaw == item.get("flaw", ""):
 			c.value += item.value
 			c.copies += int(item.get("copies", 1))
+			var f: Dictionary = fresh.get(str(c.id), {"value": 0, "copies": 0, "whole": false})
+			f.value += item.value
+			f.copies += int(item.get("copies", 1))
+			fresh[str(c.id)] = f
 			changed.emit()
 			return true
 	var nc = felt.add_chip(item.kind, key, item.value, item.get("flaw", ""))
 	nc.mod = item.get("mod", "")
 	nc.copies = int(item.get("copies", 1))
+	fresh[str(nc.id)] = {"value": item.value, "copies": nc.copies, "whole": true}
+	changed.emit()
+	return true
+
+
+## Placed since the last spin? Those placements aren't final: they can be picked back up free.
+func is_fresh(chip_id: int) -> bool:
+	return fresh.has(str(chip_id))
+
+
+## Pick a provisional chip back up into the rack, free. If it was stacked onto a twin, only the
+## part added this turn comes back off the stack.
+func unplace(chip_id: int) -> bool:
+	var c = felt.find(chip_id)
+	if (phase != Phase.TABLE and phase != Phase.SHOP) or c == null or c.is_bet() or not is_fresh(chip_id):
+		return false
+	var f: Dictionary = fresh[str(chip_id)]
+	fresh.erase(str(chip_id))
+	var inv := {"kind": c.kind}
+	if c.flaw != "":
+		inv.flaw = c.flaw
+	if f.whole or f.value >= c.value:
+		inv.value = c.value
+		if c.mod != "":
+			inv.mod = c.mod
+		if c.copies > 1:
+			inv.copies = c.copies
+		felt.remove(chip_id)
+	else:
+		inv.value = f.value
+		if f.copies > 1:
+			inv.copies = f.copies
+		c.value -= f.value
+		c.copies = maxi(1, c.copies - f.copies)
+	inventory.append(inv)
 	changed.emit()
 	return true
 
@@ -614,7 +657,10 @@ func expected_value() -> Dictionary:
 func spin(forced_pocket: int = -99) -> Dictionary:
 	if phase != Phase.TABLE:
 		return {}
-	table_offer = []   # spinning passes on the free pick (the table screen asks first)
+	fresh = {}   # the spin makes every placement final
+	if not table_offer.is_empty():   # spinning passes on the free pick (the table screen asks first)
+		note("Free chip: passed by spinning (offered %s)" % ", ".join(table_offer.map(func(o): return Content.CHIPS[o.id].name)))
+	table_offer = []
 	var pockets: Array = felt.board.pockets
 	var pocket: int = forced_pocket if forced_pocket != -99 else pockets[rng.range_i(0, pockets.size() - 1)]
 	if not is_called_spin():
@@ -653,6 +699,11 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 	if res.events.any(func(e): return e.kind == "win" and e.label == "straight"):
 		table.obj_straight = true
 	table.prev_keys = keys.keys()
+	var mix: Dictionary = table.get("mix", {})
+	for k in keys:
+		var kind := "straight" if Board.is_straight(k) else ("inside" if felt.board.is_line_bet(k) else "outside")
+		mix[kind] = mix.get(kind, 0) + 1
+	table.mix = mix
 	if res.take > best_spin:
 		best_spin_info = spin_breakdown(res)
 	best_spin = maxf(best_spin, res.take)
@@ -728,6 +779,7 @@ func _clear_table() -> void:
 		reward += x[1]
 		log_cash("Side jobs" if x[0] in Content.OBJECTIVES.values().map(func(o): return o.name.to_upper()) else x[0].capitalize(), x[1])
 	cash += reward
+	note_table("cleared", t)
 	overflow += maxi(0, int(t - table.target))
 	total_take += t
 	felt.clear_bets()
@@ -752,6 +804,44 @@ func _clear_table() -> void:
 	message = "Paid! +$%d (%d base, %d spins left, %d comps)." % [reward, Content.CLEAR_CASH[info.table], info.spins_left, comps]
 	_open_shop(info)
 	table_cleared.emit(info)
+
+
+## One report line for the table just finished ("cleared" or "lost").
+func note_table(result: String, take_now: float) -> void:
+	var mix: Dictionary = table.get("mix", {})
+	var bits := ["N%d %s%s: pay %d, %s with %d in %d spin%s" % [night + 1, table_name(),
+		(" vs " + Content.ENFORCERS[table.enforcer].name) if table.get("boss", false) and table.get("enforcer", "") != "" else "",
+		table.get("target", 0), result, int(take_now), table.get("spins_used", 0), "" if table.get("spins_used", 0) == 1 else "s"]]
+	bits.append("bets %d straight / %d inside / %d outside" % [mix.get("straight", 0), mix.get("inside", 0), mix.get("outside", 0)])
+	if table.get("condition", "") != "":
+		bits.append("condition " + Content.CONDITIONS[table.condition].name)
+	if table.get("route", "") != "":
+		bits.append("route " + Content.ROUTES[table.route].name)
+	if table.get("objective", "") != "":
+		bits.append("job %s %s" % [Content.OBJECTIVES[table.objective].name, "done" if objective_met() else "missed"])
+	report.append(". ".join(bits))
+
+
+## Note something for the report (free picks, Cage buys and the like).
+func note(line: String) -> void:
+	report.append("  " + line)
+
+
+## The whole run as text for a playtester to paste: who, what, how it went, where the money and
+## the Take came from.
+func run_report() -> String:
+	var lines := ["ROULETTER RUN REPORT  v%s" % preload("res://core/version.gd").VERSION,
+		"%s, %s%s, seed %d" % [Wheels.get_def(wheel_id).name, ["", "Act I", "Act II", "endless"][clampi(acts, 0, 3)],
+			(", " + Content.CHALLENGES[challenge].name) if challenge != "" else (", weekly" if weekly != "" else (", grade %d" % (grade + 1) if grade > 0 else "")), run_seed],
+		"Result: %s. Nights cleared %d. Total Take %d. Best spin +%d." % [
+			"WON" if phase == Phase.VICTORY else ("lost" if phase == Phase.GAME_OVER else "in progress"), nights_cleared, int(total_take), int(best_spin)], ""]
+	lines.append_array(report)
+	lines.append("")
+	lines.append("Money: " + ", ".join(cash_sources().slice(0, 6).map(func(x): return "%s $%d" % [x[0], x[1]])))
+	lines.append("Top chips: " + ", ".join(top_contributors(5).map(func(x): return "%s +%d" % [Content.CHIPS[x[0]].name, x[1]])))
+	lines.append("Felt at the end: " + ", ".join(felt.perm_chips().map(func(c): return "%s x%d on %s" % [Content.CHIPS[c.kind].name, c.value, c.bet])))
+	lines.append("House Rules: " + (", ".join(felt.house_rules.map(func(r): return Content.HOUSE_RULES[r].name)) if not felt.house_rules.is_empty() else "none"))
+	return "\n".join(lines)
 
 
 func log_cash(source: String, amount: int) -> void:
@@ -834,6 +924,8 @@ func abandon() -> bool:
 
 
 func _lose(why: String) -> void:
+	if not table.is_empty():
+		note_table("LOST", table.get("take", 0.0))
 	total_take += table.take
 	phase = Phase.GAME_OVER
 	message = why

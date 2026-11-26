@@ -34,6 +34,11 @@ func setup() -> void:
 	P.place(values_lbl, Vector2(160, 136))
 	P.place(P.button(self, "Continue", _continue, Vector2(120, 24)), Vector2(42, 300))
 	P.place(P.button(self, "Save image", _save_image, Vector2(100, 24)), Vector2(170, 300))
+	# Playtesting: the whole run as text, ready to paste to the developer.
+	P.place(P.button(self, "Copy report", func():
+		DisplayServer.clipboard_set(main.run.run_report())
+		share_lbl.text = "Run report copied: paste it with your playtest notes."
+		Sfx.play("click"), Vector2(100, 24)), Vector2(278, 300))
 	share_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
 	share_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(share_lbl, Vector2(42, 330), Vector2(330, 24))

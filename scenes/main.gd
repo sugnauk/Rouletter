@@ -8,6 +8,7 @@ const Backdrop := preload("res://scenes/ui/backdrop.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
 const Transition := preload("res://scenes/ui/transition.gd")
 const PauseMenu := preload("res://scenes/ui/pause_menu.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
@@ -22,9 +23,8 @@ const SCREENS := {
 	"shop": preload("res://scenes/screens/shop_screen.gd"),
 	"end": preload("res://scenes/screens/end_screen.gd"),
 	"pawn": preload("res://scenes/screens/pawn_screen.gd"),
-	"journal": preload("res://scenes/screens/journal_screen.gd"),
+	"casebook": preload("res://scenes/screens/casebook_screen.gd"),
 	"options": preload("res://scenes/screens/options_screen.gd"),
-	"feats": preload("res://scenes/screens/feats_screen.gd"),
 	"credits": preload("res://scenes/screens/credits_screen.gd"),
 }
 
@@ -39,6 +39,7 @@ var fx
 var crt: CanvasLayer
 var transition
 var pause
+var card   ## the pop-up info card for chips, rules and vouchers (scenes/ui/info_card.gd)
 var options_return := ""   ## screen the Options screen goes back to (when opened mid-run)
 var fast_ui := false
 var shake_t := 0.0
@@ -81,6 +82,8 @@ func _ready() -> void:
 		screens[k] = s
 	fx = FxLayer.new()
 	frame.add_child(fx)
+	card = InfoCard.new()
+	frame.add_child(card)
 	dialogue = DialogueBox.new()
 	frame.add_child(dialogue)
 	pause = PauseMenu.new()
@@ -98,6 +101,7 @@ func _ready() -> void:
 	add_child(crt)
 	crt.visible = profile.settings.crt
 	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
+	apply_speed()
 	Sfx.play_music.call_deferred("lounge")
 	get_tree().create_timer(4.0).timeout.connect(func(): Sfx.preload_track("enforcer"))
 	var tl := CanvasLayer.new()
@@ -161,6 +165,8 @@ func show_screen(n: String) -> void:
 	for s in screens.values():
 		s.visible = false
 	current = n
+	if card != null:
+		card.hide_card()
 	screens[n].visible = true
 	screens[n].call("refresh")
 	if n == "table" or n == "shop":
@@ -422,6 +428,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE and in_run() and not pause.visible and not dialogue.is_open():
 			open_pause()
 			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_F and in_run() and not dialogue.is_open():
+			cycle_speed()
+			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_F2:
 			set_option("crt", not profile.settings.crt)
 		elif event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
@@ -472,14 +481,54 @@ func abandon_run() -> void:
 
 
 ## Change one option, apply it straight away and save it.
+## The info card beside a control (rack tokens, rules) or a spot on a felt view.
+func card_near(ctrl: Control, d: Dictionary) -> void:
+	card.show_at(fx.local(ctrl.global_position + Vector2(ctrl.size.x, 0)), d)
+
+
+func card_at_felt(felt_view, key: String, d: Dictionary) -> void:
+	card.show_at(fx.local(felt_view.key_global(key)), d)
+
+
+func hide_card() -> void:
+	card.hide_card()
+
+
 func set_option(key: String, value) -> void:
 	profile.settings[key] = value
 	crt.visible = profile.settings.crt
 	_recenter()
+	apply_speed()
 	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
 	save_profile()
 	if screens.has(current) and screens[current].visible:
 		screens[current].call("refresh")
+
+
+## --- Game speed (the >> button) -------------------------------------------------------
+
+func speed() -> int:
+	return clampi(int(profile.settings.get("speed", 0)), 0, Profile.SPEEDS.size() - 1)
+
+
+## The everyday time scale for the chosen speed (1.0 for screenshot runs, which need fixed timing).
+func base_time_scale() -> float:
+	return 1.0 if fast_ui else float(Profile.SPEEDS[speed()].time)
+
+
+func apply_speed() -> void:
+	Engine.time_scale = base_time_scale()
+
+
+## Fastest also cuts the wheel spin and the count short.
+func short_spins() -> bool:
+	return bool(Profile.SPEEDS[speed()].short)
+
+
+func cycle_speed() -> void:
+	set_option("speed", (speed() + 1) % Profile.SPEEDS.size())
+	Sfx.play("click")
+	fx.pop_text(Vector2(560, 40), "SPEED: " + str(Profile.SPEEDS[speed()].name).to_upper(), P.GOLD, 0.8)
 
 
 func toggle_fullscreen() -> void:

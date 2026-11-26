@@ -30,8 +30,15 @@ const HISTORY_MAX := 10
 var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
-const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false, "fast_spins": false,
-	"fit": 1.0}
+const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false,
+	"fit": 1.0, "speed": 0}
+## Game speed (the >> button): Normal takes its time, Fast is brisk, Fastest also cuts the spin and
+## the count short. time: Engine.time_scale; short: use the shortened wheel spin and count.
+const SPEEDS := [
+	{"name": "Normal", "label": ">", "time": 0.67, "short": false},
+	{"name": "Fast", "label": ">>", "time": 1.0, "short": false},
+	{"name": "Fastest", "label": ">>>", "time": 1.0, "short": true},
+]
 ## Screen fit: shrink the play area (and pin it to the top) when a phone browser hides part of it.
 const FIT_MIN := 0.7
 const FIT_STEP := 0.05
@@ -235,7 +242,15 @@ func from_dict(d_in: Dictionary) -> void:
 	var saved: Dictionary = d.get("settings", {})
 	for k in saved:
 		if settings.has(k):
-			settings[k] = bool(saved[k]) if DEFAULT_SETTINGS[k] is bool else clampf(float(saved[k]), 0.0, 1.0)
+			if DEFAULT_SETTINGS[k] is bool:
+				settings[k] = bool(saved[k])
+			elif DEFAULT_SETTINGS[k] is int:
+				settings[k] = clampi(int(saved[k]), 0, SPEEDS.size() - 1)
+			else:
+				settings[k] = clampf(float(saved[k]), 0.0, 1.0)
+	# Older profiles had a Fast spins toggle; it became the fastest speed.
+	if not saved.has("speed") and bool(saved.get("fast_spins", false)):
+		settings.speed = 2
 
 
 func save(path: String = "") -> bool:

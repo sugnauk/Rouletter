@@ -18,6 +18,9 @@ const TableCount := preload("res://scenes/screens/table_count.gd")
 const TableOverlays := preload("res://scenes/screens/table_overlays.gd")
 const Preview := preload("res://core/preview.gd")
 const Story := preload("res://core/story.gd")
+const Profile := preload("res://core/profile.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
+const Placing := preload("res://scenes/ui/placing.gd")
 
 const LEFT_W := 180
 const MID_X := 188
@@ -67,6 +70,7 @@ var shown_cash := -1.0           ## HUD cash, counted up toward run.cash
 var zoom_bg: ColorRect            ## dims the table while the felt is zoomed for touch betting
 var zoomed := false
 var overlays   ## the free-chip panel, touch bet menu, quick edits and tips (table_overlays.gd)
+var speed_btn: Button   ## fast-forward: > / >> / >>>
 var pinned: Dictionary = {}      ## bet keys that survive Clear (Alt-click to pin)
 const ZOOM := 1.8
 var count                        ## the spin count-up (table_count.gd)
@@ -75,9 +79,9 @@ var chance := 0.0
 var take_per_spin := 0.0
 
 
-## Fast spins (Options): a short wheel spin and a brisk count.
+## Fastest speed (the >> button): a short wheel spin and a brisk count.
 func fast() -> bool:
-	return main.profile.settings.get("fast_spins", false)
+	return main.short_spins()
 
 
 func setup() -> void:
@@ -108,6 +112,11 @@ func setup() -> void:
 	P.place(felt_view, Vector2(MID_X, 32))
 	felt_view.bet_clicked.connect(_on_bet_clicked)
 	felt_view.bet_held.connect(func(k): overlays.on_bet_held(k))
+	felt_view.rack_dropped.connect(func(i: int, k: String):
+		if spinning or k == "" or main.run.phase != RunState.Phase.TABLE:
+			return
+		selected_item = i
+		_place_selected(k))
 	felt_view.bet_hovered.connect(_on_hover)
 	add_child(felt_view)
 	status_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
@@ -133,6 +142,13 @@ func setup() -> void:
 	P.place(P.label(self, "BET CHIP", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 26))
 	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 12), P.FONT_SMALL)
 	P.place(mb, Vector2(RIGHT_X + 72, 24))
+	# Fast-forward: Normal > Fast >> Fastest >>> (F on the keyboard).
+	speed_btn = P.button(self, ">", func():
+		main.cycle_speed()
+		speed_btn.text = Profile.SPEEDS[main.speed()].label, Vector2(26, 12), P.FONT_SMALL)
+	speed_btn.tooltip_text = ""
+	speed_btn.mouse_entered.connect(func(): _status("Game speed: %s. Click (or press F) to change." % Profile.SPEEDS[main.speed()].name))
+	P.place(speed_btn, Vector2(RIGHT_X + 44, 24))
 	denom_box = HBoxContainer.new()
 	denom_box.add_theme_constant_override("separation", 4)
 	P.place(denom_box, Vector2(RIGHT_X, 36))
@@ -253,6 +269,15 @@ func _on_clear() -> void:
 ##  - a square with your permanent chips: cyan on the pockets those chips pay on
 func _on_hover(k: String) -> void:
 	felt_view.preview = {}
+	# Chips you own on this spot: show what they do.
+	var perms: Array = Placing.perms_on(main.run, k) if k != "" and main.run.felt.board.has_bet(k) else []
+	if perms.is_empty() or spinning or selected_item >= 0:
+		main.hide_card()
+	else:
+		var d := InfoCard.for_chip(perms[0], main.run)
+		if perms.size() > 1:
+			d.body += "\nAlso here: " + ", ".join(perms.slice(1).map(func(c): return "%s x%d" % [Content.CHIPS[c.kind].name, c.value]))
+		main.card_at_felt(felt_view, k, d)
 	if k == "" or spinning:
 		_status(felt_view.describe(k) if k != "" else _hint())
 		felt_view.queue_redraw()
@@ -391,6 +416,7 @@ func refresh() -> void:
 	spin_btn.text = "PICK A CHIP" if not run.table_offer.is_empty() else ("CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN"))
 	_refresh_tokens()
 	_mark_clearing()
+	speed_btn.text = Profile.SPEEDS[main.speed()].label
 	overlays.refresh_offer(run)
 	overlays.first_time_tips(run)
 	if t.boss:
@@ -456,18 +482,25 @@ func _refresh_tokens() -> void:
 			tok.badge = Content.FLAWS[item.flaw].short
 		tok.selected = i == selected_item
 		tok.hover_text = "%s: %s" % [Content.CHIPS[item.kind].name, Content.CHIPS[item.kind].desc]
+		tok.drag_data = {"rack": i}
+		tok.drag_started = func():
+			selected_item = i
+			Placing.mark(felt_view, run, i)
 		tok.hover_target = func(txt: String):
-			_status(txt)
+			_status("%s: click it, then a spot on the felt (or drag it there)." % Content.CHIPS[item.kind].name)
+			main.card_near(tok, InfoCard.for_item(item))
 			if Preview.absolute_trigger(item.kind):
 				felt_view.preview = {}
 				for p in Preview.pays_on(run.felt, item.kind, Preview.rep_key(run.felt, item.kind), item.value):
 					felt_view.preview[Board.straight_key(p)] = P.CYAN
 				felt_view.queue_redraw()
 		tok.hover_exit = func():
+			main.hide_card()
 			felt_view.preview = {}
 			felt_view.queue_redraw()
 		tok.pressed.connect(_select_item.bind(i))
 		rack_grid.add_child(tok)
+	Placing.mark(felt_view, run, selected_item)
 	if inv.is_empty():
 		var e := P.label(rack_grid, "", P.FONT_SMALL, P.DIM)
 		e.text = "empty"
@@ -479,15 +512,19 @@ func _refresh_tokens() -> void:
 		var tok = Token.new(r, Vector2(16, 16))
 		var info: Dictionary = Content.HOUSE_RULES[r]
 		tok.hover_text = "%s%s: %s" % [info.name, " (wheel)" if r in run.felt.wheel_rules else "", info.desc]
-		tok.hover_target = _status
+		var built_in: bool = r in run.felt.wheel_rules
+		tok.hover_target = func(_s): main.card_near(tok, InfoCard.for_rule(r, built_in))
+		tok.hover_exit = main.hide_card
 		row.add_child(tok)
 		var lbl := P.label(row, info.name, P.FONT_SMALL, P.CREAM)
 		lbl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-		lbl.mouse_entered.connect(func(): _status(tok.hover_text))
-		lbl.mouse_exited.connect(func(): _status(""))
+		var rule_id: String = r
+		var wheel_rule: bool = r in run.felt.wheel_rules
+		lbl.mouse_entered.connect(func(): main.card_near(lbl, InfoCard.for_rule(rule_id, wheel_rule)))
+		lbl.mouse_exited.connect(main.hide_card)
 		rules_flow.add_child(row)
 	# Dealer vouchers last the whole run: list them under the rules.
 	for v in run.vouchers:
@@ -495,7 +532,9 @@ func _refresh_tokens() -> void:
 		vrow.add_theme_constant_override("separation", 4)
 		var vt = Token.new(Content.VOUCHERS[v].icon, Vector2(16, 16))
 		vt.hover_text = "%s (voucher): %s" % [Content.VOUCHERS[v].name, Content.VOUCHERS[v].desc]
-		vt.hover_target = _status
+		var vid: String = v
+		vt.hover_target = func(_s): main.card_near(vt, InfoCard.for_voucher(vid))
+		vt.hover_exit = main.hide_card
 		vrow.add_child(vt)
 		var vl := P.label(vrow, Content.VOUCHERS[v].name, P.FONT_SMALL, P.VIOLET)
 		vl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
@@ -507,8 +546,45 @@ func _select_item(i: int) -> void:
 	selected_item = -1 if selected_item == i else i
 	Sfx.play("click")
 	if selected_item >= 0:
-		_status("Placing %s: click a square." % Content.CHIPS[main.run.inventory[i].kind].name)
+		_status("Placing %s: click a lit spot (green levels up your twin). Right-click to cancel." % Content.CHIPS[main.run.inventory[i].kind].name)
 	_refresh_tokens()
+
+
+## Pick a chip placed this turn back up off `key` (free until the next spin) and hold it.
+func unplace_at(key: String) -> bool:
+	var run = main.run
+	for c in Placing.perms_on(run, key):
+		if run.is_fresh(c.id):
+			var nm: String = Content.CHIPS[c.kind].name
+			if run.unplace(c.id):
+				selected_item = run.inventory.size() - 1
+				main.hide_card()
+				Sfx.play("chip_remove")
+				_status("Picked up %s: click a lit spot to put it somewhere else." % nm)
+				refresh()
+				return true
+	return false
+
+
+## Place the selected rack chip on `key`; the next chip in the rack is picked up straight after.
+func _place_selected(key: String) -> void:
+	var run = main.run
+	if selected_item < 0 or selected_item >= run.inventory.size():
+		return
+	var kind: String = run.inventory[selected_item].kind
+	var twin: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == kind)
+	if run.place_chip(selected_item, key):
+		selected_item = 0 if not run.inventory.is_empty() else -1
+		felt_view.pop(key)
+		main.fx.burst(main.fx.local(felt_view.key_global(key)), 8 if not twin else 20, [P.GOLD, P.CREAM] if not twin else [P.GOOD, P.GOLD, P.CREAM], 60.0)
+		if twin:
+			main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
+		Sfx.play("stack" if twin else "chip_place")
+		_status("Placed. Next: %s." % Content.CHIPS[run.inventory[0].kind].name if selected_item >= 0 else "Placed.")
+		_refresh_tokens()
+	else:
+		_status("%s can't go there: try a lit spot." % Content.CHIPS[kind].name)
+		Sfx.play("click")
 
 
 # --- Drawing ------------------------------------------------------------------------
@@ -695,22 +771,19 @@ func _on_bet_clicked(key: String, button: int) -> void:
 		overlays.edit_pin(key)
 		return
 	if button == MOUSE_BUTTON_RIGHT:
+		if selected_item >= 0:   # right-click while holding a rack chip just puts it down
+			selected_item = -1
+			_status("")
+			_refresh_tokens()
+			return
+		if not run.felt.chips_on(key).any(func(c): return c.is_bet()) and unplace_at(key):
+			return
 		overlays.edit_take_back(key)
 		return
 	if button != MOUSE_BUTTON_LEFT:
 		return
 	if selected_item >= 0:
-		var kind: String = run.inventory[selected_item].kind
-		var twin: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == kind)
-		if run.place_chip(selected_item, key):
-			selected_item = -1
-			felt_view.pop(key)
-			main.fx.burst(main.fx.local(felt_view.key_global(key)), 8 if not twin else 20, [P.GOLD, P.CREAM] if not twin else [P.GOOD, P.GOLD, P.CREAM], 60.0)
-			if twin:
-				main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
-			Sfx.play("stack" if twin else "chip_place")
-		else:
-			_status("That chip can't go there.")
+		_place_selected(key)
 		return
 	var amt: int = mini(bet_size, run.table.stack)
 	if run.place_bet(key, amt):

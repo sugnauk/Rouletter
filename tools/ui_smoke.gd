@@ -131,8 +131,10 @@ func _process(delta: float) -> void:
 		[17.05, func(): shot("09b_money")],
 		[17.2, func(): main.show_screen("pawn")],
 		[17.5, func(): shot("10_pawn")],
-		[17.7, func(): main.show_screen("journal")],
-		[17.9, func(): shot("10b_journal")],
+		[17.7, func():
+			main.screens.casebook.tab = "story"
+			main.show_screen("casebook")],
+		[17.9, func(): shot("10b_casebook_story")],
 		[18, func(): main.show_screen("options")],
 		[18.2, func(): shot("10c_options")],
 		[18.4, func():
@@ -145,15 +147,17 @@ func _process(delta: float) -> void:
 		[21.8, func(): shot("12_loading_card")],
 		[23.1, func():
 			main.profile.feats = ["straight_up", "jackpot", "beat_sal"]
-			main.show_screen("feats")
+			main.profile.markers = 1
+			main.screens.pawn.tab = "goals"
+			main.show_screen("pawn")
 			main.fx.toast("FEAT: STRAIGHT UP", "+1 Marker")],
-		[23.5, func(): shot("13_feats")],
+		[23.5, func(): shot("13_pawn_goals")],
 		[23.7, func():
 			main.profile.seen_items = ["perm", "magnet", "gilded", "la_partage", "patience"]
 			main.profile.used_items = ["perm"]
-			main.screens.feats.tab = "almanac"
-			main.screens.feats.refresh()],
-		[24, func(): shot("14_almanac")],
+			main.screens.casebook.tab = "collection"
+			main.show_screen("casebook")],
+		[24, func(): shot("14_casebook_collection")],
 		[24.2, func():
 			main.show_screen("title")
 			main.say([{"speaker": "Mr. Vance", "text": "Portrait check."}])],
@@ -174,22 +178,22 @@ func _process(delta: float) -> void:
 		[25.9, func():
 			main.profile.add_history({"wheel": "european", "acts": 1, "nights": 2, "take": 140, "best_spin": 60, "won": false})
 			main.profile.add_history({"wheel": "french", "acts": 1, "nights": 4, "take": 520, "best_spin": 210, "won": true})
-			main.show_screen("feats")
-			main.screens.feats.tab = "history"
-			main.screens.feats.refresh()],
-		[26.2, func(): shot("19_history")],
+			main.screens.casebook.tab = "runs"
+			main.show_screen("casebook")],
+		[26.2, func(): shot("19_casebook_runs")],
 		[26.3, func(): main.pause.open()],
 		[26.5, func(): shot("20_pause")],
 		[26.7, func():
 			main.pause.close()
 			main.profile.seen_items = Content.CHIPS.keys() + Content.UPGRADES.keys() + Content.HOUSE_RULES.keys()
-			main.show_screen("feats")
-			main.screens.feats.tab = "almanac"
-			main.screens.feats.refresh()],
-		[27, func(): main.screens.feats.list.get_parent().scroll_vertical = 330],
-		[27.25, func(): shot("21_almanac_chips")],
-		[27.35, func(): main.screens.feats.list.get_parent().scroll_vertical = 990],
-		[27.6, func(): shot("22_almanac_upgrades")],
+			main.screens.casebook.tab = "collection"
+			main.show_screen("casebook")],
+		[27, func(): main.screens.casebook.scroll.scroll_vertical = 330],
+		[27.25, func(): shot("21_casebook_collection_scrolled")],
+		[27.35, func():
+			main.screens.casebook.tab = "guide"
+			main.screens.casebook.refresh()],
+		[27.6, func(): shot("22_casebook_guide")],
 		[27.8, func(): main.start_run("european")],
 		[28.9, func():
 			_close_dialogue()
@@ -280,7 +284,62 @@ func _process(delta: float) -> void:
 		[37.5, func(): shot("33_options_screen_fit")],
 		[37.7, func():
 			main.set_option("fit", 1.0)
-			get_tree().quit()],
+			main.start_run("european")],
+		[38.9, func():
+			_close_dialogue()
+			main.run.table_offer = []
+			var ts = main.screens.table
+			ts.refresh()
+			ts._select_item(0)
+			ts.felt_view.hover_key = "S17"
+			ts._on_hover("S17")],
+		[39.2, func(): shot("34_placing_ghost")],
+		[39.3, func():
+			var ts = main.screens.table
+			ts._place_selected("S17")
+			ts.selected_item = -1
+			ts.refresh()
+			ts.felt_view.hover_key = "S17"
+			ts._on_hover("S17")],
+		[39.6, func(): shot("35_chip_card")],
+		[39.7, func():
+			main.hide_card()
+			var r = main.run
+			r.inventory = []
+			var guard := 0
+			while r.phase == 0 and guard < 20:
+				guard += 1
+				r.place_bet("S17", mini(5, r.table.stack))
+				r.spin(17)
+			r.shop.bonus = []
+			r.shop.routes = []
+			r.shop.event = ""
+			r.cash = 30
+			main.route()],
+		[41.1, func():
+			_close_dialogue()
+			main.screens.shop._pick(0)],
+		[41.4, func(): shot("36_cage_pick")],
+		[41.6, func():
+			main.hide_card()
+			main.run.start_run(9, "mini", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.place_bet("S5", 3)
+			main.run.place_bet("SP1_2", 2)
+			main.run.place_bet("DOZ1", 1)
+			main.show_screen("table")],
+		[42, func(): shot("37_mini_felt")],
+		[42.1, func():
+			var r = main.run
+			r.inventory = []
+			r.table.take = r.table.target
+			r.spin(5)
+			r.shop.bonus = []
+			r.shop.routes = []
+			r.shop.event = ""
+			main.show_screen("shop")],
+		[42.5, func(): shot("38_mini_cage")],
+		[42.7, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

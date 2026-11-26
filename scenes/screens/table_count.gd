@@ -4,7 +4,7 @@ extends RefCounted
 ##   2. build   - every winning bet and triggered effect pulses in turn, building the score
 ##   3. count   - the spin's Take flows into the payment meter
 ## Ordinary spins stay brisk; exceptional ones (a one-spin clear, a final-ball clear, a personal
-## best, a big combo) get a longer beat and a musical sting. Fast spins (Options) shrink every pause.
+## best, a big combo) get a longer beat and a musical sting. The Fastest speed (the >> button) shrinks every pause.
 ## Split out of table_screen.gd; `t` is the table screen.
 
 const P := preload("res://scenes/ui/palette.gd")
@@ -156,9 +156,9 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			fx.banner("PERSONAL BEST +%d" % int(res.take), P.CYAN, 1.4, 150, 8)
 			Sfx.play("sting")
 		if exceptional and not t.fast():
-			Engine.time_scale = 0.45
+			Engine.time_scale = 0.45 * t.main.base_time_scale()
 			await t.get_tree().create_timer(0.35, true, false, true).timeout
-			Engine.time_scale = 1.0
+			t.main.apply_speed()
 		var tw: Tween = t.create_tween()
 		tw.tween_method(func(v: float): t.shown_take = v, before, after, 0.55 * (0.4 if t.fast() else 1.0)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		await tw.finished
