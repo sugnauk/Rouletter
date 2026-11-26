@@ -22,7 +22,7 @@ var used_items: Array = []   ## Almanac: content ids you have bought
 var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
-const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0}
+const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false}
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 var save_path: String = DEFAULT_PATH
 

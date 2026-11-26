@@ -328,7 +328,7 @@ func _token_pos(i: int) -> Vector2:
 		for tok in row.get_children():
 			if tok is Button:
 				if n == i:
-					return tok.global_position + tok.size / 2.0
+					return main.fx.local(tok.global_position + tok.size / 2.0)
 				n += 1
 	return CAGE.get_center()
 
@@ -397,14 +397,14 @@ func _on_felt(key: String, button: int) -> void:
 	if run.shop.pending_upgrade != "":
 		if run.apply_upgrade(key):
 			felt_view.flash(key)
-			main.fx.burst(felt_view.global_position + felt_view.key_center(key), 20, [P.CYAN, P.GOLD, P.CREAM])
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 20, [P.CYAN, P.GOLD, P.CREAM])
 			Sfx.play("chip_place")
 		return
 	if selected_item >= 0:
 		if run.place_chip(selected_item, key):
 			selected_item = -1
 			felt_view.pop(key)
-			main.fx.burst(felt_view.global_position + felt_view.key_center(key), 10, [P.GOLD, P.CREAM], 60.0)
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 10, [P.GOLD, P.CREAM], 60.0)
 			Sfx.play("chip_place")
 		else:
 			status_lbl.text = "That chip can't go there."
@@ -418,5 +418,5 @@ func _on_felt(key: String, button: int) -> void:
 		Sfx.play("chip_remove")
 		refresh()
 	elif mode == "sell" and run.sell_chip(mine[0].id):
-		main.fx.burst(felt_view.global_position + felt_view.key_center(key), 12, [P.GOLD])
+		main.fx.burst(main.fx.local(felt_view.key_global(key)), 12, [P.GOLD])
 		Sfx.play("cash")

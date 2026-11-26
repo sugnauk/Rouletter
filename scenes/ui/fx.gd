@@ -42,6 +42,11 @@ func stamp(text: String, col: Color, dur: float = 1.4) -> void:
 
 
 ## Chips arcing from `from` to `to` (e.g. from a winning square into the Take meter).
+## A point in global (viewport) coordinates, in this layer's own coordinates.
+func local(global_pt: Vector2) -> Vector2:
+	return get_global_transform().affine_inverse() * global_pt
+
+
 func fly(from: Vector2, to: Vector2, col: Color, n: int = 4) -> void:
 	for i in range(n):
 		var mid := (from + to) / 2.0 + Vector2(randf_range(-40, 40), randf_range(-70, -30))

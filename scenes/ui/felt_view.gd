@@ -390,6 +390,11 @@ func _outside_name(k: String) -> String:
 	return k.capitalize()
 
 
+## Centre of a bet area in global coordinates (respects zoom and the centred frame).
+func key_global(k: String) -> Vector2:
+	return get_global_transform() * key_center(k)
+
+
 ## Centre of a bet area in this control's coordinates (for FX).
 func key_center(k: String) -> Vector2:
 	return rect_of(k).get_center()

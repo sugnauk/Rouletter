@@ -8,6 +8,7 @@ const ITEMS := [
 	["cb_marks", "Colour-blind marks", "A small cross on every red square of the felt, so red and black don't rely on colour alone."],
 	["cards", "Loading cards", "The themed cards between screens. Off switches screens instantly."],
 	["shake", "Screen shake", "Shake on big wins and busts."],
+	["zoom_felt", "Tap-to-zoom felt", "Clicking the felt first zooms it in, so splits and corners are easy to hit. Always on for touch screens."],
 ]
 
 var main

@@ -3,6 +3,10 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.4
+- Tap-to-zoom felt: on touch screens (or with the new Options toggle) the first tap zooms the felt to nearly full screen so splits and corners are easy to hit; tap outside to close. Spinning closes it too.
+- Fix: win sparkles and floating text now land on the right square on widescreen windows.
+
 ## 0.0.3
 - Music: a synthesised lounge band (walking bass, brushes, comped chords, vibraphone) and a darker, faster version at Enforcer tables.
 - Music and sound volume controls in Options.

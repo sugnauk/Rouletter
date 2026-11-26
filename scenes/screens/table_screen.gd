@@ -58,6 +58,9 @@ var spin_score_vis := false
 var score_pop := 0.0
 var hits := 0                    ## scoring events this spin (the combo counter)
 var shown_cash := -1.0           ## HUD cash, counted up toward run.cash
+var zoom_bg: ColorRect            ## dims the table while the felt is zoomed for touch betting
+var zoomed := false
+const ZOOM := 1.8
 var chance := 0.0
 var take_per_spin := 0.0
 
@@ -147,6 +150,21 @@ func setup() -> void:
 	boss_lbl = P.label(boss_panel, "", P.FONT_SMALL, P.CREAM)
 	boss_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(boss_lbl, Vector2(5, 38), Vector2(RIGHT_W - 10, 62))
+	# Tap-to-zoom felt (touch screens, or the Options toggle): a dim layer under a big felt.
+	zoom_bg = ColorRect.new()
+	zoom_bg.color = Color(0.02, 0.01, 0.02, 0.82)
+	zoom_bg.position = Vector2(-4000, -4000)
+	zoom_bg.size = Vector2(8640, 8360)
+	zoom_bg.visible = false
+	zoom_bg.mouse_filter = Control.MOUSE_FILTER_STOP
+	zoom_bg.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed:
+			_unzoom())
+	var zl := P.label(zoom_bg, "TAP TO BET   -   HOLD TO TAKE BACK   -   TAP OUTSIDE TO CLOSE", P.FONT_SMALL, P.CREAM)
+	zl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	P.place(zl, Vector2(4000, 4000 + 30), Vector2(640, 10))
+	add_child(zoom_bg)
+	move_child(felt_view, -1)
 
 
 func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
@@ -477,9 +495,34 @@ func _draw_score(c: Control) -> void:
 
 # --- Input ------------------------------------------------------------------------
 
+## Zoom the felt so small targets (splits, corners) are big enough for a finger.
+func _zoom_enabled() -> bool:
+	return main.profile.settings.get("zoom_felt", false) or DisplayServer.is_touchscreen_available()
+
+
+func _zoom() -> void:
+	zoomed = true
+	zoom_bg.visible = true
+	felt_view.scale = Vector2(ZOOM, ZOOM)
+	felt_view.position = ((Vector2(640, 360) - felt_view.size * ZOOM) / 2.0 + Vector2(0, 12)).floor()
+	Sfx.play("click")
+
+
+func _unzoom() -> void:
+	if not zoomed:
+		return
+	zoomed = false
+	zoom_bg.visible = false
+	felt_view.scale = Vector2.ONE
+	felt_view.position = Vector2(MID_X, 32)
+
+
 func _on_bet_clicked(key: String, button: int) -> void:
 	var run = main.run
 	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
+		return
+	if button == MOUSE_BUTTON_LEFT and not zoomed and _zoom_enabled():
+		_zoom()
 		return
 	if button == MOUSE_BUTTON_RIGHT:
 		if run.take_back(key):
@@ -492,7 +535,7 @@ func _on_bet_clicked(key: String, button: int) -> void:
 		if run.place_chip(selected_item, key):
 			selected_item = -1
 			felt_view.pop(key)
-			main.fx.burst(felt_view.global_position + felt_view.key_center(key), 8, [P.GOLD, P.CREAM], 60.0)
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 8, [P.GOLD, P.CREAM], 60.0)
 			Sfx.play("chip_place")
 		else:
 			_status("That chip can't go there.")
@@ -536,6 +579,7 @@ func _on_spin() -> void:
 	var run = main.run
 	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
 		return
+	_unzoom()
 	if run.has_unplaced_chips():
 		_status("Place the chips in your rack before you spin.")
 		if selected_item < 0:
@@ -592,7 +636,7 @@ func _play_count(res: Dictionary, before: float, target: int) -> void:
 	var B = run.felt.board
 	var fx = main.fx
 	var pkey := Board.straight_key(res.pocket)
-	var pocket_pos: Vector2 = felt_view.global_position + felt_view.key_center(pkey)
+	var pocket_pos: Vector2 = main.fx.local(felt_view.key_global(pkey))
 	felt_view.flash(pkey, 1.2)
 	var straight_hit := false
 	for e in res.events:
@@ -619,7 +663,7 @@ func _play_count(res: Dictionary, before: float, target: int) -> void:
 	events.sort_custom(func(a, b): return order[a.kind] < order[b.kind])
 	for e in events:
 		var key: String = e.key
-		var at: Vector2 = felt_view.global_position + felt_view.key_center(key) if key != "" else Vector2(353, 120)
+		var at: Vector2 = main.fx.local(felt_view.key_global(key)) if key != "" else Vector2(353, 120)
 		var name: String = _bet_name(key)
 		match e.kind:
 			"win":
@@ -738,7 +782,7 @@ func _near_miss(res: Dictionary) -> void:
 			continue
 		if B.wheel_distance(n, res.pocket) == 1 or res.pocket in B.neighbours(n):
 			felt_view.near(c.bet)
-			main.fx.pop_text(felt_view.global_position + felt_view.key_center(c.bet) - Vector2(0, 8), "SO CLOSE", P.CREAM)
+			main.fx.pop_text(main.fx.local(felt_view.key_global(c.bet)) - Vector2(0, 8), "SO CLOSE", P.CREAM)
 			Sfx.play("near")
 			return
 
