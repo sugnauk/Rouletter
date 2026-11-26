@@ -55,6 +55,11 @@ const GLYPHS := {
 ## Pixel sprites for items that used to be lettered tiles: 12 rows of 12 characters.
 ## Colours: see SPRITE_COLOURS ('.' is transparent).
 const SPRITES := {
+	"sals_whistle": ["............", "............", ".......dd...", "..ddddddwd..", ".dwwwwwwwd..", "dwwwwwwwwd..", "dwwkkwwwwd..", "dwwkkwwwwd..", ".dwwwwwwd...", "..dddddd....", "...r........", "..r........."],
+	"oros_coin": ["....GGGG....", "..GGyyyyGG..", ".GyyGGGGyyG.", ".GyG....GyG.", "GyG..GG..GyG", "GyG.G..G.GyG", "GyG.G..G.GyG", "GyG..GG..GyG", ".GyG....GyG.", ".GyyGGGGyyG.", "..GGyyyyGG..", "....GGGG...."],
+	"accountants_book": ["............", ".bbbbbbbbbb.", ".bwwwwwwwwkb", ".bwkkkkkkwkb", ".bwwwwwwwwkb", ".bwkkkkwwwkb", ".bwwwwwwwwkb", ".bwkkkkkkwkb", ".bwwwwwwyywb", ".bwwwwwwyywb", ".bbbbbbbbbbb", "............"],
+	"velvet_rope": ["............", ".y........y.", "yyy......yyy", ".y........y.", ".yvv....vvy.", ".y.vvvvvv.y.", ".y........y.", ".y........y.", ".y........y.", ".y........y.", "yyy......yyy", "yyy......yyy"],
+	"klines_watch": ["....dddd....", "...d....d...", "..dddddddd..", ".dkkkkkkkkd.", "dkkkwwwwkkkd", "dkkwwkwwwkkd", "dkkwwkkkwkkd", "dkkwwwwwwkkd", "dkkkwwwwkkkd", ".dkkkkkkkkd.", "..dddddddd..", "............"],
 	"conductor": ["..........w.", ".........w..", "........w...", ".......w....", "......w.....", "..gg.w......", ".gyygg......", ".gyyyg......", ".gyyyg......", "..ggg.......", ".....rr.....", "....rrrr...."],
 	"relay": ["............", ".cc.........", "cccc........", ".cc..c......", ".....cc.....", "cccccccc....", ".....cc.....", ".....c..cc..", ".......cccc.", "........cc..", "............", "............"],
 	"fuse": [".........y..", "........yoy.", ".........o..", "........b...", ".......b....", "......b.....", "...kkkk.....", "..kkkkkk....", ".kkkkkkkk...", ".kkwkkkkk...", ".kkkkkkkk...", "..kkkkkk...."],

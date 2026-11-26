@@ -110,6 +110,9 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			_event(res, "push", c.bet, 0.0, "frozen" if c.id == w.frozen_id else "off the books")
 			continue
 		var pamt := _score(w, c, b, pocket, res)
+		if w.boss_is("cold_red") and b.type == "straight" and B.is_red(pocket):
+			pamt *= 0.5
+			res.log.rules.append("Mr. Winter: the %s chip on red scores half" % c.kind)
 		if c.mod == "focused" and b.type == "straight" and not mirrored:
 			pamt *= 2.0
 			res.log.chips.append("Focused chip on %s scores double" % c.bet)
@@ -220,6 +223,10 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				"ace":
 					aces.append([oc.value, oc.copies])
 		res.log.chips.append("Conductor: every multiplier chip fires")
+	if zero_hit and w.has_rule("oros_coin"):
+		take += Content.OROS_COIN_TAKE
+		res.log.rules.append("Oro's Coin: +%d on the zero" % int(Content.OROS_COIN_TAKE))
+		_event(res, "bonus", pkey, Content.OROS_COIN_TAKE, "oro's coin")
 	if zero_hit and wildcards > 0:
 		take += Content.WILDCARD_BONUS * wildcards
 		res.log.chips.append("Wildcard Zero: +%d" % int(Content.WILDCARD_BONUS * wildcards))
@@ -444,6 +451,10 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			take *= 1.5
 			res.log.rules.append("High Stakes: %d chips riding, x1.5" % riding)
 			_mult(res, 1.5, "High Stakes")
+	if w.has_rule("sals_whistle") and w.spin_no > 0 and w.spin_no % 3 == 0 and take > 0.0:
+		take *= 1.5
+		res.log.rules.append("Sal's Whistle: every 3rd spin x1.5")
+		_mult(res, 1.5, "Sal's Whistle")
 	if w.has_rule("double_down") and w.spin_no == 1 and take > 0.0:
 		take *= 2.0
 		res.log.rules.append("Double Down: the first spin scores double")
@@ -473,6 +484,10 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			res.hit_streak = felt.hit_streak + 1
 		else:
 			res.hit_streak = 0
+	if w.boss_is("skim") and take > 0.0:
+		take *= 1.0 - Content.SKIM_CUT
+		res.log.rules.append("Silk Montague skims 15%")
+		_mult(res, 1.0 - Content.SKIM_CUT, "Skimmed")
 	if zero_hit and w.boss_is("zero_tax"):
 		res.zero_tax = true
 		res.log.rules.append("Madame Oro takes her cut")
@@ -481,6 +496,13 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	w.red_streak = res.red_streak
 	w.hit_streak = res.hit_streak
 	w.last_pocket = pocket
+	if w.has_rule("velvet_rope"):
+		res.stack += Content.VELVET_ROPE_CHIPS
+		res.log.rules.append("Velvet Rope: +%d chips to your stack" % Content.VELVET_ROPE_CHIPS)
+	if w.has_rule("accountants_book") and res.events.any(func(e): return e.kind == "win" and e.key != "" and B.is_outside(e.key)):
+		res.cash += 1
+		res.log.rules.append("Accountant's Book: +$1")
+		_event(res, "cash", "", 1, "accountant's book")
 	if w.has_rule("bankroll"):
 		res.stack += 1
 		res.log.rules.append("Bankroll: +1 chip to your stack")

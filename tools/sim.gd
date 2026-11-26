@@ -72,6 +72,9 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: i
 					run.take_offer(0)
 				if not run.shop.bonus.is_empty():
 					run.take_bonus(0)
+				if not run.shop.get("stash", []).is_empty():
+					if not run.take_stash(0):
+						run.take_stash(1)
 				if not run.shop.get("routes", []).is_empty():
 					run.pick_route("")
 				if run.shop.get("event", "") != "":

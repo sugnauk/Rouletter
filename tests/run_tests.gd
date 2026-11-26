@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1311,6 +1311,65 @@ func test_explosive() -> void:
 	old.from_dict(d)
 	old.contrib["x"] = 1.0
 	check(RunState.new().contrib.is_empty(), "defaults aren't shared between runs")
+
+
+func test_bosses_and_grades() -> void:
+	var act2 := Content.ENFORCERS.keys().filter(func(k): return Content.ENFORCERS[k].get("act", 1) == 2 and not Content.ENFORCERS[k].get("final", false))
+	check(act2.size() == 6, "six Act II Enforcers (%d)" % act2.size())
+	var r = RunState.new()
+	r.start_run(9, "european", Profile.default_unlocks(), 2)
+	check(r.enforcer_order.size() == 8 and r.enforcer_order[7] == "owner", "Act II meets three of them, then the Owner")
+	for e in Content.ENFORCERS:
+		if not Content.ENFORCERS[e].get("final", false):
+			check(Content.HOUSE_RULES.has(Content.ENFORCERS[e].get("trophy", "")), "%s guards a trophy" % e)
+	# The Auditor suspends House Rules but not the wheel's.
+	var f = felt("french", [["bet", "S17", 1]])
+	f.house_rules.append("double_down")
+	f.boss_rule = "no_rules"
+	check(not f.has_rule("double_down") and f.has_rule("la_partage"), "The Auditor: House Rules off, wheel rules on")
+	# Silk Montague skims 15%.
+	var m = felt("european", [["bet", "S17", 1]])
+	m.boss_rule = "skim"
+	near(Resolver.resolve_spin(m, 17).take, 35.0 * 0.85, "Montague skims 15%")
+	# Mr. Winter: chips on red numbers score half.
+	var w = felt("european", [["perm", "S1", 1], ["perm", "S2", 1]])
+	w.boss_rule = "cold_red"
+	near(Resolver.resolve_spin(w, 1).take, 17.5, "Winter halves red")
+	near(Resolver.resolve_spin(w, 2).take, 35.0, "...not black")
+	# Trophies.
+	var t = felt("european", [["bet", "S17", 1]])
+	t.house_rules.append("oros_coin")
+	near(Resolver.resolve_spin(t, 0).take, 9.0, "Oro's Coin: +10 on a zero (less the lost bet)")
+	t.house_rules = ["velvet_rope"]
+	check(Resolver.resolve_spin(t, 5).stack == 2, "Velvet Rope: +2 chips a spin")
+	t.house_rules = ["sals_whistle"]
+	t.spin_no = 3
+	near(Resolver.resolve_spin(t, 17).take, 52.5, "Sal's Whistle on the 3rd spin")
+	# Beating an Enforcer opens their stash.
+	var run = new_run()
+	run.table_idx = 2
+	run._start_table()
+	run.table_offer = []
+	var boss: String = run.table.enforcer
+	run.table.take = run.table.target
+	run.place_bet("S17", 1)
+	run.spin(17)
+	check(run.shop.get("stash", []).size() == 3 and run.shop.stash[0].id == Content.ENFORCERS[boss].trophy, "the stash holds the Enforcer's trophy and two chips")
+	check(run.take_stash(0) and Content.ENFORCERS[boss].trophy in run.felt.house_rules and run.shop.stash.is_empty(), "take the trophy")
+	run.shop.vendors = ["pit_boss"]
+	for i in range(30):
+		run._restock()
+		check(not run.shop.stock.any(func(it): return Content.HOUSE_RULES.get(it.id, {}).get("trophy", false)), "trophies are never sold")
+	# Grade twists.
+	var g = RunState.new()
+	g.start_run(4, "european", Profile.default_unlocks(), 1, 8)
+	g.table_offer = []
+	g.felt.add_chip("perm", "S5", 1)
+	g.night = 1
+	g.table_idx = 0
+	g._start_table()
+	check(g.felt.perm_chips().any(func(c): return c.flaw == "cracked"), "Cracked Luck cracks a chip each night")
+	check(g._pick_vendors() == ["cashier"], "One Window: only the Cashier")
 
 
 func test_new_rules() -> void:

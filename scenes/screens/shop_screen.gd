@@ -304,7 +304,8 @@ func _refresh_choice(run) -> void:
 		refine_id = -1
 	var event: String = run.shop.get("event", "")
 	var routes: Array = run.shop.get("routes", [])
-	if offer.is_empty() and bonus.is_empty() and refine_id < 0 and event == "" and routes.is_empty():
+	var stash: Array = run.shop.get("stash", [])
+	if offer.is_empty() and bonus.is_empty() and refine_id < 0 and event == "" and routes.is_empty() and stash.is_empty():
 		return
 	choice = Panel.new()
 	choice.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.96), P.GOLD, 1))
@@ -337,6 +338,25 @@ func _refresh_choice(run) -> void:
 			refine_id = -1
 			refresh(), Vector2(60, 16), P.FONT_SMALL)
 		P.place(cb, Vector2(CAGE.size.x - 68, CAGE.size.y - 22))
+	elif not stash.is_empty():
+		title.text = "THE ENFORCER'S STASH: TAKE ONE"
+		for i in range(stash.size()):
+			var it: Dictionary = stash[i]
+			var is_rule: bool = it.type == "rule"
+			var nm: String = Content.HOUSE_RULES[it.id].name if is_rule else Content.CHIPS[it.id].name
+			var ds: String = Content.HOUSE_RULES[it.id].desc if is_rule else Content.CHIPS[it.id].desc
+			_choice_option(row, it.id, "TROPHY" if is_rule else Content.rarity_of(it.id).to_upper(), nm,
+				ds + ("\n(A trophy House Rule: sold nowhere else.)" if is_rule else "\n(A chip: place it on the felt.)"), func():
+				if run.take_stash(i):
+					main.profile.note_used(it.id)
+					Sfx.play("sting" if is_rule else "buy")
+					main.fx.burst(CAGE.get_center(), 36, [P.GOLD, P.CREAM, P.VIOLET], 150.0)
+					if not is_rule:
+						selected_item = run.inventory.size() - 1
+						mode = "place"
+					refresh()
+				else:
+					_describe("No room", "Your House Rule slots are full. Take a chip instead."))
 	elif not offer.is_empty():
 		title.text = "ON THE HOUSE: PICK ONE"
 		for i in range(offer.size()):

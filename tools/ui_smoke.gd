@@ -201,7 +201,7 @@ func _process(delta: float) -> void:
 			r.place_bet("RED", 2)
 			main.screens.table.refresh()],
 		[28.9, func(): shot("23_table_job")],
-		[29.0, func():
+		[29, func():
 			for k in preload("res://core/story.gd").TIPS:
 				main.profile.seen_beats.append(preload("res://core/story.gd").TIPS[k].id)
 			_close_dialogue()
@@ -230,24 +230,32 @@ func _process(delta: float) -> void:
 			main.run.shop.routes = Content.ROUTES.keys()
 			main.screens.shop.refresh()],
 		[31.2, func(): shot("25_shop_routes")],
-		[31.3, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
-		[31.6, func(): shot("26_portrait_duchess")],
-		[31.8, func():
+		[31.3, func():
+			main.run.shop.routes = []
+			main.run.shop.stash = main.run._enforcer_stash("sal")
+			main.screens.shop.refresh()],
+		[31.5, func(): shot("25b_shop_stash")],
+		[31.55, func():
+			main.run.shop.stash = []
+			main.screens.shop.refresh()],
+		[31.7, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
+		[32, func(): shot("26_portrait_duchess")],
+		[32.2, func():
 			main.dialogue.visible = false
 			main.show_screen("select")
 			main.screens.select.mode = "weekly"
 			main.screens.select._cycle_mode(0)],
-		[32.1, func(): shot("27_select_weekly")],
-		[32.2, func():
+		[32.5, func(): shot("27_select_weekly")],
+		[32.6, func():
 			main.screens.select.mode = "gauntlet"
 			main.screens.select._cycle_mode(0)],
-		[32.4, func(): shot("28_select_challenge")],
-		[32.5, func():
+		[32.8, func(): shot("28_select_challenge")],
+		[32.9, func():
 			main.run.run_seed = 424242
 			main.save_run()
 			main.show_screen("title")],
-		[32.8, func(): shot("29_title_continue")],
-		[33, func(): get_tree().quit()],
+		[33.2, func(): shot("29_title_continue")],
+		[33.4, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

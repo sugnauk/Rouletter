@@ -87,6 +87,8 @@ func boss_is(rule: String) -> bool:
 
 
 func has_rule(id: String) -> bool:
+	if boss_rule == "no_rules":   # The Auditor: House Rules are suspended (the wheel's own still apply)
+		return id in wheel_rules
 	return id in house_rules or id in wheel_rules
 
 

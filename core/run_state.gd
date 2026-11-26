@@ -125,7 +125,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 			act2.append(k)
 		else:
 			act1.append(k)
-	enforcer_order = rng.shuffle(act1).slice(0, 4) + rng.shuffle(act2) + finale
+	enforcer_order = rng.shuffle(act1).slice(0, 4) + rng.shuffle(act2).slice(0, 3) + finale
 	if challenge == "gauntlet":
 		enforcer_order = rng.shuffle(act1) + rng.shuffle(act1)
 	shop = {}
@@ -343,6 +343,8 @@ func _start_table() -> void:
 		spins += 1
 	if "patience" in vouchers:
 		spins += 1
+	if felt.has_rule("klines_watch"):
+		spins += 1
 	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
 		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan,
 		"favours": favours.duplicate(), "base_target": target, "route": shop.get("route", ""),
@@ -378,6 +380,13 @@ func _start_table() -> void:
 		message += " The Pit Boss takes %d chips off your stack." % table.docked
 	if table.loan > 0.0:
 		message += " The Loan Shark's cut: +%d%% on this payment." % int(round(table.loan * 100))
+	# Cracked Luck (grade 5): from night 2, each night one permanent chip cracks.
+	if graded(4) and night >= 1 and table_idx == 0:
+		var whole: Array = felt.perm_chips().filter(func(c): return c.flaw == "")
+		if not whole.is_empty():
+			var cc = rng.pick(whole)
+			cc.flaw = "cracked"
+			message += " Cracked Luck: your %s chip cracks." % Content.CHIPS[cc.kind].name
 	# Every table opens with a free special chip to pick (not in the Fence's Run).
 	table_offer = [] if challenge == "fence_run" else _opening_offer(true)
 	changed.emit()
@@ -627,8 +636,8 @@ func _clear_table() -> void:
 	var t: float = table.take
 	var comps := mini(cash / Content.COMPS_PER, Content.COMPS_MAX)
 	# Cleared with balls to spare: the balls-left cash becomes one option of a bonus pick.
-	var pick: bool = table.spins_left >= Content.EARLY_CLEAR_SPINS and not graded(4)
-	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) or pick else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
+	var pick: bool = table.spins_left >= Content.EARLY_CLEAR_SPINS
+	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if pick else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
 	if "comp_card" in vouchers:
 		reward += Content.COMP_CARD_CASH
 	if felt.has_rule("comped"):
@@ -756,7 +765,7 @@ func _lose(why: String) -> void:
 
 func _open_shop(info: Dictionary = {}) -> void:
 	phase = Phase.SHOP
-	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors(),
+	shop = {"stock": [], "reroll": Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors(),
 		"reserved": -1, "free_rerolls": 0, "offer": [], "bonus": []}
 	_restock()
 	# Roll the next table's twist and side job now, so the Cage can show them.
@@ -769,6 +778,8 @@ func _open_shop(info: Dictionary = {}) -> void:
 	if table_idx == 2 and feature_on("event") and rng.chance(Content.EVENT_CHANCE):
 		shop.event = rng.pick(Content.EVENTS.keys())
 	# Cleared with balls to spare: choose a bonus.
+	if info.get("boss", false) and phase == Phase.SHOP:
+		shop.stash = _enforcer_stash(info.enforcer)
 	if info.get("bonus_pick", false):
 		var fav: String = rng.pick(Content.FAVOURS.keys())
 		shop.bonus = [
@@ -835,6 +846,43 @@ func next_table_detail() -> String:
 
 
 ## Three free items, each pointing the build a different way.
+## Beat an Enforcer, raid their stash: their trophy (a rule sold nowhere else) and two rare chips.
+func _enforcer_stash(enforcer: String) -> Array:
+	var out := []
+	var trophy: String = Content.ENFORCERS.get(enforcer, {}).get("trophy", "")
+	if trophy == "" or felt.has_rule(trophy):
+		var left: Array = Content.HOUSE_RULES.keys().filter(func(k): return Content.HOUSE_RULES[k].get("trophy", false) and not felt.has_rule(k))
+		trophy = rng.pick(left) if not left.is_empty() else ""
+	if trophy != "":
+		out.append({"type": "rule", "id": trophy})
+	var pool := []
+	for k in Content.CHIPS:
+		if (k in unlocked) and Content.rarity_of(k) != "common":
+			pool.append(k)
+	for i in range(2):
+		if pool.is_empty():
+			break
+		var k: String = _pick_rare(pool)
+		pool.erase(k)
+		out.append({"type": "chip", "id": k})
+	return out
+
+
+func take_stash(i: int) -> bool:
+	if phase != Phase.SHOP or i < 0 or i >= shop.get("stash", []).size():
+		return false
+	var item: Dictionary = shop.stash[i]
+	if item.type == "rule":
+		if felt.house_rules.size() >= relic_slots():
+			return false
+		felt.house_rules.append(item.id)
+	else:
+		inventory.append({"kind": item.id, "value": 1})
+	shop.stash = []
+	changed.emit()
+	return true
+
+
 ## chips_only: just special chips (the per-table pick), never the plain Permanent.
 func _opening_offer(chips_only: bool = false) -> Array:
 	var out := []
@@ -850,7 +898,7 @@ func _opening_offer(chips_only: bool = false) -> Array:
 				pool.append(k)
 		if not chips_only:
 			for k in Content.HOUSE_RULES:
-				if k in unlocked and d in Content.tags_of(k) and not felt.has_rule(k):
+				if k in unlocked and d in Content.tags_of(k) and not felt.has_rule(k) and not Content.HOUSE_RULES[k].get("trophy", false):
 					pool.append(k)
 		pool = pool.filter(func(k): return not out.any(func(o): return o.id == k))
 		if pool.is_empty():
@@ -1031,6 +1079,8 @@ func _vendor_open(v: String) -> bool:
 func _pick_vendors() -> Array:
 	if challenge == "fence_run":
 		return ["fence"]
+	if graded(7):   # One Window
+		return [Content.ALWAYS_VENDOR]
 	var vendors := [Content.ALWAYS_VENDOR]
 	var pool := []
 	for v in Content.VENDORS:
@@ -1111,7 +1161,7 @@ func _vendor_stock(v: String) -> Array:
 		"pit_boss":
 			var rules := []
 			for k in Content.HOUSE_RULES:
-				if k in unlocked and not felt.has_rule(k):
+				if k in unlocked and not felt.has_rule(k) and not Content.HOUSE_RULES[k].get("trophy", false):
 					rules.append(k)
 			for n in range(2):
 				if rules.is_empty():

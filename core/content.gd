@@ -11,7 +11,7 @@ const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
 const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
 ## Take target of each night's first table (nights 5-8 are Act II only).
 const NIGHT_BASE := [9, 32, 105, 240, 330, 450, 600, 780]
-const TABLE_MULT := [1.0, 1.4, 1.8]      ## Floor / High Roller / Enforcer
+const TABLE_MULT := [1.0, 1.4, 1.95]      ## Floor / High Roller / Enforcer
 const SPINS := 6
 const START_STACK := 25                 ## betting chips handed out at each table
 const START_CASH := 4
@@ -111,10 +111,10 @@ const GRADES := [
 	{"name": "Short Stack", "desc": "You start every table with 5 fewer betting chips."},
 	{"name": "Tight Cage", "desc": "Everything sold for cash in the Cage costs $1 more."},
 	{"name": "Heavy Payments", "desc": "Every payment is 10% bigger."},
-	{"name": "No Tips", "desc": "No cash for spins left over when you clear a table."},
+	{"name": "Cracked Luck", "desc": "From night 2, each night one of your permanent chips cracks (scores half)."},
 	{"name": "Fast Tables", "desc": "High Roller and Enforcer tables have one spin fewer."},
 	{"name": "Mean Enforcers", "desc": "Enforcer tables ask 10% more."},
-	{"name": "Pricey Rerolls", "desc": "Rerolls in the Cage start at $4."},
+	{"name": "One Window", "desc": "Only the Cashier works the Cage."},
 	{"name": "Vance's Own Marker", "desc": "Every payment is a further 10% bigger. Mr. Vance's personal paper."},
 ]
 const MARKER_GRADE_STEP := 0.25          ## each grade adds 25% to the marker's face value
@@ -289,6 +289,7 @@ const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zer
 
 ## Rarity: how often something shows up in the Cage (common unless listed) and the frame it gets.
 const RARITY := {
+	"sals_whistle": "legendary", "oros_coin": "legendary", "accountants_book": "legendary", "velvet_rope": "legendary", "klines_watch": "legendary",
 	"conductor": "legendary", "relay": "rare", "fuse": "rare", "crowd_pleaser": "rare", "purist": "rare",
 	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
 	"night_owl": "rare", "far_side": "rare", "heart_of_gold": "rare", "golden_goose": "rare", "square_deal": "rare",
@@ -306,6 +307,9 @@ const PORCH_SHARE := 0.5
 const BLACK_CAT_BONUS := 2.0
 const RAINY_DAY_CASH := 2
 const CROWD_STEP := 0.05
+const SKIM_CUT := 0.15
+const OROS_COIN_TAKE := 10.0
+const VELVET_ROPE_CHIPS := 2
 const HIGH_STAKES_CHIPS := 15
 const RELAY_SHARE := 0.5
 const FUSE_BONUS := 2.0
@@ -360,6 +364,8 @@ const TAGS := {
 	"wheel_spoke": ["wheel", "neighbours"], "echo": ["numbers", "multiplier"], "ace": ["numbers", "multiplier"],
 	"tip_jar": ["cash"], "green_thumb": ["zero"], "signpost": ["inside", "cash"],
 	"diamond": ["numbers"], "magnetized": ["numbers", "neighbours"], "twin_square": ["numbers"], "spoke": ["wheel", "neighbours"],
+	"sals_whistle": ["multiplier"], "oros_coin": ["zero"], "accountants_book": ["outside", "cash"],
+	"velvet_rope": ["spins"], "klines_watch": ["spins"],
 	"crowd_pleaser": ["multiplier", "numbers"], "purist": ["multiplier", "numbers"], "high_stakes": ["multiplier"],
 	"conductor": ["multiplier"], "relay": ["numbers"], "fuse": ["numbers", "multiplier"],
 	"outside_connection": ["outside", "numbers"], "inside_track": ["inside", "numbers"],
@@ -377,6 +383,9 @@ const COUNTERS := {
 	"no_inside": {"good": ["numbers", "outside", "even"], "bad": ["inside"]},
 	"drain": {"good": ["multiplier"], "bad": []},
 	"short": {"good": ["spins", "multiplier"], "bad": []},
+	"no_rules": {"good": ["numbers", "inside"], "bad": ["even", "multiplier"]},
+	"skim": {"good": ["multiplier", "numbers"], "bad": []},
+	"cold_red": {"good": ["even", "outside"], "bad": []},
 	"crowd": {"good": ["outside", "inside", "even"], "bad": []},
 	"tempo": {"good": ["even", "outside"], "bad": []},
 	"clock": {"good": ["multiplier", "numbers"], "bad": ["spins"]},
@@ -464,6 +473,7 @@ const ALMANAC := [
 	["MONEY RULES", "HOUSE_RULES", ["comped", "compound_interest", "big_spender"]],
 	["BRIDGE RULES", "HOUSE_RULES", ["outside_connection", "inside_track", "colour_coded", "rainy_day"]],
 	["SCALING RULES", "HOUSE_RULES", ["crowd_pleaser", "purist", "high_stakes"]],
+	["TROPHIES", "HOUSE_RULES", ["sals_whistle", "oros_coin", "accountants_book", "velvet_rope", "klines_watch"]],
 	["DEALER FAVOURS", "FAVOURS", ["extra_spin", "fat_stack", "head_start"]],
 	["DEALER VOUCHERS", "VOUCHERS", ["comp_card", "vip_rack", "patience", "house_credit"]],
 ]
@@ -587,6 +597,17 @@ const HOUSE_RULES := {
 		"price": 7, "unlock": 0, "note": "Bridges inside bets and number chips."},
 	"colour_coded": {"name": "Colour Coded", "desc": "When red or black wins, +1 Take per level of every permanent chip on a number of that colour.",
 		"price": 6, "unlock": 0, "note": "Bridges even-money bets and number chips."},
+	# Trophies: only from an Enforcer's stash, never sold in the Cage.
+	"sals_whistle": {"name": "Sal's Whistle", "desc": "Every 3rd spin at a table scores x1.5.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "Big Sal called his spins; now you call yours."},
+	"oros_coin": {"name": "Oro's Coin", "desc": "Whenever a zero hits, +10 Take.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "Madame Oro's lucky green coin."},
+	"accountants_book": {"name": "Accountant's Book", "desc": "+$1 for every spin an outside bet wins.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "Balanced books, in your favour for once."},
+	"velvet_rope": {"name": "Velvet Rope", "desc": "+2 betting chips to your stack every spin.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "The VIP line moves fast."},
+	"klines_watch": {"name": "Kline's Watch", "desc": "+1 spin at every table.", "price": 0, "unlock": 0, "trophy": true,
+		"note": "He was always early. Now you are too."},
 	# Scaling rules: they grow with the build.
 	"crowd_pleaser": {"name": "Crowd Pleaser", "desc": "Every scoring spin x(1 + 0.05 per level of permanent chips on your felt).",
 		"price": 9, "unlock": 0, "note": "The more you've built, the louder the room gets."},
@@ -606,51 +627,63 @@ const FEATURES := {
 
 # --- Enforcers (boss tables) -----------------------------------------------------------------
 const ENFORCERS := {
-	"accountant": {"name": "The Accountant", "rule": "no_outside",
+	"accountant": {"name": "The Accountant", "rule": "no_outside", "trophy": "accountants_book",
 		"desc": "Outside bets are off the books: they can't be placed and don't pay.",
 		"intro": "Mr. Vance doesn't like round numbers. Inside bets only tonight.",
 		"defeat": "...The ledger balances. For now."},
-	"oro": {"name": "Madame Oro", "rule": "zero_tax",
+	"oro": {"name": "Madame Oro", "rule": "zero_tax", "trophy": "oros_coin",
 		"desc": "Every zero costs you 10% of the Take you've built.",
 		"intro": "Green is my favourite colour, darling. Every time it comes up, I take a cut.",
 		"defeat": "Lucky. Luck doesn't last in this building."},
-	"vic": {"name": "Vic \"The Rake\"", "rule": "frozen",
+	"vic": {"name": "Vic \"The Rake\"", "rule": "frozen", "trophy": "sals_whistle",
 		"desc": "Your biggest permanent chip is frozen and pays nothing this table.",
 		"intro": "Nice stack. Be a shame if it couldn't move.",
 		"defeat": "Vance is gonna hear about this."},
-	"sal": {"name": "Big Sal", "rule": "called",
+	"sal": {"name": "Big Sal", "rule": "called", "trophy": "sals_whistle",
 		"desc": "Every 3rd spin is called: you can't place new bets on it.",
 		"intro": "I call the spins at my table. You just watch.",
 		"defeat": "Huh. Didn't call that one."},
-	"duchess": {"name": "The Duchess", "rule": "crowd",
+	"duchess": {"name": "The Duchess", "rule": "crowd", "trophy": "oros_coin",
 		"desc": "Piles are vulgar: any bet of 5 or more chips on one spot pays half.",
 		"intro": "Darling, nobody needs that many chips in one place. Spread them out or pay for it.",
 		"defeat": "How very... democratic of you."},
-	"tempo": {"name": "Miss Tempo", "rule": "tempo",
+	"tempo": {"name": "Miss Tempo", "rule": "tempo", "trophy": "sals_whistle",
 		"desc": "Keep the beat: every spin that scores nothing costs 10% of the Take you've built.",
 		"intro": "One, two, one, two. Miss a beat and the band stops playing for you.",
 		"defeat": "You kept time. Barely."},
-	"timekeeper": {"name": "The Timekeeper", "rule": "clock",
+	"timekeeper": {"name": "The Timekeeper", "rule": "clock", "trophy": "klines_watch",
 		"desc": "The clock is running: the payment grows by 5% every spin.",
 		"intro": "Every tick costs you. I'd hurry.",
 		"defeat": "...Time's up. For me, apparently."},
-	"ilsa": {"name": "Countess Ilsa", "rule": "no_repeat",
+	"ilsa": {"name": "Countess Ilsa", "rule": "no_repeat", "trophy": "velvet_rope",
 		"desc": "No encores: you can't bet on a spot you bet on last spin.",
 		"intro": "The same bet twice? How dreadfully dull. I won't allow it.",
 		"defeat": "At least you were never boring."},
 	# Act II: the Floor Above (nights 5-7), then the Owner on night 8.
-	"inspector": {"name": "The Inspector", "rule": "no_inside", "act": 2,
+	"inspector": {"name": "The Inspector", "rule": "no_inside", "trophy": "accountants_book", "act": 2,
 		"desc": "Inside bets are under review: no splits, streets, corners or lines, and those chips don't pay.",
 		"intro": "Gaming commission. Routine check. Keep your chips in the middle of the squares, please.",
 		"defeat": "Everything appears to be... in order. How irritating."},
-	"velvet": {"name": "Velvet", "rule": "drain", "act": 2,
+	"velvet": {"name": "Velvet", "rule": "drain", "trophy": "velvet_rope", "act": 2,
 		"desc": "The room has a minimum: every spin costs 2 chips from your stack.",
 		"intro": "Upstairs, darling, we don't count chips. We just watch them leave.",
 		"defeat": "You kept some. How quaint."},
-	"kline": {"name": "Mr. Kline", "rule": "short", "act": 2,
+	"kline": {"name": "Mr. Kline", "rule": "short", "trophy": "klines_watch", "act": 2,
 		"desc": "A short table: only 4 spins to make the payment.",
 		"intro": "I'm a busy man. Four spins. Make them count or make them your last.",
 		"defeat": "...Fine. Next."},
+	"auditor": {"name": "The Auditor", "rule": "no_rules", "act": 2, "trophy": "accountants_book",
+		"desc": "Your House Rules are suspended at this table. Only the wheel's own rules apply.",
+		"intro": "I'll be reviewing those little arrangements of yours. Until then, they don't exist.",
+		"defeat": "Everything checks out. Somehow."},
+	"montague": {"name": "Silk Montague", "rule": "skim", "act": 2, "trophy": "oros_coin",
+		"desc": "The house skims 15% off every spin's Take.",
+		"intro": "A little off the top, dear. It's how the lights stay on.",
+		"defeat": "You'd make a fine skimmer yourself."},
+	"winter": {"name": "Mr. Winter", "rule": "cold_red", "act": 2, "trophy": "velvet_rope",
+		"desc": "A cold table: permanent chips on red numbers score half.",
+		"intro": "Red's a warm colour. I don't care for warm.",
+		"defeat": "...Thawed. How irritating."},
 	"owner": {"name": "Mr. Vance", "rule": "owner", "act": 2, "final": true,
 		"desc": "The Owner's table: every zero costs 10% of your Take, and every 3rd spin is called.",
 		"intro": "My wheel. My felt. My rules. Sit down. You've earned the chair, if not the room.",

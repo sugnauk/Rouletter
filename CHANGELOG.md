@@ -3,6 +3,22 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.29
+- Three new Act II Enforcers. Each Act II run now meets three of the six before the Owner:
+  - The Auditor: your House Rules are suspended (the wheel's own still apply).
+  - Silk Montague: skims 15% off every spin.
+  - Mr. Winter: permanent chips on red numbers score half.
+- Enforcer rewards: beat an Enforcer and raid their stash. Take their trophy or one of two rare chips. Trophies are House Rules sold nowhere else:
+  - Sal's Whistle: every 3rd spin x1.5.
+  - Oro's Coin: +10 Take on zeros.
+  - Accountant's Book: +$1 when an outside bet wins.
+  - Velvet Rope: +2 stack chips every spin.
+  - Kline's Watch: +1 spin at every table.
+- Marker grades get rule twists in place of two plain number changes:
+  - Grade 5 is now Cracked Luck: from night 2, one of your chips cracks each night.
+  - Grade 8 is now One Window: only the Cashier works the Cage.
+- Balance: Enforcer tables ask a little more (x1.95 of the night's base, was x1.8) to offset the trophies.
+
 ## 0.0.28
 - Builds can explode now:
   - Three scaling House Rules:

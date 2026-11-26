@@ -47,6 +47,12 @@ const CAST := {
 		"extras": ["glasses", "chain", "moustache"], "bg": "#1e1a12"},
 	"Countess Ilsa": {"suit": "#14141c", "shirt": "#5a1a6a", "skin": 4, "hair": "#e8e8f0", "hair_style": "long",
 		"extras": ["lips", "earrings", "brows"], "bg": "#140e1e"},
+	"The Auditor": {"suit": "#2f3a2f", "shirt": "#f4ead5", "skin": 4, "hair": "#4a4a4a", "hair_style": "thin",
+		"extras": ["glasses", "tie", "badge"], "bg": "#141c14"},
+	"Silk Montague": {"suit": "#c9a227", "shirt": "#1a1a22", "skin": 1, "hair": "#2a1a10", "hair_style": "slick",
+		"extras": ["moustache", "chain", "bowtie"], "bg": "#2a2010"},
+	"Mr. Winter": {"suit": "#d9e2ec", "shirt": "#14141c", "skin": 4, "hair": "#f4f4f8", "hair_style": "short",
+		"extras": ["shades", "tie"], "bg": "#10202e"},
 	"Mr. Kline": {"suit": "#3d3d3d", "shirt": "#f4ead5", "skin": 4, "hair": "#bdbdbd", "hair_style": "thin",
 		"extras": ["glasses", "tie", "brows"], "bg": "#1f1f1f"},
 }
