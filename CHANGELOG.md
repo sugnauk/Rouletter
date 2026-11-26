@@ -3,6 +3,15 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.32
+- Under the hood, so the next round of features is safer to build:
+  - The run is split in two: `core/run_table.gd` (state, saves, tables, spins) and `core/run_state.gd` (the Cage), which extends it.
+  - The table screen's overlays (free chip, touch menu, quick edits, tips) moved into `scenes/screens/table_overlays.gd`.
+  - Behaviour is unchanged: the balance bot gives the same results.
+- Versioned saves: run saves and profiles carry a format version.
+  - Older run saves are upgraded step by step on load.
+  - A save from a newer version of the game is refused rather than misread.
+
 ## 0.0.31
 - Every Enforcer has a musical sting: a low stab and a four-note motif from a dark scale, worked out from their name. It plays as their card comes up.
 - Enforcer entrances: the loading card before a boss table holds longer. A spotlight snaps on, their portrait slides in out of the dark, and a red bar sweeps under the name.

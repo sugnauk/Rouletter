@@ -71,11 +71,15 @@ Every entry has an originality `note` in `core/content.gd`.
   - `wheels.gd` and `board.gd`: per-wheel geometry
   - `felt_state.gd` and `resolver.gd`: pure spin resolution and EV
   - `odds.gd`: pay-off chance
-  - `run_state.gd`: the run loop and shop
+  - `run_table.gd`: the run's state, saves (versioned, with `migrate()`), tables and spins
+  - `run_state.gd`: extends it with the Cage (vendors, stock, prices, services, stash, choices); callers use `RunState` as one object
+  - `preview.gd`: cached "what if" previews for the felt and the Cage
   - `profile.gd`, `story.gd` and `content.gd`
   - `game.gd`: the autoload
 - **`scenes/main.gd`:** the screen router.
-- **`scenes/screens/*`:** title, select, table, shop, end and pawn screens.
+- **`scenes/screens/*`:** title, select, table, shop, end and pawn screens. The table screen's helpers:
+  - `table_count.gd`: the three-beat count;
+  - `table_overlays.gd`: the free-chip panel, the touch bet menu, quick edits and first-time tips.
 - **`scenes/ui/*`:** felt, wheel, dialogue, palette and sfx.
 
 ```
@@ -134,6 +138,24 @@ CI: `.github/workflows/test-branch.yml` runs the tests and the smoke screenshots
 - **Balance (bot, 300 runs, full pool, v0.0.21):** French 35%, European 35%, American 21%, Mini 45% (payments raised to x1.2 in v0.0.24, from 62%), Triple Zero 21%, Sunrise 13%, Cheater's 4%.
 
 - **Free chips (v0.0.26):** every table opens with a free pick of one special chip from three (`RunState.table_offer`). The Cashier stocks 3 chips, and Permanents show up in about 15% of shop slots (`PERM_CHANCE`). Bot wins: French 35%, European 28%, American 23%, Mini 40%, Triple Zero 21%, Sunrise 29%, Cheater's 4%.
+
+## Depth pass (v0.0.27-0.0.32)
+- **Onboarding:** new players get one system per night (`RunState.ONBOARD_NIGHT`), each explained once by Dolores (`Story.TIPS`).
+- **Touch:** a long press opens the bet menu. Previews are cached by felt signature.
+- **Builds:**
+  - Scaling rules (Crowd Pleaser, Purist, High Stakes).
+  - Chain chips (Conductor, Relay, Fuse).
+  - An end-screen build summary (`contrib`, `best_spin_info`) with Save image.
+- **Bosses:**
+  - Act II has 6 Enforcers, 3 per run.
+  - Beating one opens their stash: a trophy rule (`ENFORCERS[*].trophy`) or a rare chip.
+  - Grades 5 and 8 are now rule twists (Cracked Luck, One Window).
+- **Meta:**
+  - The money log (`cash_log`).
+  - The Pawn Shop tree (`Profile.tree()` / `requires()`).
+  - Challenge levels (`profile.challenge_level`).
+  - Weekly share codes (`RunState.share_code`). An online leaderboard needs a server.
+- **Presentation:** Enforcer stings (`Sfx` cue `enforcer:<name>`), animated Enforcer cards, the victory theme, and felt/rail colours per wheel (`felt` / `rail` in `wheels.gd`).
 
 ## Known gaps and next steps
 - Late-game scaling is mostly additive. It needs more multiplicative synergies (Balatro-style) so builds can explode.

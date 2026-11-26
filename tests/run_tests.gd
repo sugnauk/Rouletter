@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1401,6 +1401,32 @@ func test_meta() -> void:
 	var back := RunState.read_share_code(code)
 	check(back.nights == 3 and back.take == 1234 and not back.won and back.week == "W2917", "a share code reads back")
 	check(RunState.read_share_code(code.replace("T1234", "T9999")).is_empty(), "an edited code doesn't check out")
+
+
+func test_save_versions() -> void:
+	var run = new_run()
+	run.felt.add_chip("kingmaker", "S5", 2).copies = 2
+	var d: Dictionary = run.to_dict()
+	check(d.version == RunState.SAVE_VERSION, "saves carry their format version")
+	# A version-1 save (before seeds, offers, summaries and stacked chips) still loads.
+	var old := d.duplicate(true)
+	old.version = 1
+	for k in RunState.OPTIONAL_FIELDS:
+		old.erase(k)
+	for c in old.felt.chips:
+		c.erase("copies")
+		c.erase("mod")
+	var back = RunState.new()
+	check(back.from_dict(old) and back.run_seed == 0 and back.table_offer.is_empty(), "a version-1 save migrates")
+	check(back.felt.perm_chips().all(func(c): return c.copies >= 1 and c.mod == ""), "...its chips get a stack count and no refine")
+	var future := d.duplicate(true)
+	future.version = RunState.SAVE_VERSION + 1
+	check(not RunState.new().from_dict(future), "a save from a newer version is refused, not misread")
+	var p = Profile.new()
+	check(p.to_dict().version == Profile.PROFILE_VERSION, "profiles carry their format version")
+	var q = Profile.new()
+	q.from_dict({"markers": 5})
+	check(q.markers == 5, "an unversioned profile still loads")
 
 
 func test_new_rules() -> void:

@@ -181,13 +181,29 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 	return {"paid": paid, "markers": earned}
 
 
+const PROFILE_VERSION := 2   ## profile save format (see migrate())
+
+
+## Older profiles load with defaults for anything missing; this records which format a file
+## was written in so later changes can convert it.
+static func migrate(d_in: Dictionary) -> Dictionary:
+	var d := d_in.duplicate(true)
+	var v := int(d.get("version", 1))
+	if v < 2:
+		# 1 -> 2: Pawn Shop lanes. Nothing to convert: unlocks bought out of order stay owned.
+		v = 2
+	d["version"] = v
+	return d
+
+
 func to_dict() -> Dictionary:
-	return {"markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
+	return {"version": PROFILE_VERSION, "markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
 		"runs": runs, "wins": wins, "best_night": best_night,
 		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "weekly_best": weekly_best, "wheels_won": wheels_won, "challenge_level": challenge_level, "weekly_runs": weekly_runs, "settings": settings}
 
 
-func from_dict(d: Dictionary) -> void:
+func from_dict(d_in: Dictionary) -> void:
+	var d := migrate(d_in)
 	markers = int(d.get("markers", 0))
 	unlocked = d.get("unlocked", default_unlocks())
 	for id in default_unlocks():  # new free content added since the save

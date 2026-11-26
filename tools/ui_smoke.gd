@@ -209,9 +209,9 @@ func _process(delta: float) -> void:
 			_close_dialogue()
 			main.run.table_offer = []
 			main.screens.table.refresh()
-			main.screens.table._on_bet_held("RED")],
+			main.screens.table.overlays.on_bet_held("RED")],
 		[29.5, func(): shot("23m_touch_menu")],
-		[29.55, func(): main.screens.table._close_bet_menu()],
+		[29.55, func(): main.screens.table.overlays.close_bet_menu()],
 		[29.6, func():
 			var r = main.run
 			var guard := 0
