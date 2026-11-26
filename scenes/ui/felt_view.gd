@@ -19,7 +19,7 @@ const STRIP_H := 15.0
 const ZERO_W := 20.0
 const COL_W := 22.0
 ## The vertical felt (portrait): numbers run down the screen in three roomy columns.
-const VGRID_LEN := 300.0
+const VGRID_LEN := 264.0
 const VROW_H := 48.0
 const VSTRIP_H := 30.0
 const VZERO_W := 22.0

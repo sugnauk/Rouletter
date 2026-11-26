@@ -38,10 +38,10 @@ func show_at(at: Vector2, d: Dictionary) -> void:
 	_h = PAD * 2 + 26 + _lines.size() * 10
 	size = Vector2(W, _h)
 	var pos := at + Vector2(14, 10)
-	if pos.x + W > 636:
+	if pos.x + W > P.W - 4:
 		pos.x = at.x - W - 14
-	if pos.y + _h > 356:
-		pos.y = maxf(4.0, 356 - _h)
+	if pos.y + _h > P.H - 4:
+		pos.y = maxf(4.0, P.H - 4 - _h)
 	position = pos.floor()
 	visible = true
 	queue_redraw()

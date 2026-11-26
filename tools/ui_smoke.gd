@@ -10,6 +10,7 @@ var out_dir := "user://"
 var t := 0.0
 var step := 0
 var main
+var portrait := false   ## `-- portrait`: a short tour of the portrait layouts (run at a tall window)
 
 
 func _process(delta: float) -> void:
@@ -18,6 +19,9 @@ func _process(delta: float) -> void:
 		main = get_tree().current_scene
 		return
 	var run = main.run
+	if portrait:
+		_run_plan(_portrait_plan())
+		return
 	var plan := [
 		[0.6, func(): shot("01_title")],
 		[0.7, func():
@@ -502,6 +506,73 @@ func _mouse(at: Vector2, pressed) -> void:
 	e.position = at
 	e.global_position = at
 	get_viewport().push_input(e, true)
+
+
+func _run_plan(plan: Array) -> void:
+	while step < plan.size() and t >= plan[step][0]:
+		plan[step][1].call()
+		step += 1
+
+
+func _portrait_plan() -> Array:
+	return [
+		[0.6, func(): shot("p01_title")],
+		[0.7, func():
+			main.profile.best_grade = 2
+			main.start_run("european")],
+		[1.6, func():
+			_close_dialogue()
+			main.screens.table.refresh()],
+		[1.9, func(): shot("p02_free_chip")],
+		[2.0, func():
+			var r = main.run
+			r.skip_table_offer()
+			r.place_chip(0, "DOZ1")
+			r.place_chip(0, "S17")
+			r.place_bet("S17", 3)
+			r.place_bet("RED", 4)
+			r.place_bet("SP1_2", 1)
+			main.screens.table.refresh()
+			main.screens.table._on_hover("S17")],
+		[2.3, func(): shot("p03_table_bets")],
+		[2.4, func(): main.screens.table._on_spin()],
+		[4.6, func(): shot("p04_counting")],
+		[7.0, func():
+			var r = main.run
+			var guard := 0
+			while r.phase == 0 and guard < 20:
+				guard += 1
+				r.place_bet("S17", mini(5, r.table.stack))
+				r.spin(17)
+			r.shop.bonus = []
+			r.shop.routes = []
+			r.shop.event = ""
+			r.shop.offer = []
+			r.cash = 30
+			main.route()],
+		[7.8, func():
+			_close_dialogue()
+			main.screens.shop.refresh()],
+		[8.1, func(): shot("p05_cage")],
+		[8.2, func():
+			main.screens.shop._start_stock_drag(0)
+			main.screens.shop.felt_view.hover_key = "RED"],
+		[8.5, func(): shot("p06_cage_drag")],
+		[8.6, func():
+			main.screens.shop._end_stock_drag()
+			main.run.start_run(12, "twin", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.run.place_bet("RED", 3)
+			main.show_screen("table")],
+		[9.4, func():
+			_close_dialogue()
+			main.screens.table._on_spin()],
+		[11.6, func(): shot("p07_twin")],
+		[12.6, func(): main.show_screen("select")],
+		[13.0, func(): shot("p08_select_fallback")],
+		[13.2, func(): get_tree().quit()],
+	]
 
 
 func _tokens(n: Node) -> Array:

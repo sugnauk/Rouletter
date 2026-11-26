@@ -3,6 +3,22 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.45
+- **Portrait mode, part 1: the table and the Cage.** Hold your phone upright and the game re-lays itself out. Rotate back and the landscape layout returns.
+  - **The felt stands up** like a real table seen from the end: numbers run down in three roomy columns, with the outside boxes along the left. The squares are bigger than in landscape, which makes them easier to hit with a thumb.
+  - **Table:**
+    - the payment bar across the top;
+    - the wheel beside BALLS, SPIN, your stack and the odds;
+    - the felt with your bet chips, rack, rules and side job beside it;
+    - the count underneath.
+  - **Cage:**
+    - the counter across the full width, then the description;
+    - the felt with your modes and rack beside it;
+    - NEXT TABLE at the bottom.
+  - Drag-to-buy, dialogue, cards, banners, the free-chip pick and the pause menu all fit the upright screen.
+  - **Other screens** (title, wheel select, Pawn Shop, Casebook...) still show the landscape layout, centred, until part 2.
+- The web build and phones no longer lock to landscape.
+
 ## 0.0.44
 - **New wheels that change how a spin works,** not just how many zeros there are:
   - **Twin Ball:**

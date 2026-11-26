@@ -38,6 +38,13 @@ func first_time_tips(run) -> void:
 
 ## The free special chip waiting at the start of every table: three to choose from, over the
 ## score panel so the felt stays visible for hover previews.
+## The free-chip panel sits over the score panel, wherever that is.
+func relayout() -> void:
+	offer_key = ""
+	if t.main != null and t.main.run != null:
+		refresh_offer(t.main.run)
+
+
 func refresh_offer(run) -> void:
 	var key: String = "" if run.table_offer.is_empty() else "%s|%s" % [t.table_key, str(run.table_offer.map(func(o): return o.id))]
 	if key == offer_key:
@@ -50,15 +57,17 @@ func refresh_offer(run) -> void:
 		return
 	offer_panel = Panel.new()
 	offer_panel.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.97), P.GOLD, 1))
-	P.place(offer_panel, Vector2(t.MID_X, 184), Vector2(330, 170))
+	P.place(offer_panel, t.score_view.position, t.score_view.size)
 	t.add_child(offer_panel)
 	var title := P.label(offer_panel, "ON THE HOUSE: PICK A CHIP", P.FONT, P.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	P.place(title, Vector2(0, 8), Vector2(330, 12))
+	var pw: float = offer_panel.size.x
+	var ph: float = offer_panel.size.y
+	P.place(title, Vector2(0, 8), Vector2(pw, 12))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	P.place(row, Vector2(0, 28), Vector2(330, 100))
+	P.place(row, Vector2(0, 26), Vector2(pw, 100))
 	offer_panel.add_child(row)
 	for i in range(run.table_offer.size()):
 		var o: Dictionary = run.table_offer[i]
@@ -101,12 +110,13 @@ func refresh_offer(run) -> void:
 		n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		n.custom_minimum_size = Vector2(90, 0)
 	var sub := P.label(offer_panel, "A free chip at every table.", P.FONT_SMALL, P.DIM)
-	P.place(sub, Vector2(8, 150))
+	P.place(sub, Vector2(8, ph - 20))
+	sub.visible = ph >= 140.0   # no room for the footnote on a phone held upright
 	var sk := P.button(offer_panel, "No thanks", func():
 		run.skip_table_offer()
 		Sfx.play("click")
 		t.refresh(), Vector2(64, 16), P.FONT_SMALL)
-	P.place(sk, Vector2(258, 148))
+	P.place(sk, Vector2(pw - 72, ph - 22))
 
 
 func edit_take_back(key: String) -> void:
@@ -181,7 +191,7 @@ func on_bet_held(key: String) -> void:
 	bg.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.GOLD, 1))
 	var at: Vector2 = t.felt_view.position + t.felt_view.key_center(key)
 	var sz := Vector2(84, items.size() * 20 + 6)
-	at = Vector2(clampf(at.x - sz.x / 2.0, 4, 636 - sz.x), clampf(at.y + 10, 4, 356 - sz.y))
+	at = Vector2(clampf(at.x - sz.x / 2.0, 4, P.W - 4 - sz.x), clampf(at.y + 10, 4, P.H - 4 - sz.y))
 	P.place(bg, at, sz)
 	bet_menu.add_child(bg)
 	P.place(box, Vector2(3, 3))

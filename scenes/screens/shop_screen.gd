@@ -16,7 +16,7 @@ const Portraits := preload("res://scenes/ui/portraits.gd")
 const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Placing := preload("res://scenes/ui/placing.gd")
 
-const CAGE := Rect2(8, 28, 288, 150)
+var CAGE := Rect2(8, 28, 288, 150)   ## the vendor windows (wider on a phone held upright)
 
 var main
 var cage_view: Control
@@ -27,7 +27,7 @@ var desc_title: Label
 var desc_body: Label
 var next_lbl: Label
 var felt_view
-var mode_box: HBoxContainer
+var mode_box: HFlowContainer   ## PLACE / MOVE / SELL / TRADE / REFINE (wraps in portrait)
 var rack: HFlowContainer
 var status_lbl: Label
 var mode := "place"
@@ -37,6 +37,12 @@ var t := 0.0
 
 
 var speed_btn: Button   ## fast-forward: > / >> / >>>
+var portrait := false
+var dp: Panel           ## the description panel
+var nb                  ## NEXT TABLE
+var mb                  ## MENU
+var chips_lbl: Label
+var rack_lbl: Label
 var picked := -1        ## the stock item being looked at (click again or BUY to buy it)
 var picked_ref = null
 var buy_btn             ## BUY in the description panel (a marquee button)
@@ -60,7 +66,7 @@ func setup() -> void:
 	service_box.add_theme_constant_override("separation", 6)
 	P.place(service_box, Vector2(8, 184))
 	add_child(service_box)
-	var dp := Panel.new()
+	dp = Panel.new()
 	dp.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.WOOD, 1))
 	P.place(dp, Vector2(8, 234), Vector2(288, 82))
 	add_child(dp)
@@ -81,8 +87,8 @@ func setup() -> void:
 	next_lbl.add_theme_constant_override("line_spacing", -2)
 	next_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
 	next_lbl.mouse_entered.connect(func(): _describe("NEXT TABLE", main.run.next_table_detail()))
-	var nb := P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
-	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 14), P.FONT_SMALL)
+	nb = P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
+	mb = P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 14), P.FONT_SMALL)
 	P.place(mb, Vector2(594, 6))
 	speed_btn = P.button(self, ">", func():
 		main.cycle_speed()
@@ -106,16 +112,19 @@ func setup() -> void:
 		_place_selected(k))
 	felt_view.stock_dropped.connect(_on_stock_dropped)
 	add_child(felt_view)
-	P.place(P.label(self, "YOUR CHIPS", P.FONT_SMALL, P.DIM), Vector2(304, 152))
-	mode_box = HBoxContainer.new()
-	mode_box.add_theme_constant_override("separation", 4)
-	P.place(mode_box, Vector2(304, 164))
+	chips_lbl = P.label(self, "YOUR CHIPS", P.FONT_SMALL, P.DIM)
+	P.place(chips_lbl, Vector2(304, 152))
+	mode_box = HFlowContainer.new()
+	mode_box.add_theme_constant_override("h_separation", 4)
+	mode_box.add_theme_constant_override("v_separation", 4)
+	P.place(mode_box, Vector2(304, 164), Vector2(330, 0))
 	add_child(mode_box)
 	for m in [["place", "PLACE"], ["move", "MOVE $%d" % Content.RELOCATE_PRICE], ["sell", "SELL"], ["trade", "TRADE $%d" % Content.CONVERT_PRICE], ["refine", "REFINE $%d" % Content.REFINE_PRICE]]:
 		var b := P.button(mode_box, m[1], _set_mode.bind(m[0]), Vector2(62, 16), P.FONT_SMALL)
 		b.toggle_mode = true
 		b.set_meta("mode", m[0])
-	P.place(P.label(self, "RACK", P.FONT_SMALL, P.DIM), Vector2(304, 188))
+	rack_lbl = P.label(self, "RACK", P.FONT_SMALL, P.DIM)
+	P.place(rack_lbl, Vector2(304, 188))
 	rack = HFlowContainer.new()
 	rack.add_theme_constant_override("h_separation", 4)
 	rack.add_theme_constant_override("v_separation", 4)
@@ -135,6 +144,58 @@ func setup() -> void:
 		buy_zones.append(z)
 
 
+## Landscape (640x360) or portrait (360x640): in portrait the counter runs the full width, the
+## description sits under it, and the felt stands upright with your rack and modes beside it.
+func relayout(tall: bool) -> void:
+	portrait = tall
+	felt_view.vertical = tall
+	if felt_view.run != null:
+		felt_view.layout()
+	P.place(cage_view, Vector2.ZERO, Vector2(P.W, P.H))
+	P.place(counter, Vector2.ZERO, Vector2(P.W, P.H))
+	if not tall:
+		CAGE = Rect2(8, 28, 288, 150)
+		P.place(service_box, Vector2(8, 184))
+		P.place(dp, Vector2(8, 234), Vector2(288, 82))
+		P.place(desc_body, Vector2(6, 18), Vector2(276, 62))
+		P.place(buy_btn, Vector2(190, 60))
+		P.place(next_lbl, Vector2(8, 318), Vector2(200, 40))
+		P.place(nb, Vector2(212, 322))
+		P.place(mb, Vector2(594, 6))
+		P.place(speed_btn, Vector2(564, 6))
+		P.place(felt_view, Vector2(304, 32))
+		P.place(chips_lbl, Vector2(304, 152))
+		P.place(mode_box, Vector2(304, 164), Vector2(330, 0))
+		P.place(rack_lbl, Vector2(304, 188))
+		P.place(rack, Vector2(304, 198), Vector2(330, 0))
+		P.place(status_lbl, Vector2(304, 300), Vector2(330, 50))
+		P.place(buy_zones[0], Vector2(302, 184), Vector2(334, 112))
+		P.place(buy_zones[1], Vector2(6, 182), Vector2(292, 50))
+	else:
+		CAGE = Rect2(8, 28, 344, 150)
+		P.place(service_box, Vector2(8, 184))
+		P.place(dp, Vector2(8, 232), Vector2(344, 64))
+		P.place(desc_body, Vector2(6, 18), Vector2(332, 44))
+		P.place(buy_btn, Vector2(246, 42))
+		P.place(mb, Vector2(314, 6))
+		P.place(speed_btn, Vector2(284, 6))
+		P.place(felt_view, Vector2(4, 300))
+		var rx: float = 4 + felt_view.size.x + 6
+		var rw: float = 356 - rx
+		P.place(chips_lbl, Vector2(rx, 300))
+		P.place(mode_box, Vector2(rx, 310), Vector2(rw, 0))
+		var modes_h: float = ceil(5.0 / maxf(1.0, floor((rw + 4) / 66.0))) * 20.0 + 6.0
+		P.place(rack_lbl, Vector2(rx, 314 + modes_h))
+		P.place(rack, Vector2(rx, 324 + modes_h), Vector2(rw, 0))
+		P.place(status_lbl, Vector2(rx, 400 + modes_h), Vector2(rw, 200 - modes_h))
+		P.place(next_lbl, Vector2(8, 610), Vector2(256, 28))
+		P.place(nb, Vector2(272, 608))
+		P.place(buy_zones[0], Vector2(rx - 2, 310 + modes_h), Vector2(rw + 4, 296 - modes_h))
+		P.place(buy_zones[1], Vector2(6, 182), Vector2(348, 48))
+	if main != null and main.run != null and main.run.phase == RunState.Phase.SHOP:
+		refresh()
+
+
 ## The glowing "DROP TO BUY" target shown while an item is dragged off the counter.
 func _draw_buy_zone(z: Control) -> void:
 	var r := Rect2(Vector2.ZERO, z.size)
@@ -149,10 +210,16 @@ func _draw_buy_zone(z: Control) -> void:
 		var o := (i + int(t * 24.0)) % int(r.size.y)
 		z.draw_rect(Rect2(r.size.x - 2, o, 2, 4), Color(P.GOLD, glow))
 		z.draw_rect(Rect2(0, r.size.y - o - 4, 2, 4), Color(P.GOLD, glow))
-	var label := "DROP HERE TO BUY"
+	var price := ""
 	if drag_stock >= 0 and drag_stock < main.run.shop.stock.size():
-		label = "DROP HERE TO BUY  %s" % main.run.price_text(main.run.shop.stock[drag_stock])
-	Art.text(z, P.title_font(), Vector2(r.size.x / 2.0, r.size.y / 2.0 + 4), label, 8, P.GOLD.lerp(P.CREAM, glow * 0.5), true)
+		price = main.run.price_text(main.run.shop.stock[drag_stock])
+	var col := P.GOLD.lerp(P.CREAM, glow * 0.5)
+	if r.size.x >= 220.0:
+		Art.text(z, P.title_font(), Vector2(r.size.x / 2.0, r.size.y / 2.0 + 4), ("DROP HERE TO BUY  " + price).strip_edges(), 8, col, true)
+	else:   # a narrow zone (portrait): stack the words
+		var lines := ["DROP HERE", "TO BUY", price]
+		for i in range(lines.size()):
+			Art.text(z, P.title_font(), Vector2(r.size.x / 2.0, r.size.y / 2.0 - 10 + i * 12), lines[i], 8, col, true)
 
 
 func _notification(what: int) -> void:
@@ -258,8 +325,9 @@ func _draw_cage() -> void:
 	Art.text(c, font, Vector2(83, 17), "THE CAGE", 8, P.CREAM, true)
 	Art.text(c, font, Vector2(170, 18), "$%d" % run.cash, 16, P.GOLD)
 	if run.overflow > 0 or "dealer" in run.shop.get("vendors", []):
-		Art.text(c, P.font(), Vector2(250, 12), "SPARE TAKE", 8, P.DIM)
-		Art.text(c, P.font(), Vector2(250, 22), str(run.overflow), 8, P.VIOLET)
+		var sx: float = 222.0 if portrait else 250.0
+		Art.text(c, P.font(), Vector2(sx, 12), "SPARE TAKE", 8, P.DIM)
+		Art.text(c, P.font(), Vector2(sx, 22), str(run.overflow), 8, P.VIOLET)
 	for win in windows:
 		_draw_window(c, win.rect, win.vendor)
 
@@ -372,6 +440,9 @@ func refresh() -> void:
 		felt_view.run = run
 		felt_view.layout()
 		board_id = bid
+		if portrait:   # the felt's width moves the column beside it
+			relayout(true)
+			return
 	_build_windows(run)
 	if desc_title.text == "":
 		_idle_desc(run)

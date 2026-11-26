@@ -1,6 +1,11 @@
 extends RefCounted
 ## Fixed pixel-art palette and the shared UI theme (640x360 base resolution, no anti-aliasing).
 
+## The play area's size: 640x360 landscape, 360x640 on a phone held upright (main sets these).
+static var W := 640.0
+static var H := 360.0
+static var portrait := false
+
 const BG := Color("#08140e")
 const PANEL := Color("#11251a")
 const PANEL_HI := Color("#1c3a29")
@@ -159,6 +164,6 @@ static func button(parent: Node, text: String, cb: Callable, size: Vector2 = Vec
 static func place(c: Control, pos: Vector2, size: Vector2 = Vector2.ZERO) -> Control:
 	c.position = pos
 	if size != Vector2.ZERO:
+		c.custom_minimum_size = size   # first, so a control can also shrink (portrait re-layouts)
 		c.size = size
-		c.custom_minimum_size = size
 	return c

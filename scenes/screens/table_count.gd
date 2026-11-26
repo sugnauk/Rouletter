@@ -36,7 +36,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 	var felt_view = t.felt_view
 	var before: float = ctx.before
 	var target: int = ctx.target
-	var meter_at := Vector2(t.MID_X + 150, 12)
+	var meter_at: Vector2 = t.meter_center()
 
 	# --- Beat 1: reveal -------------------------------------------------------------
 	var pkey := Board.straight_key(res.pocket)
