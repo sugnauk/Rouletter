@@ -3,6 +3,16 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.38
+- Playtest kit:
+  - **Copy report:** a new button on the end screen copies the whole run as text, ready to paste. It covers:
+    - each table, with its payment, Take, spins, the straight-up / inside / outside mix, condition, route and side job;
+    - every free chip taken or passed, and every Cage purchase;
+    - where the money came from, the top chips, and the final felt and House Rules.
+  - `docs/playtest.md`: a one-page guide for testers (what to play, what to answer), plus what to watch for.
+  - `docs/balance_report.md`: the balance bot's view. The finding to watch: about a third of the bot's lost runs end on the very first table.
+  - `tools/sim.gd -- report` prints item buy rates, Enforcer and condition clear rates, and where runs end.
+
 ## 0.0.37
 - The Casebook replaces the Almanac, the Journal and run History. One screen, four tabs:
   - **COLLECTION:** every chip, felt upgrade, House Rule and Dealer perk, as icon tiles grouped by family.

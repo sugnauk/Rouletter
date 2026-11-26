@@ -25,4 +25,8 @@ godot --headless --path . --script res://tools/sim.gd          # balance sim
 
 Every push to `main` builds the web version and publishes it to GitHub Pages (`.github/workflows/deploy-web.yml`). Every push to another branch runs the tests and takes screenshots of every screen (`.github/workflows/test-branch.yml`; the PNGs are the run's "screenshots" artifact). The design notes are in [docs/design.md](docs/design.md).
 
+## Playtesting
+
+Send testers [docs/playtest.md](docs/playtest.md). Every run's end screen has a **Copy report** button that copies the run as text (tables, bets, free picks, Cage buys, money and top chips) for them to paste back. The balance bot's view is in [docs/balance_report.md](docs/balance_report.md).
+
 Fonts: Silkscreen and Press Start 2P, both under the SIL Open Font License (see `fonts/`).

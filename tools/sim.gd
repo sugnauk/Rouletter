@@ -3,7 +3,14 @@ extends SceneTree
 ##   all    -> bot plays with every unlock (default: starting pool only)
 ##   act=2  -> Act II runs (8 nights, ending at the Owner)
 ##   grade=N -> marker grade N (1-9, difficulty ladder)
+##   report  -> also print item, Enforcer, condition and "where runs end" tables (docs/balance_report.md)
 ## Prints clear rates per table for each wheel, using a simple greedy bot.
+
+var offered := {}     ## item id -> times on a Cage counter
+var bought := {}      ## item id -> times the bot bought it
+var enf := {}         ## enforcer -> [reached, cleared]
+var cond := {}        ## table condition -> [reached, cleared]
+var ends := {}        ## "N2 High Roller" -> runs that ended there
 
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
@@ -18,7 +25,10 @@ func _initialize() -> void:
 	var all := false
 	var acts := 1
 	var grade := 0
+	var want_report := false
 	for a in OS.get_cmdline_user_args():
+		if a == "report":
+			want_report = true
 		if a.begins_with("runs="):
 			runs = int(a.substr(5))
 		elif a == "all":
@@ -39,7 +49,38 @@ func _initialize() -> void:
 	print("== Bot runs (%d per wheel, %s pool) ==" % [runs, "full" if all else "starting"])
 	for id in Wheels.ORDER:
 		sim_wheel(id, runs, unlocks, acts, grade)
+	if want_report:
+		print_report()
 	quit()
+
+
+func _bump(d: Dictionary, k: String, i: int = -1) -> void:
+	if i < 0:
+		d[k] = d.get(k, 0) + 1
+	else:
+		if not d.has(k):
+			d[k] = [0, 0]
+		d[k][i] += 1
+
+
+func print_report() -> void:
+	print("== Items: bought / offered (bot buys left to right, so read this as 'how often it was in reach') ==")
+	var ids: Array = offered.keys()
+	ids.sort_custom(func(a, b): return float(bought.get(a, 0)) / offered[a] > float(bought.get(b, 0)) / offered[b])
+	for id in ids:
+		var nm: String = Content.CHIPS.get(id, Content.UPGRADES.get(id, Content.HOUSE_RULES.get(id, {}))).get("name", id)
+		print("  %-22s %5d / %5d  %3.0f%%" % [nm, bought.get(id, 0), offered[id], 100.0 * bought.get(id, 0) / offered[id]])
+	print("== Enforcers: cleared / reached ==")
+	for e in enf:
+		print("  %-22s %4d / %4d  %3.0f%%" % [Content.ENFORCERS[e].name, enf[e][1], enf[e][0], 100.0 * enf[e][1] / maxf(1, enf[e][0])])
+	print("== Table conditions: cleared / reached ==")
+	for c in cond:
+		print("  %-22s %4d / %4d  %3.0f%%" % [Content.CONDITIONS[c].name if Content.CONDITIONS.has(c) else "(none)", cond[c][1], cond[c][0], 100.0 * cond[c][1] / maxf(1, cond[c][0])])
+	print("== Where lost runs ended ==")
+	var ks: Array = ends.keys()
+	ks.sort_custom(func(a, b): return ends[a] > ends[b])
+	for k in ks:
+		print("  %-26s %4d" % [k, ends[k]])
 
 
 func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: int = 0) -> void:
@@ -61,12 +102,24 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: i
 				var idx: int = run.night * 3 + run.table_idx
 				if run.table.spins_used == 0:
 					reached[idx] += 1
+					if run.table.boss:
+						_bump(enf, run.table.enforcer, 0)
+					else:
+						_bump(cond, run.table.get("condition", ""), 0)
 				if not run.table_offer.is_empty():
 					run.take_table_offer(0)
 				bot_bet(run)
+				var boss_now: String = run.table.enforcer if run.table.boss else ""
+				var cond_now: String = run.table.get("condition", "")
 				run.spin()
 				if run.phase != RunState.Phase.TABLE and run.phase != RunState.Phase.GAME_OVER:
 					cleared[idx] += 1
+					if boss_now != "":
+						_bump(enf, boss_now, 1)
+					else:
+						_bump(cond, cond_now, 1)
+				elif run.phase == RunState.Phase.GAME_OVER:
+					_bump(ends, "N%d %s" % [run.night + 1, run.table_name()])
 			elif run.phase == RunState.Phase.SHOP:
 				if not run.shop.offer.is_empty():
 					run.take_offer(0)
@@ -79,7 +132,13 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: i
 					run.pick_route("")
 				if run.shop.get("event", "") != "":
 					run.answer_event(1)
+				for it in run.shop.stock:
+					if not it.sold and it.type in ["chip", "upgrade", "rule"]:
+						_bump(offered, it.id)
 				bot_shop(run)
+				for it in run.shop.stock:
+					if it.sold and it.type in ["chip", "upgrade", "rule"]:
+						_bump(bought, it.id)
 				run.leave_shop()
 			else:
 				break

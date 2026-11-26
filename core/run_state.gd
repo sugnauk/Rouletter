@@ -128,13 +128,20 @@ func take_table_offer(i: int) -> bool:
 	if phase != Phase.TABLE or i < 0 or i >= table_offer.size():
 		return false
 	inventory.append({"kind": table_offer[i].id, "value": 1})
+	note("Free chip: took %s (offered %s)" % [Content.CHIPS[table_offer[i].id].name, _offer_names()])
 	table_offer = []
 	changed.emit()
 	return true
 
 
 func skip_table_offer() -> void:
+	if not table_offer.is_empty():
+		note("Free chip: passed (offered %s)" % _offer_names())
 	table_offer = []
+
+
+func _offer_names() -> String:
+	return ", ".join(table_offer.map(func(o): return Content.CHIPS[o.id].name))
 	changed.emit()
 
 
@@ -508,6 +515,7 @@ func buy(i: int) -> bool:
 		_:
 			cash -= price_of(item)
 	item.sold = true
+	note("Cage: bought %s for %s" % [item_name(item), price_text(item)])
 	match item.type:
 		"chip":
 			var inv := {"kind": item.id, "value": 1}
