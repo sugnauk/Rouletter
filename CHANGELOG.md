@@ -3,6 +3,9 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.12
+- Fix: the macOS build (universal, for Apple Silicon too) now exports; Windows and Linux already did.
+
 ## 0.0.11
 - Almanac sorted into categories (Scoring, Growth, Modifier, Zero and Cash & Time chips; Number and Outside upgrades; Payout, Multiplier and Safety rules; Dealer favours and vouchers), each with "found / total", "bought" and a progress bar.
 - Unseen entries show their rarity, and locked ones say how many Markers they cost at the Pawn Shop.
