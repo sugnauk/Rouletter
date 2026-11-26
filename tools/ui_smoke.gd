@@ -570,8 +570,48 @@ func _portrait_plan() -> Array:
 			main.screens.table._on_spin()],
 		[11.6, func(): shot("p07_twin")],
 		[12.6, func(): main.show_screen("select")],
-		[13.0, func(): shot("p08_select_fallback")],
-		[13.2, func(): get_tree().quit()],
+		[13.0, func(): shot("p08_select")],
+		[13.2, func(): main.show_screen("pawn")],
+		[13.5, func(): shot("p09_pawn")],
+		[13.6, func():
+			main.screens.pawn.tab = "goals"
+			main.screens.pawn.refresh()],
+		[13.9, func(): shot("p10_pawn_goals")],
+		[14.0, func():
+			main.screens.casebook.tab = "collection"
+			main.show_screen("casebook")],
+		[14.4, func(): shot("p11_casebook")],
+		[14.5, func(): main.open_options()],
+		[14.8, func(): shot("p12_options")],
+		[14.9, func(): main.show_screen("credits")],
+		[15.2, func(): shot("p13_credits")],
+		[15.3, func():
+			var r = main.run
+			r.start_run(15, "european", main.profile.unlocked)
+			r.table_offer = []
+			r.place_bet("RED", r.table.stack)
+			var guard := 0
+			while r.phase == 0 and guard < 20:
+				guard += 1
+				if r.table.stack > 0:
+					r.place_bet("S1", r.table.stack)
+				r.spin(2)
+			main.route()],
+		[16.4, func():
+			_close_dialogue()
+			shot("p14_end")],
+		[16.6, func(): main.show_screen("title")],
+		[17.0, func():
+			_close_dialogue()
+			shot("p15_title")],
+		[17.1, func():
+			# Rotate both ways on every screen (what a phone does mid-run): nothing may error.
+			for k in main.screens:
+				if main.screens[k].has_method("relayout"):
+					main.screens[k].relayout(false)
+					main.screens[k].relayout(true)
+			print("ROTATE: OK")],
+		[17.2, func(): get_tree().quit()],
 	]
 
 

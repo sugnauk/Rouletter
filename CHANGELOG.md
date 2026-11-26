@@ -3,6 +3,14 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.46
+- **Portrait mode, part 2: every screen.** The home screen, wheel select, end of run, Pawn Shop, Casebook, Options, Credits and the title card all have upright layouts now:
+  - **Home:** the wheel spins at the top, with the sign and buttons beneath.
+  - **Wheel select:** the same layout you know, stacked: modes, the wheel between its arrows, the details, then DEAL ME IN.
+  - **Pawn Shop:** narrower lanes with more room between rows, Feats on two lines each.
+  - **Casebook:** the list on top and the detail panel underneath.
+- Turning the phone mid-run re-lays out every screen on the spot.
+
 ## 0.0.45
 - **Portrait mode, part 1: the table and the Cage.** Hold your phone upright and the game re-lays itself out. Rotate back and the landscape layout returns.
   - **The felt stands up** like a real table seen from the end: numbers run down in three roomy columns, with the outside boxes along the left. The squares are bigger than in landscape, which makes them easier to hit with a thumb.

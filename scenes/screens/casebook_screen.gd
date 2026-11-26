@@ -41,6 +41,9 @@ var scroll: ScrollContainer
 var detail_title: Label
 var detail: Label
 var action_btn
+var list_w := LIST_W
+var panel: Panel
+var back_btn
 var _action: Callable
 
 
@@ -59,14 +62,14 @@ func setup() -> void:
 	summary_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
 	P.place(summary_lbl, Vector2(16, 30))
 	scroll = ScrollContainer.new()
-	P.place(scroll, Vector2(16, 46), Vector2(LIST_W, 272))
+	P.place(scroll, Vector2(16, 46), Vector2(list_w, 272))
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
 	list = VBoxContainer.new()
-	list.custom_minimum_size = Vector2(LIST_W - 12, 0)
+	list.custom_minimum_size = Vector2(list_w - 12, 0)
 	list.add_theme_constant_override("separation", 3)
 	scroll.add_child(list)
-	var panel := Panel.new()
+	panel = Panel.new()
 	P.place(panel, Vector2(396, 46), Vector2(228, 272))
 	add_child(panel)
 	detail_title = P.label(panel, "", P.FONT, P.GOLD)
@@ -79,7 +82,29 @@ func setup() -> void:
 		if _action.is_valid():
 			_action.call(), Vector2(212, 20), P.FONT_SMALL)
 	P.place(action_btn, Vector2(8, 244))
-	P.place(P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 22)), Vector2(16, 326))
+	back_btn = P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 22))
+	P.place(back_btn, Vector2(16, 326))
+
+
+## Portrait: the tabs under the title, the list on top and the detail panel under it.
+func relayout(tall: bool) -> void:
+	list_w = 328.0 if tall else LIST_W
+	var x := 16.0 if tall else 216.0
+	for t in TABS:
+		var w: float = 78.0 if tall else (96.0 if t[0] != "guide" else 104.0)
+		P.place(tab_btns[t[0]], Vector2(x, 28 if tall else 6), Vector2(w, 16))
+		x += w + 4
+	P.place(summary_lbl, Vector2(16, 50) if tall else Vector2(16, 30))
+	P.place(scroll, Vector2(16, 64) if tall else Vector2(16, 46), Vector2(list_w, 290) if tall else Vector2(list_w, 272))
+	list.custom_minimum_size.x = list_w - 12
+	P.place(panel, Vector2(16, 360) if tall else Vector2(396, 46), Vector2(328, 244) if tall else Vector2(228, 272))
+	var iw: float = panel.size.x - 16
+	P.place(detail_title, Vector2(8, 6), Vector2(iw, 24))
+	P.place(detail, Vector2(8, 30), Vector2(iw, 180 if tall else 206))
+	P.place(action_btn, Vector2(8, 216 if tall else 244), Vector2(iw, 20))
+	P.place(back_btn, Vector2(16, 612) if tall else Vector2(16, 326))
+	if main != null and visible:
+		refresh()
 
 
 func _show(title: String, body: String, action_text: String = "", action: Callable = Callable()) -> void:
@@ -111,14 +136,14 @@ func refresh() -> void:
 ## A section header with a label, a count and a thin progress bar.
 func _header(title: String, count: String, k: float, col: Color = P.GOOD) -> void:
 	var head := Control.new()
-	head.custom_minimum_size = Vector2(LIST_W - 12, 16)
+	head.custom_minimum_size = Vector2(list_w - 12, 16)
 	list.add_child(head)
 	P.place(P.label(head, title, P.FONT, P.GOLD if k >= 1.0 else P.CREAM), Vector2(0, 4))
 	var cnt := P.label(head, count, P.FONT_SMALL, P.GOOD if k >= 1.0 else P.DIM)
 	cnt.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	P.place(cnt, Vector2(LIST_W - 12 - 300, 5), Vector2(200, 10))
+	P.place(cnt, Vector2(list_w - 12 - 300, 5), Vector2(200, 10))
 	var bar := Control.new()
-	P.place(bar, Vector2(LIST_W - 12 - 92, 8), Vector2(92, 4))
+	P.place(bar, Vector2(list_w - 12 - 92, 8), Vector2(92, 4))
 	bar.draw.connect(func():
 		bar.draw_rect(Rect2(0, 0, 92, 4), P.BLACK)
 		bar.draw_rect(Rect2(0, 0, floor(92 * k), 4), P.GOLD if k >= 1.0 else col))
@@ -143,7 +168,7 @@ func _collection() -> void:
 		total += ids.size()
 		_header(group[0], "%d seen  %d bought%s" % [seen, bought, ("  %d locked" % locked) if locked > 0 else ""], float(seen) / ids.size())
 		var flow := HFlowContainer.new()
-		flow.custom_minimum_size = Vector2(LIST_W - 12, 0)
+		flow.custom_minimum_size = Vector2(list_w - 12, 0)
 		flow.add_theme_constant_override("h_separation", 4)
 		flow.add_theme_constant_override("v_separation", 4)
 		list.add_child(flow)
@@ -214,7 +239,7 @@ func _story() -> void:
 		_header(ch[0].to_upper(), "%d / %d" % [n, scenes.size()], float(n) / maxf(1.0, scenes.size()), P.VIOLET)
 		for sc in scenes:
 			var known: bool = sc.id in seen
-			var b := P.button(list, sc.title if known else "? ? ?", func(): _play(sc.lines), Vector2(LIST_W - 12, 18), P.FONT_SMALL)
+			var b := P.button(list, sc.title if known else "? ? ?", func(): _play(sc.lines), Vector2(list_w - 12, 18), P.FONT_SMALL)
 			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			b.disabled = not known
 			if known:
@@ -229,7 +254,7 @@ func _story() -> void:
 func _guide() -> void:
 	for i in range(GUIDE.size()):
 		var g: Array = GUIDE[i]
-		var b := P.button(list, "%d.  %s" % [i + 1, g[0].to_upper()], func(): _guide_page(g), Vector2(LIST_W - 12, 20), P.FONT_SMALL)
+		var b := P.button(list, "%d.  %s" % [i + 1, g[0].to_upper()], func(): _guide_page(g), Vector2(list_w - 12, 20), P.FONT_SMALL)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.mouse_entered.connect(func(): _guide_page(g))
 	summary_lbl.text = "HOW TO PLAY  -  short pages on every part of the game. Dolores can talk you through any of them again."
@@ -266,7 +291,7 @@ func _runs() -> void:
 		elif e.get("weekly", "") != "":
 			mode = " - weekly"
 		var txt := "%s  %s%s  -  %d night%s, Take %d" % ["WON " if e.won else "LOST", wname, mode, e.nights, "" if e.nights == 1 else "s", e.take]
-		var b = P.button(list, txt, func(): pass, Vector2(LIST_W - 12, 18), P.FONT_SMALL)
+		var b = P.button(list, txt, func(): pass, Vector2(list_w - 12, 18), P.FONT_SMALL)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.accent = P.GOOD if e.won else P.LINE.darkened(0.4)
 		b.mouse_entered.connect(func():
@@ -283,7 +308,7 @@ func _runs() -> void:
 		for r in weekly:
 			var b := P.button(list, "%s  %d nights, Take %d   %s" % ["WON " if r.won else "LOST", r.nights, r.take, r.code], func():
 				DisplayServer.clipboard_set(r.code)
-				_show("SHARE CODE COPIED", "%s\n\nPaste it to a friend; they can compare it in Weekly mode on the wheel screen." % r.code), Vector2(LIST_W - 12, 18), P.FONT_SMALL)
+				_show("SHARE CODE COPIED", "%s\n\nPaste it to a friend; they can compare it in Weekly mode on the wheel screen." % r.code), Vector2(list_w - 12, 18), P.FONT_SMALL)
 			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	summary_lbl.text = "RUNS  %d runs played  -  %d won  -  best night %d  -  best Take %d" % [prof.runs, prof.wins, prof.best_night, prof.best_take]
 	_show("YOUR RUNS", "Your last 10 runs, newest first. Hover one for its details and seed. Weekly results can be clicked to copy their share code.")

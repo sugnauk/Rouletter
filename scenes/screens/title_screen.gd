@@ -30,6 +30,12 @@ var _flicker := 0.0
 var falling := []      ## chips tumbling past the wheel: {pos, vel, spin, col}
 var _next_chip := 1.0
 var board_text := ["", "", 0.0]   ## markers line, next-unlock line, progress 0..1
+var portrait := false
+var wheel_ctl: Control
+var glow_at := Vector2(488, 180)
+var grid_ctl: GridContainer
+var hint_lbl: Label
+var ver_lbl: Label
 
 
 func setup() -> void:
@@ -40,13 +46,14 @@ func setup() -> void:
 	glow.draw.connect(func():
 		var a := 0.05 + 0.03 * sin(_t * 1.3)
 		for i in range(5):
-			glow.draw_circle(Vector2(488, 180), 150.0 - i * 22.0, Color(1.0, 0.8, 0.45, a * (0.4 + i * 0.15)), true, -1.0, false))
+			glow.draw_circle(glow_at, 150.0 - i * 22.0, Color(1.0, 0.8, 0.45, a * (0.4 + i * 0.15)), true, -1.0, false))
 	add_child(glow)
 	var wheel = WheelView.new()
 	wheel.board = Board.new("european")
 	wheel.idle_spin = true
 	P.place(wheel, Vector2(352, 44), Vector2(272, 272))
 	add_child(wheel)
+	wheel_ctl = wheel
 	chips_view = Control.new()
 	chips_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	P.place(chips_view, Vector2.ZERO, Vector2(640, 360))
@@ -95,6 +102,7 @@ func setup() -> void:
 	grid.add_theme_constant_override("v_separation", 6)
 	P.place(grid, Vector2(18, 244))
 	add_child(grid)
+	grid_ctl = grid
 	for b in [["Pawn Shop", func(): main.show_screen("pawn")], ["Casebook", func(): _casebook("collection")],
 			["How to Play", func(): _casebook("guide")], ["Options", func(): main.open_options()],
 			["Credits", func(): main.show_screen("credits")], ["Quit", func(): get_tree().quit()]]:
@@ -102,10 +110,34 @@ func setup() -> void:
 	# On the web, phones get the tip that matters: home-screen play is truly full screen.
 	var hint := "On a phone: Share > Add to Home Screen plays full screen. Options > Screen fit if it's cut off." if OS.has_feature("web") \
 		else "F2: CRT filter    F11: fullscreen"
-	P.place(P.label(self, hint, P.FONT_SMALL, P.DIM), Vector2(20, 340))
+	hint_lbl = P.label(self, hint, P.FONT_SMALL, P.DIM)
+	P.place(hint_lbl, Vector2(20, 340))
 	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.CREAM)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	P.place(ver, Vector2(408, 340), Vector2(224, 10))
+	ver_lbl = ver
+
+
+## Portrait: the wheel spins at the top, the sign and the buttons stack beneath it.
+func relayout(tall: bool) -> void:
+	portrait = tall
+	var dy := 238.0 if tall else 0.0
+	if tall:
+		P.place(wheel_ctl, Vector2(70, 12), Vector2(220, 220))
+		glow_at = Vector2(180, 122)
+	else:
+		P.place(wheel_ctl, Vector2(352, 44), Vector2(272, 272))
+		glow_at = Vector2(488, 180)
+	P.place(sign_view, SIGN.position + Vector2(0, dy))
+	P.place(board_view, BOARD.position + Vector2(0, dy))
+	P.place(info_lbl, Vector2(20, 132 + dy))
+	P.place(new_btn, Vector2(18, 146 + dy))
+	P.place(continue_btn, Vector2(220, 146 + dy))
+	P.place(ticket_view, TICKET.position + Vector2(0, dy))
+	P.place(grid_ctl, Vector2(18, 244 + dy))
+	hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if tall else TextServer.AUTOWRAP_OFF
+	P.place(hint_lbl, Vector2(20, 560) if tall else Vector2(20, 340), Vector2(320, 24) if tall else Vector2(600, 10))
+	P.place(ver_lbl, Vector2(116, 620) if tall else Vector2(408, 340), Vector2(224, 10))
 
 
 func _casebook(t: String) -> void:
@@ -127,13 +159,13 @@ func _process(delta: float) -> void:
 	if _next_chip <= 0.0:
 		_next_chip = randf_range(1.2, 3.0)
 		var cols := [P.RED, P.GOLD, P.CREAM, Color("#3f6fd1"), P.GOOD]
-		falling.append({"pos": Vector2(randf_range(370, 620), -10), "vel": Vector2(randf_range(-12, 12), randf_range(40, 70)),
+		falling.append({"pos": Vector2(randf_range(70, 290) if portrait else randf_range(370, 620), -10), "vel": Vector2(randf_range(-12, 12), randf_range(40, 70)),
 			"spin": randf_range(-3, 3), "col": cols[randi() % cols.size()], "a": 0.0})
 	for f in falling:
 		f.pos += f.vel * delta
 		f.vel.y += 30.0 * delta
 		f.a += f.spin * delta
-	falling = falling.filter(func(f): return f.pos.y < 380)
+	falling = falling.filter(func(f): return f.pos.y < P.H + 20)
 	sign_view.queue_redraw()
 	chips_view.queue_redraw()
 	board_view.queue_redraw()

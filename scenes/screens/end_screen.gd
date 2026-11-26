@@ -22,6 +22,9 @@ var show_money := false
 var tab_btn: Button
 
 
+var btns := []   ## Continue, Save image, Copy report
+
+
 func setup() -> void:
 	title_lbl = P.label(self, "", P.FONT_HUGE, P.GOLD)
 	P.place(title_lbl, Vector2(40, 50))
@@ -32,13 +35,15 @@ func setup() -> void:
 	P.place(stats_lbl, Vector2(42, 136))
 	values_lbl = P.label(self, "", P.FONT, P.CREAM)
 	P.place(values_lbl, Vector2(160, 136))
-	P.place(P.button(self, "Continue", _continue, Vector2(120, 24)), Vector2(42, 300))
-	P.place(P.button(self, "Save image", _save_image, Vector2(100, 24)), Vector2(170, 300))
+	btns.append(P.button(self, "Continue", _continue, Vector2(120, 24)))
+	btns.append(P.button(self, "Save image", _save_image, Vector2(100, 24)))
 	# Playtesting: the whole run as text, ready to paste to the developer.
-	P.place(P.button(self, "Copy report", func():
+	btns.append(P.button(self, "Copy report", func():
 		DisplayServer.clipboard_set(main.run.run_report())
 		share_lbl.text = "Run report copied: paste it with your playtest notes."
-		Sfx.play("click"), Vector2(100, 24)), Vector2(278, 300))
+		Sfx.play("click"), Vector2(100, 24)))
+	for i in range(3):
+		P.place(btns[i], Vector2([42, 170, 278][i], 300))
 	share_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
 	share_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(share_lbl, Vector2(42, 330), Vector2(330, 24))
@@ -68,6 +73,30 @@ func setup() -> void:
 	P.place(build_canvas, Vector2(6, 96), Vector2(228, 112))
 	build_canvas.draw.connect(_draw_build)
 	build_panel.add_child(build_canvas)
+
+
+## Portrait: the verdict and stats on top, your build under them, the buttons at the bottom.
+func relayout(tall: bool) -> void:
+	title_lbl.add_theme_font_size_override("font_size", P.FONT_BIG if tall else P.FONT_HUGE)
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if tall else TextServer.AUTOWRAP_OFF
+	if tall:
+		P.place(title_lbl, Vector2(16, 24), Vector2(328, 40))
+		P.place(msg_lbl, Vector2(16, 70), Vector2(328, 44))
+		P.place(stats_lbl, Vector2(16, 120))
+		P.place(values_lbl, Vector2(134, 120))
+		P.place(build_panel, Vector2(60, 330))
+		for i in range(3):
+			P.place(btns[i], Vector2([16, 142, 250][i], 556))
+		P.place(share_lbl, Vector2(16, 588), Vector2(328, 40))
+	else:
+		P.place(title_lbl, Vector2(40, 50), Vector2(560, 30))
+		P.place(msg_lbl, Vector2(42, 96), Vector2(556, 30))
+		P.place(stats_lbl, Vector2(42, 136))
+		P.place(values_lbl, Vector2(160, 136))
+		P.place(build_panel, Vector2(392, 128))
+		for i in range(3):
+			P.place(btns[i], Vector2([42, 170, 278][i], 300))
+		P.place(share_lbl, Vector2(42, 330), Vector2(330, 24))
 
 
 func refresh() -> void:
