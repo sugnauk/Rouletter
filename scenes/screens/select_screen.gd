@@ -16,6 +16,7 @@ var index_lbl: Label
 var dots: Control
 var name_lbl: Label
 var desc_lbl: Label
+var style_lbl: Label
 var stat_lbl: Label
 var go_btn: Button
 var act_btn: Button
@@ -53,9 +54,12 @@ func setup() -> void:
 	P.place(index_lbl, Vector2(8, 6))
 	name_lbl = P.label(panel, "", P.FONT_BIG, P.GOLD)
 	P.place(name_lbl, Vector2(8, 18))
+	style_lbl = P.label(panel, "", P.FONT_SMALL, P.CYAN)
+	style_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	P.place(style_lbl, Vector2(8, 42), Vector2(264, 12))
 	desc_lbl = P.label(panel, "", P.FONT, P.CREAM)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(desc_lbl, Vector2(8, 44), Vector2(264, 110))
+	P.place(desc_lbl, Vector2(8, 56), Vector2(264, 100))
 	stat_lbl = P.label(panel, "", P.FONT_SMALL, P.DIM)
 	stat_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(stat_lbl, Vector2(8, 160), Vector2(264, 100))
@@ -141,6 +145,7 @@ func refresh() -> void:
 	var d: Dictionary = Wheels.get_def(selected)
 	var b = Board.new(selected)
 	name_lbl.text = d.name
+	style_lbl.text = d.get("style", "")
 	desc_lbl.text = d.desc
 	var kit := []
 	for k in d.kit:
@@ -160,7 +165,7 @@ func refresh() -> void:
 	for z in b.zeros:
 		zeros.append(b.label(z))
 	var rules := []
-	for r in d.rules:
+	for r in d.rules + d.get("house", []):
 		rules.append(Content.HOUSE_RULES[r].name)
 	stat_lbl.text = "\n".join([
 		"POCKETS  %d  (%d numbers%s)" % [b.pockets.size(), b.numbers, (" + zeros " + ", ".join(zeros)) if not zeros.is_empty() else ", no zero"],

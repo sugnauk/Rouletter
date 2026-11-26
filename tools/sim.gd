@@ -66,6 +66,10 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: i
 				if run.phase != RunState.Phase.TABLE and run.phase != RunState.Phase.GAME_OVER:
 					cleared[idx] += 1
 			elif run.phase == RunState.Phase.SHOP:
+				if not run.shop.offer.is_empty():
+					run.take_offer(0)
+				if not run.shop.bonus.is_empty():
+					run.take_bonus(0)
 				bot_shop(run)
 				run.leave_shop()
 			else:

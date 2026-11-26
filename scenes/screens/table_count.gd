@@ -223,7 +223,9 @@ func show_tally() -> void:
 		["PAYMENT", "%d / %d" % [int(info.take), info.target], P.CREAM],
 		["BASE PAY", "+$%d" % Content.CLEAR_CASH[info.table], P.GOLD],
 	]
-	if info.spins_left > 0:
+	if info.get("bonus_pick", false):
+		rows.append(["%d BALLS LEFT" % info.spins_left, "PICK A BONUS", P.CYAN])
+	elif info.spins_left > 0:
 		rows.append(["%d SPIN%s LEFT" % [info.spins_left, "" if info.spins_left == 1 else "S"], "+$%d" % (info.spins_left * Content.CASH_PER_SPIN_LEFT), P.GOLD])
 	if info.comps > 0:
 		rows.append(["COMPS", "+$%d" % info.comps, P.GOLD])

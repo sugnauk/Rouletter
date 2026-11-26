@@ -50,7 +50,7 @@ func copy():
 func to_dict() -> Dictionary:
 	var cs := []
 	for c in chips:
-		cs.append({"id": c.id, "kind": c.kind, "bet": c.bet, "value": c.value, "flaw": c.flaw})
+		cs.append({"id": c.id, "kind": c.kind, "bet": c.bet, "value": c.value, "flaw": c.flaw, "mod": c.mod})
 	return {"wheel": board.wheel_id, "chips": cs, "square_upgrades": square_upgrades.duplicate(),
 		"bet_upgrades": bet_upgrades.duplicate(), "house_rules": house_rules.duplicate(),
 		"wheel_rules": wheel_rules.duplicate(), "boss_rule": boss_rule, "frozen_id": frozen_id,
@@ -62,6 +62,7 @@ static func from_dict(d: Dictionary):
 	for c in d.chips:
 		var chip = Chip.new(c.id, c.kind, c.bet, c.value)
 		chip.flaw = c.flaw
+		chip.mod = c.get("mod", "")
 		f.chips.append(chip)
 	f.square_upgrades = d.square_upgrades.duplicate()
 	f.bet_upgrades = d.bet_upgrades.duplicate()

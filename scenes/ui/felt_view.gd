@@ -307,7 +307,7 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	if bet_total > 0:
 		entries.append({"col": Art.denom_color(bet_total), "kind": "bet", "value": bet_total, "frozen": false})
 	for c in perms.slice(0, 2):
-		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id})
+		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id, "mod": c.mod})
 	var is_line := line_rects.has(k)
 	var rad := 5.0 if (is_line or r.size.y <= STRIP_H + 1.0 or not Board.is_straight(k)) else 6.0
 	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
@@ -334,6 +334,11 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		var e: Dictionary = entries[i]
 		var p := (first + Vector2(i * spacing, 0)).floor()
 		Art.chip(self, p, rad * scale, e.col, e.kind, 0, e.frozen)
+		if e.get("mod", "") != "":
+			# A refined chip: a small diamond on its rim (cyan Focused, green Steady).
+			var mc: Color = P.CYAN if e.mod == "focused" else P.GOOD
+			var mp := p + Vector2(-rad, -rad + 1)
+			draw_colored_polygon(PackedVector2Array([mp + Vector2(0, -2), mp + Vector2(2, 0), mp + Vector2(0, 2), mp + Vector2(-2, 0)]), mc)
 		# Shine, and a slow gold halo on legendary chips.
 		draw_rect(Rect2(p + Vector2(-rad * 0.5, -rad * 0.6), Vector2(2, 1)), Color(1, 1, 1, 0.55))
 		if e.kind != "bet" and Content.rarity_of(e.kind) == "legendary":

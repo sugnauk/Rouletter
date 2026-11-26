@@ -63,6 +63,8 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	inventory = []
 	for k in def.kit:
 		inventory.append(k.duplicate())
+	for r in def.get("house", []):
+		felt.house_rules.append(r)
 	stack_size = Content.START_STACK - (5 if graded(1) else 0)
 	stack_buys = 0
 	stack_owed = 0
@@ -425,7 +427,7 @@ func place_chip(index: int, key: String) -> bool:
 			c.value += item.value
 			changed.emit()
 			return true
-	felt.add_chip(item.kind, key, item.value, item.get("flaw", ""))
+	felt.add_chip(item.kind, key, item.value, item.get("flaw", "")).mod = item.get("mod", "")
 	changed.emit()
 	return true
 
@@ -474,7 +476,9 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 func _clear_table() -> void:
 	var t: float = table.take
 	var comps := mini(cash / Content.COMPS_PER, Content.COMPS_MAX)
-	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
+	# Cleared with balls to spare: the balls-left cash becomes one option of a bonus pick.
+	var pick: bool = table.spins_left >= Content.EARLY_CLEAR_SPINS and not graded(4)
+	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) or pick else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
 	if "comp_card" in vouchers:
 		reward += Content.COMP_CARD_CASH
 	if felt.has_rule("comped"):
@@ -487,7 +491,7 @@ func _clear_table() -> void:
 	felt.clear_bets()
 	felt.frozen_id = -1
 	var info := {"night": night, "table": table_idx, "take": t, "target": table.target,
-		"reward": reward, "spins_left": table.spins_left, "spins_used": table.spins_used, "comps": comps, "boss": table.boss,
+		"reward": reward, "spins_left": table.spins_left, "spins_used": table.spins_used, "comps": comps, "boss": table.boss, "bonus_pick": pick,
 		"enforcer": table.enforcer}
 	if table.boss:
 		beaten.append(table.enforcer)
@@ -503,7 +507,7 @@ func _clear_table() -> void:
 	else:
 		table_idx += 1
 	message = "Paid! +$%d (%d base, %d spins left, %d comps)." % [reward, Content.CLEAR_CASH[info.table], info.spins_left, comps]
-	_open_shop()
+	_open_shop(info)
 	table_cleared.emit(info)
 
 
@@ -526,10 +530,142 @@ func _lose(why: String) -> void:
 
 # --- Shop ---------------------------------------------------------------------------------
 
-func _open_shop() -> void:
+func _open_shop(info: Dictionary = {}) -> void:
 	phase = Phase.SHOP
-	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors()}
+	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors(),
+		"reserved": -1, "free_rerolls": 0, "offer": [], "bonus": []}
 	_restock()
+	# After the very first table: a free pick from three different build directions.
+	if night == 0 and table_idx == 1:
+		shop.offer = _opening_offer()
+	# Cleared with balls to spare: choose a bonus.
+	if info.get("bonus_pick", false):
+		var fav: String = rng.pick(Content.FAVOURS.keys())
+		shop.bonus = [
+			{"type": "cash", "amount": info.spins_left * Content.CASH_PER_SPIN_LEFT},
+			{"type": "favour", "id": fav},
+			{"type": "reroll", "amount": 1},
+		]
+
+
+## Three free items, each pointing the build a different way.
+func _opening_offer() -> Array:
+	var out := []
+	var dirs: Array = rng.shuffle(Content.DIRECTIONS.keys())
+	for d in dirs:
+		if out.size() >= 3:
+			break
+		var pool := []
+		for k in Content.CHIPS:
+			if (k in unlocked or k == "perm") and d in Content.tags_of(k):
+				pool.append(k)
+		for k in Content.HOUSE_RULES:
+			if k in unlocked and d in Content.tags_of(k) and not felt.has_rule(k):
+				pool.append(k)
+		pool = pool.filter(func(k): return not out.any(func(o): return o.id == k))
+		if pool.is_empty():
+			continue
+		var id: String = _pick_rare(pool)
+		out.append({"type": "chip" if Content.CHIPS.has(id) else "rule", "id": id, "dir": d, "price": 0,
+			"vendor": "gift", "currency": "cash", "sold": false})
+	return out
+
+
+func take_offer(i: int) -> bool:
+	if phase != Phase.SHOP or i < 0 or i >= shop.get("offer", []).size():
+		return false
+	var item: Dictionary = shop.offer[i]
+	if item.type == "rule":
+		if felt.house_rules.size() >= relic_slots():
+			return false
+		felt.house_rules.append(item.id)
+	else:
+		inventory.append({"kind": item.id, "value": 1})
+	shop.offer = []
+	changed.emit()
+	return true
+
+
+func skip_offer() -> void:
+	if shop.has("offer"):
+		shop.offer = []
+		changed.emit()
+
+
+func take_bonus(i: int) -> bool:
+	if phase != Phase.SHOP or i < 0 or i >= shop.get("bonus", []).size():
+		return false
+	var b: Dictionary = shop.bonus[i]
+	match b.type:
+		"cash":
+			cash += b.amount
+		"favour":
+			favours.append(b.id)
+		"reroll":
+			shop.free_rerolls = shop.get("free_rerolls", 0) + b.amount
+	shop.bonus = []
+	changed.emit()
+	return true
+
+
+func bonus_text(b: Dictionary) -> String:
+	match b.type:
+		"cash":
+			return "+$%d cash" % b.amount
+		"favour":
+			return "%s (free): %s" % [Content.FAVOURS[b.id].name, Content.FAVOURS[b.id].desc]
+		"reroll":
+			return "%d free rerolls this visit" % b.amount
+	return ""
+
+
+## Hold one stock item through rerolls (one at a time; reserve it again to let it go).
+func reserve(i: int) -> bool:
+	if phase != Phase.SHOP or i < 0 or i >= shop.stock.size() or shop.stock[i].sold or shop.stock[i].type == "loan":
+		return false
+	shop.reserved = -1 if shop.get("reserved", -1) == i else i
+	changed.emit()
+	return true
+
+
+## Refine a levelled number chip down one of two paths (Content.REFINES), at the Cashier.
+func can_refine(chip_id: int) -> bool:
+	var c = felt.find(chip_id)
+	return phase == Phase.SHOP and c != null and not c.is_bet() and c.mod == "" and Board.is_straight(c.bet) \
+		and c.value >= Content.REFINE_LEVEL and "cashier" in shop.get("vendors", [])
+
+
+func refine(chip_id: int, path: String) -> bool:
+	if not can_refine(chip_id) or not Content.REFINES.has(path) or cash < Content.REFINE_PRICE:
+		return false
+	cash -= Content.REFINE_PRICE
+	felt.find(chip_id).mod = path
+	changed.emit()
+	return true
+
+
+## Cashier trade-in: swap a placed chip for a different one from the same build family,
+## keeping its level and square. Returns the new kind ("" if none fits).
+func convert_chip(chip_id: int) -> String:
+	var c = felt.find(chip_id)
+	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky" or cash < Content.CONVERT_PRICE:
+		return ""
+	if not "cashier" in shop.get("vendors", []):
+		return ""
+	var tags := Content.tags_of(c.kind)
+	var pool := []
+	felt.remove(chip_id)
+	for k in Content.CHIPS:
+		if k != c.kind and (k in unlocked or k == "perm") and Content.tags_of(k).any(func(t): return t in tags) and can_place_chip(k, c.bet):
+			pool.append(k)
+	if pool.is_empty():
+		felt.chips.append(c)
+		return ""
+	var nk: String = _pick_rare(pool)
+	cash -= Content.CONVERT_PRICE
+	felt.add_chip(nk, c.bet, c.value, c.flaw)
+	changed.emit()
+	return nk
 
 
 ## Who is working the Cage this visit: the Cashier, plus others drawn from the unlocked pool.
@@ -564,8 +700,17 @@ func _restock() -> void:
 		shop.vendors = _pick_vendors()
 	var vendors: Array = shop.vendors
 	var stock := []
+	var r: int = shop.get("reserved", -1)
+	var kept = shop.stock[r] if r >= 0 and r < shop.get("stock", []).size() and not shop.stock[r].sold else null
+	shop.reserved = -1
 	for v in vendors:
-		stock.append_array(_vendor_stock(v))
+		var vs := _vendor_stock(v)
+		if kept != null and kept.vendor == v:
+			# The reserved item keeps its place at the front of its window, replacing one new one.
+			vs.pop_back()
+			vs.push_front(kept)
+			shop.reserved = stock.size()
+		stock.append_array(vs)
 	shop.vendors = vendors
 	shop.stock = stock
 
@@ -822,10 +967,14 @@ func apply_upgrade(target: String) -> bool:
 
 
 func reroll() -> bool:
-	if phase != Phase.SHOP or cash < shop.reroll or shop.pending_upgrade != "":
+	var free: bool = shop.get("free_rerolls", 0) > 0
+	if phase != Phase.SHOP or (cash < shop.reroll and not free) or shop.pending_upgrade != "":
 		return false
-	cash -= shop.reroll
-	shop.reroll += 1
+	if free:
+		shop.free_rerolls -= 1
+	else:
+		cash -= shop.reroll
+		shop.reroll += 1
 	_restock()
 	changed.emit()
 	return true
@@ -864,6 +1013,8 @@ func pick_up(chip_id: int) -> bool:
 	var inv := {"kind": c.kind, "value": c.value}
 	if c.flaw != "":
 		inv.flaw = c.flaw
+	if c.mod != "":
+		inv.mod = c.mod
 	inventory.append(inv)
 	felt.remove(chip_id)
 	changed.emit()

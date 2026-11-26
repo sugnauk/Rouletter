@@ -3,6 +3,28 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.20
+- Every wheel now starts you on a different plan, named on the select screen:
+  - French: Safety Net. A Permanent x2 and a Hedge.
+  - European: Numbers. A Magnet and a Permanent.
+  - American: Zero Chips. A Sentinel, and +$4.
+  - Mini: Inside Bets. A Bridge.
+  - Triple Zero: Zero Economy. Wildcard Zero and a Spare Key.
+  - Sunrise: Multipliers. A Kingmaker, with Momentum built in.
+  - Cheater's: Even Money. Starts with Satin Gloves.
+- On the house: after your first table, pick one free chip or House Rule from three different build directions (or pass).
+- Paid with 3+ balls to spare? Instead of the balls-left cash being paid automatically, pick a bonus: that cash, a free Dealer favour, or a free reroll.
+- Hold an item through a reroll: right-click (or long-press) it in the Cage. It's marked HOLD and stays when you reroll.
+- New Cashier services:
+  - TRADE $3: swap a placed chip for a related one. It keeps its square and level.
+  - REFINE $6: give a number chip at level 2+ a second act. Focused scores double on its own number. Steady pays +1 Take per level on every miss. A small diamond on the chip marks its path.
+- Four bridge House Rules, each linking two ways of betting:
+  - Outside Connection: winning dozens and columns pay +1 per level of your number chips inside them.
+  - Inside Track: winning inside bets level up the chip on the winning number.
+  - Colour Coded: red or black wins pay +1 per level of your number chips of that colour.
+  - Rainy Day Fund: a spin that scores nothing pays +$2.
+- Each Cage window now says what it's for: the Cashier deepens your build, the Pit Boss sells rules, the Loan Shark patches the next table, the Fence sells cheap gambles, and the Dealer invests in the run.
+
 ## 0.0.19
 - See your build on the felt:
   - Hover a square to light every bet and chip that would score if it hits, with the Take it would add.

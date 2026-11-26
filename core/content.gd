@@ -24,6 +24,11 @@ const REROLL_BASE := 2
 const STACK_UPGRADE := 5                 ## +betting chips per stack upgrade
 const STACK_UPGRADE_PRICE := 5
 const RELOCATE_PRICE := 2
+const CONVERT_PRICE := 3                ## Cashier trade-in: swap a placed chip for a related one
+const EARLY_CLEAR_SPINS := 3            ## clear with this many balls left to pick a bonus
+## Build directions for the opening pick (one chip or rule from each of three of these).
+const DIRECTIONS := {"numbers": "Numbers", "outside": "Outside bets", "even": "Even money",
+	"inside": "Inside bets", "zero": "Zeros", "multiplier": "Multipliers", "cash": "Cash"}
 const SELL_SHARE := 0.5
 
 # --- Vendors (windows in the Cage) ---------------------------------------------------------
@@ -31,19 +36,19 @@ const SELL_SHARE := 0.5
 ##   "cash"  - dollars, as usual
 ##   "stack" - betting chips docked from your stack at the next table
 const VENDORS := {
-	"cashier": {"name": "Cashier", "currency": "cash", "unlock": 0,
-		"blurb": "Chips and felt work. Cash only, fair prices.", "desc": "Chips and felt work for cash.",
+	"cashier": {"job": "deepen your build", "name": "Cashier", "currency": "cash", "unlock": 0,
+		"blurb": "Chips and felt work. Cash only, fair prices. Trades in a placed chip for a related one ($3).", "desc": "Chips and felt work for cash.",
 		"note": "The casino cage: the one window that deals in money."},
-	"pit_boss": {"name": "Pit Boss", "currency": "stack", "unlock": 0,
+	"pit_boss": {"job": "the rules", "name": "Pit Boss", "currency": "stack", "unlock": 0,
 		"blurb": "Sells House Rules for chips off your next stack. Every rule you own raises his price.", "desc": "House Rules, paid in chips off your next stack.",
 		"note": "The pit boss sets table rules and is paid in chips, not cash."},
-	"loan_shark": {"name": "Loan Shark", "currency": "loan", "unlock": 0,
+	"loan_shark": {"job": "patch the next table", "name": "Loan Shark", "currency": "loan", "unlock": 0,
 		"blurb": "Cash now. You pay him back by making the next payment bigger.", "desc": "Loans: cash now, a bigger payment at the next table.",
 		"note": "Casino markers are loans; this one is collected at the table."},
-	"dealer": {"name": "Dealer", "currency": "take", "unlock": 0,
+	"dealer": {"job": "invest in the run", "name": "Dealer", "currency": "take", "unlock": 0,
 		"blurb": "Trades favours for spare Take: whatever you scored past the payment.", "desc": "Favours and vouchers, paid in spare Take.",
 		"note": "Croupiers trade in tokes and favours; here the currency is your surplus."},
-	"fence": {"name": "Fence", "currency": "cash", "unlock": 2,
+	"fence": {"job": "cheap gambles", "name": "Fence", "currency": "cash", "unlock": 2,
 		"blurb": "Chips at half price. They fell off a truck, and every one has a flaw.", "desc": "A Cage window selling chips at half price. Every one is cracked, hot or sticky.",
 		"note": "Stolen or doctored chips: cheap, but never quite right."},
 }
@@ -292,6 +297,16 @@ const RARITY := {
 const RARITY_WEIGHT := {"common": 6, "rare": 3, "legendary": 1}
 const PORCH_SHARE := 0.5
 const BLACK_CAT_BONUS := 2.0
+const RAINY_DAY_CASH := 2
+## Refine: a second act for a levelled-up number chip (one path per chip, at the Cashier).
+const REFINE_PRICE := 6
+const REFINE_LEVEL := 2
+const STEADY_BONUS := 1.0
+const REFINES := {
+	"focused": {"name": "Focused", "desc": "When its own number hits, it scores double."},
+	"steady": {"name": "Steady", "desc": "Every spin its number misses, +1 Take per level."},
+}
+const INSIDE_TRACK_CAP := 5
 const PENNY_CASH := 2
 const SENTINEL_BONUS := 8.0
 const CROWN_MULT := 1.25
@@ -334,6 +349,8 @@ const TAGS := {
 	"wheel_spoke": ["wheel", "neighbours"], "echo": ["numbers", "multiplier"], "ace": ["numbers", "multiplier"],
 	"tip_jar": ["cash"], "green_thumb": ["zero"], "signpost": ["inside", "cash"],
 	"diamond": ["numbers"], "magnetized": ["numbers", "neighbours"], "twin_square": ["numbers"], "spoke": ["wheel", "neighbours"],
+	"outside_connection": ["outside", "numbers"], "inside_track": ["inside", "numbers"],
+	"colour_coded": ["even", "numbers"], "rainy_day": ["cash", "even"],
 	"gold_trim": ["outside", "cash"], "fat_box": ["outside"], "repeat_box": ["outside", "multiplier"], "lucky_colour": ["even"],
 }
 const TAG_NAMES := {"numbers": "single numbers", "inside": "inside bets", "even": "even-money bets", "outside": "outside bets",
@@ -365,6 +382,7 @@ const ALMANAC := [
 	["MULTIPLIER RULES", "HOUSE_RULES", ["red_streak", "hot_hand", "dealer_signature", "momentum", "last_call", "double_down", "late_bloomer"]],
 	["SAFETY RULES", "HOUSE_RULES", ["la_partage", "en_prison", "insurance", "zero_tolerance", "rent_control", "patron", "bankroll"]],
 	["MONEY RULES", "HOUSE_RULES", ["comped", "compound_interest", "big_spender"]],
+	["BRIDGE RULES", "HOUSE_RULES", ["outside_connection", "inside_track", "colour_coded", "rainy_day"]],
 	["DEALER FAVOURS", "FAVOURS", ["extra_spin", "fat_stack", "head_start"]],
 	["DEALER VOUCHERS", "VOUCHERS", ["comp_card", "vip_rack", "patience", "house_credit"]],
 ]
@@ -481,6 +499,15 @@ const HOUSE_RULES := {
 		"price": 8, "unlock": 2, "note": "Respect for the chips that have been around."},
 	"momentum": {"name": "Momentum", "desc": "Each scoring spin in a row adds +25% to the next one's Take. A blank spin resets it.",
 		"price": 8, "unlock": 2, "note": "The gambler's 'hot table', paid out as a growing multiplier."},
+	# Bridges: one way of betting feeds another.
+	"outside_connection": {"name": "Outside Connection", "desc": "When a dozen or column bet wins, +1 Take per level of every permanent chip on a number inside it.",
+		"price": 6, "unlock": 0, "note": "Bridges outside bets and number chips."},
+	"inside_track": {"name": "Inside Track", "desc": "When a split, street, corner or line bet wins, the permanent chip on the winning number gains a level (up to 5).",
+		"price": 7, "unlock": 0, "note": "Bridges inside bets and number chips."},
+	"colour_coded": {"name": "Colour Coded", "desc": "When red or black wins, +1 Take per level of every permanent chip on a number of that colour.",
+		"price": 6, "unlock": 0, "note": "Bridges even-money bets and number chips."},
+	"rainy_day": {"name": "Rainy Day Fund", "desc": "A spin that scores no Take pays +$2.",
+		"price": 5, "unlock": 0, "note": "Bridges a cautious layout and a cash build: even bad spins pay."},
 }
 
 # --- Unlockable table features --------------------------------------------------------------
