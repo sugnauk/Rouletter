@@ -19,7 +19,13 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+## Particle budget: phones running the web build stay smooth through coin rain and jackpots.
+const MAX_PARTS := 360
+const MAX_FLYERS := 60
+
+
 func burst(pos: Vector2, n: int, cols: Array = [P.GOLD, P.CREAM], speed: float = 110.0) -> void:
+	n = mini(n, MAX_PARTS - parts.size())
 	for i in range(n):
 		var a := randf() * TAU
 		var sp := randf_range(0.35, 1.0) * speed
@@ -28,6 +34,7 @@ func burst(pos: Vector2, n: int, cols: Array = [P.GOLD, P.CREAM], speed: float =
 
 
 func coin_rain(n: int) -> void:
+	n = mini(n, MAX_PARTS - parts.size())
 	for i in range(n):
 		parts.append({"p": Vector2(randf() * 640, randf_range(-60, -4)), "v": Vector2(randf_range(-15, 15), randf_range(40, 120)),
 			"col": [P.GOLD, P.GOLD.lightened(0.3), P.CREAM][i % 3], "life": 2.4, "max": 2.4, "size": 3})
@@ -48,6 +55,7 @@ func local(global_pt: Vector2) -> Vector2:
 
 
 func fly(from: Vector2, to: Vector2, col: Color, n: int = 4) -> void:
+	n = mini(n, MAX_FLYERS - flyers.size())
 	for i in range(n):
 		var mid := (from + to) / 2.0 + Vector2(randf_range(-40, 40), randf_range(-70, -30))
 		flyers.append({"from": from, "to": to, "mid": mid, "col": col, "t": -i * 0.05, "dur": randf_range(0.4, 0.55), "size": 3})
