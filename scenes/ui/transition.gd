@@ -5,6 +5,7 @@ extends Control
 
 const P := preload("res://scenes/ui/palette.gd")
 const Art := preload("res://scenes/ui/art.gd")
+const Portraits := preload("res://scenes/ui/portraits.gd")
 
 const FADE := 0.18
 const HOLD := 0.75
@@ -26,6 +27,7 @@ var title := ""
 var subtitle := ""
 var tip := ""
 var accent: Color = P.GOLD
+var who := ""           ## optional portrait on the card (Enforcers)
 var alpha := 0.0
 var t := 0.0
 var stage := 0          ## 0 idle, 1 fading in, 2 holding, 3 fading out
@@ -44,7 +46,8 @@ func busy() -> bool:
 
 
 ## Show a card; `swap` runs while the screen is fully covered.
-func play(title_in: String, subtitle_in: String, swap: Callable, accent_in: Color = P.GOLD) -> void:
+func play(title_in: String, subtitle_in: String, swap: Callable, accent_in: Color = P.GOLD, who_in: String = "") -> void:
+	who = who_in
 	if stage != 0:
 		# Already covering: run the swap now and just update the card text.
 		swap.call()
@@ -121,6 +124,11 @@ func _draw() -> void:
 		draw_rect(Rect2(x, c.y - 49, 4, 4), Color(accent, a))
 		draw_rect(Rect2(x, c.y + 32, 4, 4), Color(accent, a))
 	Art.neon(self, Vector2(c.x, c.y - 12), title, 16, accent, a)
+	if who != "" and a > 0.05:
+		var pr := Rect2(c.x - w / 2.0 - 70, c.y - 40, 64, 64)
+		Portraits.draw(self, who, pr)
+		if a < 1.0:
+			draw_rect(pr.grow(1), Color(0.035, 0.02, 0.025, 1.0 - a))
 	if subtitle != "":
 		Art.text(self, P.font(), Vector2(c.x, c.y + 14), subtitle.to_upper(), 8, Color(P.CREAM, a), true)
 	Art.text(self, P.font(), Vector2(c.x, c.y + 56), tip.to_upper(), 8, Color(P.DIM, a), true)

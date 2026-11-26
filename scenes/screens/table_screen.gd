@@ -7,6 +7,7 @@ const P := preload("res://scenes/ui/palette.gd")
 const Art := preload("res://scenes/ui/art.gd")
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
+const Portraits := preload("res://scenes/ui/portraits.gd")
 const Resolver := preload("res://core/resolver.gd")
 const Odds := preload("res://core/odds.gd")
 const RunState := preload("res://core/run_state.gd")
@@ -37,6 +38,9 @@ var rack_grid: GridContainer
 var rules_flow: VBoxContainer
 var boss_panel: Panel
 var boss_lbl: Label
+var boss_face: Control
+var boss_who := ""
+var boss_name: Label
 var log_box: RichTextLabel
 
 var bet_size := 1
@@ -130,9 +134,18 @@ func setup() -> void:
 	boss_panel.add_theme_stylebox_override("panel", P.box(Color("#2a0f12"), P.DANGER, 1))
 	P.place(boss_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
 	add_child(boss_panel)
+	boss_face = Control.new()
+	P.place(boss_face, Vector2(4, 4), Vector2(32, 32))
+	boss_name = P.label(boss_panel, "", P.FONT_SMALL, P.DANGER)
+	boss_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	P.place(boss_name, Vector2(40, 6), Vector2(RIGHT_W - 44, 30))
+	boss_face.draw.connect(func():
+		if boss_who != "":
+			Portraits.draw(boss_face, boss_who, Rect2(0, 0, 32, 32)))
+	boss_panel.add_child(boss_face)
 	boss_lbl = P.label(boss_panel, "", P.FONT_SMALL, P.CREAM)
 	boss_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(boss_lbl, Vector2(5, 4), Vector2(RIGHT_W - 10, 96))
+	P.place(boss_lbl, Vector2(5, 38), Vector2(RIGHT_W - 10, 62))
 
 
 func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
@@ -229,7 +242,10 @@ func refresh() -> void:
 	if t.boss:
 		var e: Dictionary = Content.ENFORCERS[t.enforcer]
 		boss_panel.visible = true
-		boss_lbl.text = "ENFORCER\n%s\n\n%s" % [e.name.to_upper(), e.desc]
+		boss_lbl.text = e.desc
+		boss_who = e.name
+		boss_face.queue_redraw()
+		boss_name.text = "ENFORCER\n" + e.name.to_upper()
 		var key := "%d-%d" % [run.night, run.table_idx]
 		if announced != key and t.spins_used == 0:
 			announced = key

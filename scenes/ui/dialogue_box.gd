@@ -3,6 +3,7 @@ extends Control
 ## `say(lines, on_done)`; click, Space or Enter advances (or completes the current line).
 
 const P := preload("res://scenes/ui/palette.gd")
+const Portraits := preload("res://scenes/ui/portraits.gd")
 
 var lines: Array = []
 var idx := 0
@@ -106,29 +107,8 @@ func advance() -> void:
 	_show_line()
 
 
-## Procedural noir portrait: a silhouette tinted per speaker, with a hat for the tough guys.
+## Pixel portrait of whoever is speaking (scenes/ui/portraits.gd).
 func _draw_portrait() -> void:
 	if lines.is_empty():
 		return
-	var who: String = lines[idx].speaker
-	var h := hash(who)
-	var tint := Color.from_hsv(float(h % 360) / 360.0, 0.45, 0.55)
-	var c := portrait
-	c.draw_rect(Rect2(0, 0, 64, 64), P.BLACK)
-	c.draw_rect(Rect2(0, 40, 64, 24), tint.darkened(0.5))
-	if who == "Narrator":
-		c.draw_circle(Vector2(32, 30), 14, P.GOLD.darkened(0.4), true, -1.0, false)
-		c.draw_circle(Vector2(32, 30), 9, P.BLACK, true, -1.0, false)
-		c.draw_rect(Rect2(0, 0, 64, 64), P.GOLD, false, 1.0)
-		return
-	c.draw_rect(Rect2(14, 44, 36, 20), tint.darkened(0.2))            # shoulders
-	c.draw_rect(Rect2(28, 38, 8, 8), P.CREAM.darkened(0.3))           # neck / collar
-	c.draw_circle(Vector2(32, 28), 11, Color("#d9a47a").darkened(0.15 * (h % 3)), true, -1.0, false)
-	c.draw_rect(Rect2(26, 26, 4, 2), P.BLACK)                         # eyes
-	c.draw_rect(Rect2(34, 26, 4, 2), P.BLACK)
-	if (h >> 3) % 2 == 0 or who.begins_with("Mr.") or who.begins_with("Big"):
-		c.draw_rect(Rect2(18, 16, 28, 4), tint.darkened(0.6))         # fedora brim
-		c.draw_rect(Rect2(23, 8, 18, 9), tint.darkened(0.6))
-	else:
-		c.draw_rect(Rect2(21, 14, 22, 8), tint.lightened(0.2))        # hair
-	c.draw_rect(Rect2(0, 0, 64, 64), P.GOLD, false, 1.0)
+	Portraits.draw(portrait, lines[idx].speaker, Rect2(0, 0, 64, 64))

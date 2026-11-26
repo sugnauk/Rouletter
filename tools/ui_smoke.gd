@@ -102,7 +102,20 @@ func _process(delta: float) -> void:
 			main.screens.feats.tab = "almanac"
 			main.screens.feats.refresh()],
 		[22.3, func(): shot("14_almanac")],
-		[22.5, func(): get_tree().quit()],
+		[22.5, func():
+			main.show_screen("title")
+			main.say([{"speaker": "Mr. Vance", "text": "Portrait check."}])],
+		[22.8, func(): shot("15_portrait_vance")],
+		[22.9, func():
+			main.dialogue.lines = [{"speaker": "Dolores", "text": "Portrait check."}]
+			main.dialogue.idx = 0
+			main.dialogue._show_line()],
+		[23.2, func(): shot("16_portrait_dolores")],
+		[23.3, func():
+			main.dialogue.lines = [{"speaker": "Madame Oro", "text": "Portrait check."}]
+			main.dialogue._show_line()],
+		[23.6, func(): shot("17_portrait_oro")],
+		[23.8, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

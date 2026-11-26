@@ -151,14 +151,14 @@ func continue_run() -> void:
 
 ## Switch screens behind a themed loading card (title + subtitle), or instantly when the
 ## card is empty or the UI runs in fast mode. Queued story lines play once the card lifts.
-func go(n: String, title: String = "", subtitle: String = "", accent: Color = P.GOLD) -> void:
+func go(n: String, title: String = "", subtitle: String = "", accent: Color = P.GOLD, who: String = "") -> void:
 	if title == "" or fast_ui or not profile.settings.cards:
 		show_screen(n)
 		_flush_lines()
 		return
 	transition.play(title, subtitle, func():
 		show_screen(n)
-		_flush_lines.call_deferred(), accent)
+		_flush_lines.call_deferred(), accent, who)
 
 
 func _flush_lines() -> void:
@@ -172,7 +172,7 @@ func _flush_lines() -> void:
 func table_card() -> Array:
 	if run.table.boss:
 		var e: Dictionary = Content.ENFORCERS[run.table.enforcer]
-		return ["NIGHT %d" % (run.night + 1), "%s  -  %s" % [e.name, e.desc], P.DANGER if not e.get("final", false) else P.GOLD]
+		return ["NIGHT %d" % (run.night + 1), "%s  -  %s" % [e.name, e.desc], P.DANGER if not e.get("final", false) else P.GOLD, e.name]
 	if run.upstairs() and run.table_idx == 0:
 		return ["NIGHT %d" % (run.night + 1), "The Floor Above  -  %s  -  pay %d" % [run.table_name(), run.table.target], P.VIOLET]
 	if run.table_idx == 0:
@@ -185,7 +185,7 @@ func route() -> void:
 	match run.phase:
 		RunState.Phase.TABLE:
 			var card := table_card()
-			go("table", card[0], card[1], card[2])
+			go("table", card[0], card[1], card[2], card[3] if card.size() > 3 else "")
 		RunState.Phase.SHOP:
 			var names := []
 			if Story.TUTORIAL.shop.id not in profile.seen_beats:
@@ -222,7 +222,7 @@ func start_run(wheel: String, acts: int = 1) -> void:
 	if Story.TUTORIAL.table.id not in profile.seen_beats:
 		_queue_scene(Story.TUTORIAL.table)
 	var card := table_card()
-	go("table", card[0], card[1], card[2])
+	go("table", card[0], card[1], card[2], card[3] if card.size() > 3 else "")
 
 
 ## Check Feats for an event and pay out any newly earned ones.
