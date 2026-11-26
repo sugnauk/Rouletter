@@ -62,7 +62,7 @@ func setup() -> void:
 	wheel_view = WheelView.new()
 	P.place(wheel_view, Vector2(4, 24), Vector2(176, 176))
 	add_child(wheel_view)
-	spin_btn = P.button(self, "SPIN", _on_spin, Vector2(92, 22), P.FONT)
+	spin_btn = P.button(self, "SPIN", _on_spin, Vector2(168, 22), P.FONT)
 	spin_btn.add_theme_font_override("font", P.title_font())
 	spin_btn.add_theme_stylebox_override("normal", P.box(Color("#b8862b"), P.BLACK, 1))
 	spin_btn.add_theme_stylebox_override("hover", P.box(Color("#d9a63c"), P.CREAM, 1))
@@ -71,10 +71,11 @@ func setup() -> void:
 	for s in ["font_color", "font_hover_color", "font_pressed_color"]:
 		spin_btn.add_theme_color_override(s, P.WOOD_DARK)
 	P.place(spin_btn, Vector2(8, 204))
-	undo_btn = P.button(self, "UNDO", _on_undo, Vector2(34, 22), P.FONT_SMALL)
-	P.place(undo_btn, Vector2(104, 204))
-	clear_btn = P.button(self, "CLEAR", _on_clear, Vector2(34, 22), P.FONT_SMALL)
-	P.place(clear_btn, Vector2(142, 204))
+	# Undo / Clear sit just under the felt, at its right-hand end.
+	undo_btn = P.button(self, "UNDO", _on_undo, Vector2(44, 14), P.FONT_SMALL)
+	P.place(undo_btn, Vector2(MID_X + 236, 134))
+	clear_btn = P.button(self, "CLEAR", _on_clear, Vector2(44, 14), P.FONT_SMALL)
+	P.place(clear_btn, Vector2(MID_X + 284, 134))
 	gauge_view = _canvas(Vector2(4, 232), Vector2(176, 124), _draw_gauges)
 
 	felt_view = FeltView.new()
