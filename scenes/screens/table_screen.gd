@@ -657,7 +657,8 @@ func _on_spin() -> void:
 	var ctx := {"before": run.table.take, "target": run.table.target, "spins_before": run.table.spins_left,
 		"stakes": run.felt.bet_stakes(), "layout": run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return [c.bet, c.value])}
 	var res: Dictionary = run.spin(pocket)
-	main.check_feats("spin", {"res": res, "staked": ctx.stakes, "target": ctx.target})
+	main.check_feats("spin", {"res": res, "staked": ctx.stakes, "target": ctx.target, "before": ctx.before,
+		"spins_before": ctx.spins_before, "cleared": run.phase == RunState.Phase.SHOP or run.phase == RunState.Phase.VICTORY})
 	history.append(pocket)
 	history_view.queue_redraw()
 	await count.play(res, ctx)

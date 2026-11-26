@@ -3,6 +3,14 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.18
+- Feats that tell a story, announced the moment they happen:
+  - Paid in the Nick of Time: pay an Enforcer with your last ball.
+  - One and Done: clear a table on its first spin.
+  - The Comeback: clear on the last ball from under half the payment.
+  - Seasoned: a chip reaches level 5.
+  - Inside Man: win a run without ever betting on an outside box.
+
 ## 0.0.17
 - No more black borders: the game now scales smoothly to any window or phone screen instead of in whole steps, with pixel snapping to keep the art crisp.
 - New wheel select screen: one wheel at a time, shown big, with < and > buttons (or the arrow keys) to browse. Dots show where you are, locked wheels say what they cost, and the panel lists pockets, zeros, house edge, payments, starting cash, kit and built-in rules. Enter deals you in.

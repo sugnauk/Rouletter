@@ -590,6 +590,16 @@ func test_feats() -> void:
 	check("paid_in_full" in e and "hard_way" in e and not ("euro_win" in e), "end feats")
 	check(Feats.check("end", {"won": false, "run": run}, []).is_empty(), "losing earns no end feats")
 	check(run.best_spin == res.take, "the run remembers its best spin")
+	var st := Feats.check("clear", {"info": {"spins_left": 0, "spins_used": 6, "boss": true, "enforcer": "oro"}, "run": run}, [])
+	check("last_ball_enforcer" in st and not ("one_spin_table" in st), "paid the Enforcer on the last ball")
+	check("one_spin_table" in Feats.check("clear", {"info": {"spins_left": 5, "spins_used": 1, "boss": false, "enforcer": ""}, "run": run}, []), "one and done")
+	var cb := Feats.check("spin", {"res": res, "run": run, "staked": 1, "target": 20, "before": 4.0, "spins_before": 1, "cleared": true}, [])
+	check("comeback" in cb, "the comeback")
+	var r2 = new_run()
+	r2.place_bet("S5", 1)
+	check(Feats.check("end", {"won": true, "run": r2}, []).has("no_outside_win"), "Inside Man when no outside bets")
+	r2.place_bet("RED", 1)
+	check(not Feats.check("end", {"won": true, "run": r2}, []).has("no_outside_win"), "...broken by an outside bet")
 
 
 func test_rarity_and_levels() -> void:

@@ -27,6 +27,11 @@ const FEATS := {
 	"beat_oro": {"name": "Off the Green", "desc": "Beat Madame Oro.", "reward": 1, "on": "clear", "enforcer": "oro"},
 	"beat_vic": {"name": "Thawed", "desc": "Beat Vic \"The Rake\".", "reward": 1, "on": "clear", "enforcer": "vic"},
 	"beat_sal": {"name": "Uncalled For", "desc": "Beat Big Sal.", "reward": 1, "on": "clear", "enforcer": "sal"},
+	"last_ball_enforcer": {"name": "Paid in the Nick of Time", "desc": "Pay an Enforcer with your very last ball.", "reward": 2, "on": "clear"},
+	"one_spin_table": {"name": "One and Done", "desc": "Clear a table on its first spin.", "reward": 2, "on": "clear"},
+	"comeback": {"name": "The Comeback", "desc": "With one ball left and under half the payment, clear the table anyway.", "reward": 2, "on": "spin"},
+	"level_five": {"name": "Seasoned", "desc": "Raise a permanent chip to level 5.", "reward": 1, "on": "clear"},
+	"no_outside_win": {"name": "Inside Man", "desc": "Win a run without ever betting on an outside box.", "reward": 3, "on": "end"},
 	"paid_in_full": {"name": "Paid in Full", "desc": "Win a run: pay a whole marker.", "reward": 3, "on": "end"},
 	"french_win": {"name": "Très Bien", "desc": "Win a run on the French wheel.", "reward": 1, "on": "end", "wheel": "french"},
 	"euro_win": {"name": "Continental", "desc": "Win a run on the European wheel.", "reward": 1, "on": "end", "wheel": "european"},
@@ -77,6 +82,16 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 			return run.felt.perm_chips().size() >= 8
 		"spare_change":
 			return run.overflow >= 50
+		"last_ball_enforcer":
+			return ctx.info.boss and ctx.info.spins_left == 0
+		"one_spin_table":
+			return ctx.info.get("spins_used", 99) == 1
+		"comeback":
+			return ctx.get("spins_before", 9) == 1 and ctx.get("before", 0.0) < ctx.target * 0.5 and ctx.get("cleared", false)
+		"level_five":
+			return run.felt.perm_chips().any(func(c): return c.value >= 5)
+		"no_outside_win":
+			return ctx.won and not run.used_outside
 		"paid_in_full":
 			return ctx.won
 		"graded":

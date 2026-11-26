@@ -43,6 +43,7 @@ var vouchers: Array = []         ## run-wide perks from the Dealer
 var best_spin: float = 0.0       ## run summary: the biggest single spin
 var beaten: Array = []           ## run summary: Enforcers beaten this run
 var new_player := false
+var used_outside := false        ## any outside bet placed this run (the "no outside bets" Feat)
 var grade: int = 0               ## marker grade (difficulty), see Content.GRADES          ## first runs: vendors open up one at a time (see _vendor_open)
 var total_take: float = 0.0
 var nights_cleared: int = 0
@@ -71,6 +72,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	vouchers = []
 	best_spin = 0.0
 	beaten = []
+	used_outside = false
 	night = 0
 	table_idx = 0
 	total_take = 0.0
@@ -96,7 +98,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
-	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade"]
+	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade", "used_outside"]
 
 
 ## Everything needed to pick the run up again later (only meaningful mid-run).
@@ -313,6 +315,8 @@ func place_bet(key: String, amount: int) -> bool:
 	if phase != Phase.TABLE or is_called_spin() or amount <= 0 or table.stack < amount or not can_bet_on(key):
 		return false
 	table.stack -= amount
+	if felt.board.is_outside(key):
+		used_outside = true
 	for c in felt.chips_on(key):
 		if c.is_bet():
 			c.value += amount
@@ -483,7 +487,7 @@ func _clear_table() -> void:
 	felt.clear_bets()
 	felt.frozen_id = -1
 	var info := {"night": night, "table": table_idx, "take": t, "target": table.target,
-		"reward": reward, "spins_left": table.spins_left, "comps": comps, "boss": table.boss,
+		"reward": reward, "spins_left": table.spins_left, "spins_used": table.spins_used, "comps": comps, "boss": table.boss,
 		"enforcer": table.enforcer}
 	if table.boss:
 		beaten.append(table.enforcer)
