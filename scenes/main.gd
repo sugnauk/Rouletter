@@ -98,6 +98,7 @@ func _ready() -> void:
 	add_child(crt)
 	crt.visible = profile.settings.crt
 	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
+	apply_speed()
 	Sfx.play_music.call_deferred("lounge")
 	get_tree().create_timer(4.0).timeout.connect(func(): Sfx.preload_track("enforcer"))
 	var tl := CanvasLayer.new()
@@ -422,6 +423,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_ESCAPE and in_run() and not pause.visible and not dialogue.is_open():
 			open_pause()
 			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_F and in_run() and not dialogue.is_open():
+			cycle_speed()
+			get_viewport().set_input_as_handled()
 		elif event.keycode == KEY_F2:
 			set_option("crt", not profile.settings.crt)
 		elif event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
@@ -476,10 +480,37 @@ func set_option(key: String, value) -> void:
 	profile.settings[key] = value
 	crt.visible = profile.settings.crt
 	_recenter()
+	apply_speed()
 	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
 	save_profile()
 	if screens.has(current) and screens[current].visible:
 		screens[current].call("refresh")
+
+
+## --- Game speed (the >> button) -------------------------------------------------------
+
+func speed() -> int:
+	return clampi(int(profile.settings.get("speed", 0)), 0, Profile.SPEEDS.size() - 1)
+
+
+## The everyday time scale for the chosen speed (1.0 for screenshot runs, which need fixed timing).
+func base_time_scale() -> float:
+	return 1.0 if fast_ui else float(Profile.SPEEDS[speed()].time)
+
+
+func apply_speed() -> void:
+	Engine.time_scale = base_time_scale()
+
+
+## Fastest also cuts the wheel spin and the count short.
+func short_spins() -> bool:
+	return bool(Profile.SPEEDS[speed()].short)
+
+
+func cycle_speed() -> void:
+	set_option("speed", (speed() + 1) % Profile.SPEEDS.size())
+	Sfx.play("click")
+	fx.pop_text(Vector2(560, 40), "SPEED: " + str(Profile.SPEEDS[speed()].name).to_upper(), P.GOLD, 0.8)
 
 
 func toggle_fullscreen() -> void:

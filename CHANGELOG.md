@@ -3,6 +3,13 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.34
+- The game takes its time now. At the new default speed (Normal), the wheel spin, the count, chips flying, banners and screen transitions all play about 1.5x slower.
+- Fast-forward: a > / >> / >>> button next to MENU at the table and in the Cage (or press F) cycles Normal, Fast and Fastest.
+  - Fast is the old speed.
+  - Fastest is the old Fast spins (a short wheel spin and a brisk count).
+  - The pause menu and Options have the same setting. If you had Fast spins on, you start on Fastest.
+
 ## 0.0.33
 - Fixed: on iPhone Safari (landscape), the game could slide under the address bar and run off the bottom of the screen, hiding your stack, chips and SPIN.
   - The page is now pinned to the screen and can't scroll or bounce.

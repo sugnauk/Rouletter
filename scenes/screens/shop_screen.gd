@@ -34,6 +34,7 @@ var board_id := ""
 var t := 0.0
 
 
+var speed_btn: Button   ## fast-forward: > / >> / >>>
 var choice: Panel = null   ## the pick-one overlay (opening pick / early-clear bonus / refine)
 var refine_id := -1        ## the chip waiting for a Refine path
 
@@ -71,6 +72,10 @@ func setup() -> void:
 	var nb := P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
 	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 14), P.FONT_SMALL)
 	P.place(mb, Vector2(594, 6))
+	speed_btn = P.button(self, ">", func():
+		main.cycle_speed()
+		speed_btn.text = preload("res://core/profile.gd").SPEEDS[main.speed()].label, Vector2(26, 14), P.FONT_SMALL)
+	P.place(speed_btn, Vector2(564, 6))
 	nb.add_theme_stylebox_override("normal", P.box(Color("#b8862b"), P.BLACK, 1))
 	nb.add_theme_stylebox_override("hover", P.box(Color("#d9a63c"), P.CREAM, 1))
 	for s in ["font_color", "font_hover_color", "font_pressed_color"]:
@@ -278,6 +283,7 @@ func refresh() -> void:
 	felt_view.queue_redraw()
 	_refresh_rack()
 	status_lbl.text = _hint()
+	speed_btn.text = preload("res://core/profile.gd").SPEEDS[main.speed()].label
 	cage_view.queue_redraw()
 	_refresh_choice(run)
 	_first_time_tips(run)

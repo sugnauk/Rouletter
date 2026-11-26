@@ -18,6 +18,7 @@ const TableCount := preload("res://scenes/screens/table_count.gd")
 const TableOverlays := preload("res://scenes/screens/table_overlays.gd")
 const Preview := preload("res://core/preview.gd")
 const Story := preload("res://core/story.gd")
+const Profile := preload("res://core/profile.gd")
 
 const LEFT_W := 180
 const MID_X := 188
@@ -67,6 +68,7 @@ var shown_cash := -1.0           ## HUD cash, counted up toward run.cash
 var zoom_bg: ColorRect            ## dims the table while the felt is zoomed for touch betting
 var zoomed := false
 var overlays   ## the free-chip panel, touch bet menu, quick edits and tips (table_overlays.gd)
+var speed_btn: Button   ## fast-forward: > / >> / >>>
 var pinned: Dictionary = {}      ## bet keys that survive Clear (Alt-click to pin)
 const ZOOM := 1.8
 var count                        ## the spin count-up (table_count.gd)
@@ -75,9 +77,9 @@ var chance := 0.0
 var take_per_spin := 0.0
 
 
-## Fast spins (Options): a short wheel spin and a brisk count.
+## Fastest speed (the >> button): a short wheel spin and a brisk count.
 func fast() -> bool:
-	return main.profile.settings.get("fast_spins", false)
+	return main.short_spins()
 
 
 func setup() -> void:
@@ -133,6 +135,13 @@ func setup() -> void:
 	P.place(P.label(self, "BET CHIP", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 26))
 	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 12), P.FONT_SMALL)
 	P.place(mb, Vector2(RIGHT_X + 72, 24))
+	# Fast-forward: Normal > Fast >> Fastest >>> (F on the keyboard).
+	speed_btn = P.button(self, ">", func():
+		main.cycle_speed()
+		speed_btn.text = Profile.SPEEDS[main.speed()].label, Vector2(26, 12), P.FONT_SMALL)
+	speed_btn.tooltip_text = ""
+	speed_btn.mouse_entered.connect(func(): _status("Game speed: %s. Click (or press F) to change." % Profile.SPEEDS[main.speed()].name))
+	P.place(speed_btn, Vector2(RIGHT_X + 44, 24))
 	denom_box = HBoxContainer.new()
 	denom_box.add_theme_constant_override("separation", 4)
 	P.place(denom_box, Vector2(RIGHT_X, 36))
@@ -391,6 +400,7 @@ func refresh() -> void:
 	spin_btn.text = "PICK A CHIP" if not run.table_offer.is_empty() else ("CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN"))
 	_refresh_tokens()
 	_mark_clearing()
+	speed_btn.text = Profile.SPEEDS[main.speed()].label
 	overlays.refresh_offer(run)
 	overlays.first_time_tips(run)
 	if t.boss:

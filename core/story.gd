@@ -138,7 +138,7 @@ const TUTORIAL := {
 		{"speaker": "Dolores", "text": "Click a square to bet chips from your stack. Splits and corners sit on the lines between squares."},
 		{"speaker": "Dolores", "text": "Winning bets add to your Take. Losing bets come off it. Reach the payment before your spins run out."},
 		{"speaker": "Dolores", "text": "Your bets go back down every spin by themselves. Undo or Clear to change them. Right-click to take one back. On a touch screen, hold a bet for more options."},
-		{"speaker": "Dolores", "text": "In a hurry? Turn on Fast spins in the MENU. The big moments still get their due."}]},
+		{"speaker": "Dolores", "text": "In a hurry? The >> button by the MENU (or F) speeds things up. The big moments still get their due."}]},
 	"shop": {"id": "tut_shop", "title": "How to Play: The Cage", "lines": [
 		{"speaker": "Dolores", "text": "Between tables you visit the Cage. Every window takes a different kind of money."},
 		{"speaker": "Dolores", "text": "Chips you buy go on the felt for good and score every time they hit. Place them before you leave."}]},
