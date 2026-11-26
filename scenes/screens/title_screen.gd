@@ -33,7 +33,7 @@ func setup() -> void:
 			["Options", func(): main.show_screen("options")], ["Quit", func(): get_tree().quit()]]:
 		P.button(menu, b[0], b[1], Vector2(140, 20))
 	P.place(P.label(self, "F2: CRT filter    F11: fullscreen", P.FONT_SMALL, P.DIM), Vector2(32, 340))
-	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.DIM)
+	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.CREAM)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	P.place(ver, Vector2(408, 340), Vector2(224, 10))
 

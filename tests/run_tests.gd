@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -626,6 +626,14 @@ func test_rarity_and_levels() -> void:
 	var sg = felt("european", [["perm", "RED", 4]])
 	sg.house_rules.append("satin_gloves")
 	near(Resolver.resolve_spin(sg, 1).take, 6.0, "Satin Gloves: red pays 1.5:1")
+
+
+func test_version() -> void:
+	var Version := preload("res://core/version.gd")
+	var re := RegEx.new()
+	re.compile("^\\d+\\.\\d+\\.\\d+$")
+	check(re.search(Version.VERSION) != null, "version is MAJOR.MINOR.PATCH (%s)" % Version.VERSION)
+	check(Version.label().begins_with("v" + Version.VERSION), "title label shows the version")
 
 
 func test_shop() -> void:
