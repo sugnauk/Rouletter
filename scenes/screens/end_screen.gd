@@ -49,4 +49,9 @@ func _continue() -> void:
 		lines.append_array(b.lines)
 		main.profile.seen_beats.append(b.id)
 	main.save_profile()
-	main.say(lines, func(): main.show_screen("title"))
+	var act_done := beats.any(func(b): return b.id == "free")
+	main.say(lines, func():
+		if act_done:
+			main.go("title", "END OF ACT I", "The Floor Above is waiting", P.GOLD)
+		else:
+			main.show_screen("title"))

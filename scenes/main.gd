@@ -20,6 +20,7 @@ const SCREENS := {
 	"shop": preload("res://scenes/screens/shop_screen.gd"),
 	"end": preload("res://scenes/screens/end_screen.gd"),
 	"pawn": preload("res://scenes/screens/pawn_screen.gd"),
+	"journal": preload("res://scenes/screens/journal_screen.gd"),
 }
 
 var run
@@ -147,6 +148,9 @@ func route() -> void:
 			var names := []
 			for v in run.shop.vendors:
 				names.append(Content.VENDORS[v].name)
+				var intro: Dictionary = Story.VENDOR_INTROS.get(v, {})
+				if not intro.is_empty() and intro.id not in profile.seen_beats:
+					_queue_scene(intro)
 			go("shop", "THE CAGE", " and ".join(names) + " are open", P.GOLD)
 		_:
 			if run.phase == RunState.Phase.VICTORY:
@@ -176,6 +180,18 @@ func _on_table_cleared(info: Dictionary) -> void:
 	if info.boss:
 		var e: Dictionary = Content.ENFORCERS[info.enforcer]
 		pending_lines.append({"speaker": e.name, "text": e.defeat})
+		if run.phase == RunState.Phase.SHOP:
+			_queue_scene(Story.interlude(run.night + 1, profile))
+
+
+## Queue a story scene to play after the next loading card, and remember it for the Journal.
+func _queue_scene(scene: Dictionary) -> void:
+	if scene.is_empty():
+		return
+	pending_lines.append_array(scene.lines)
+	if scene.id not in profile.seen_beats:
+		profile.seen_beats.append(scene.id)
+		save_profile()
 
 
 func _on_run_ended(won: bool) -> void:

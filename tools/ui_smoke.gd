@@ -40,6 +40,7 @@ func _process(delta: float) -> void:
 				run.spin(17)
 			run.cash = 40
 			main.route()],
+		[9.5, func(): _close_dialogue()],
 		[9.6, func(): shot("06_shop")],
 		[9.7, func():
 			for i in range(run.shop.stock.size()):
@@ -62,6 +63,8 @@ func _process(delta: float) -> void:
 		[14.4, func(): shot("09_game_over")],
 		[14.5, func(): main.show_screen("pawn")],
 		[14.8, func(): shot("10_pawn")],
+		[14.82, func(): main.show_screen("journal")],
+		[14.88, func(): shot("10b_journal")],
 		[14.9, func():
 			main.fast_ui = false
 			main.show_screen("card")],

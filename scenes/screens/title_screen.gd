@@ -24,7 +24,7 @@ func setup() -> void:
 	P.place(info_lbl, Vector2(32, 138))
 	var y := 170
 	for b in [["New Run", func(): main.begin_flow()], ["Pawn Shop", func(): main.show_screen("pawn")],
-			["Quit", func(): get_tree().quit()]]:
+			["Journal", func(): main.show_screen("journal")], ["Quit", func(): get_tree().quit()]]:
 		P.place(P.button(self, b[0], b[1], Vector2(140, 22)), Vector2(32, y))
 		y += 28
 	P.place(P.label(self, "F2: CRT filter    F11: fullscreen", P.FONT_SMALL, P.DIM), Vector2(32, 340))

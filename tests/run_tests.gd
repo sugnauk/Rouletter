@@ -484,3 +484,30 @@ func test_story_beats() -> void:
 	for b in Story.beats_due(p):
 		ids.append(b.id)
 	check(ids == ["first_night", "nine_hundred", "three_quarters"], "threshold beats in order")
+	p.debt = 1000000
+	p.seen_beats = ["first_night"]
+	p.best_night = 1
+	p.runs = 3
+	ids = []
+	for b in Story.beats_due(p):
+		ids.append(b.id)
+	check(ids == ["first_enforcer", "regular"], "milestone beats (first Enforcer, third run)")
+	p.runs = 6
+	check(Story.beats_due(p).any(func(b): return b.id == "the_fixture"), "six runs without a win")
+	p.wins = 1
+	ids = []
+	for b in Story.beats_due(p):
+		ids.append(b.id)
+	check("first_win" in ids and "the_fixture" not in ids, "a win replaces the fixture beat")
+	var i2: Dictionary = Story.interlude(2, p)
+	check(i2.id == "n2_dolores", "first unseen interlude")
+	p.seen_beats.append("n2_dolores")
+	check(Story.interlude(2, p).id == "n2_lou", "next unseen interlude")
+	p.seen_beats.append("n2_lou")
+	check(not Story.interlude(2, p).is_empty() and Story.interlude(1, p).is_empty() and Story.interlude(5, p).is_empty(), "interludes rotate once seen, only before nights 2-4")
+	var ids_all := {}
+	for sc in Story.all_scenes():
+		check(not ids_all.has(sc.id) and sc.title != "" and not sc.lines.is_empty(), "scene %s is unique and complete" % sc.id)
+		ids_all[sc.id] = true
+	for v in Content.VENDORS:
+		check(Story.VENDOR_INTROS.has(v), "vendor %s has an intro" % v)

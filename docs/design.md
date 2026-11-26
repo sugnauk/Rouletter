@@ -3,6 +3,7 @@
 A roulette roguelite. **The wheel is always fair, and the felt is what you build.** Runs are structured like Balatro: hit a score within a limited number of spins, shop between tables, and face boss tables. Felt Wars (the territory war against the dealer) was dropped after its playtest, and its code is kept in `archive/felt_wars/`.
 
 ## Story (light noir)
+All scenes live in `core/story.gd` with an id and a Journal title; `profile.seen_beats` records what you've seen.
 1974, the Gilded Ace casino. You owe its owner, Mr. Vance, a **$1,000,000 marker**. Each run is a night of payments: every table's Take target is a payment due, and missing one ends the run. The Take you bank pays down the debt ($100 per point), and the debt carries across runs. Story beats unlock as it shrinks. Enforcers are Vance's people. Data lives in `core/story.gd` and the Enforcers in `core/content.gd`.
 
 ## Run loop
@@ -79,7 +80,7 @@ Full-run win rate: French 11%, European 13%, American 8%, Mini 11%, Triple Zero 
 
 ## Roadmap ("The Floor Above")
 1. Done: vendor Cage (Cashier, Pit Boss), title card and loading cards, Undo and touch controls, branch CI.
-2. Story: recurring cast, per-night interludes, a Journal screen, an Act 1 epilogue.
+2. Done: story cast (Dolores, Lucky Lou, Abe, Big Sal, the vendors), milestone beats (first Enforcer, third run, first win, six runs without a win), interludes before nights 2-4, vendor introductions, a Journal screen that replays every scene, and the Act I epilogue when the marker is paid.
 3. Loan Shark (borrow against the next target), Fence (cheap items with flaws), inside-bet content, multipliers.
 4. Act 2: nights 5-8 upstairs, the Owner, new Enforcers and wheels.
 5. Vouchers, Dealer favours, run saves, endless mode, onboarding and accessibility.
