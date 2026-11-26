@@ -39,6 +39,12 @@ jobs:
           mv templates/* "$tdir/"
           rm -rf templates *.zip *.tpz
 
+      - name: Stamp build version
+        run: |
+          stamp="$(git rev-parse --short HEAD) $(date -u +'%Y-%m-%d %H:%M')Z"
+          sed -i "s|^const BUILD := .*|const BUILD := \"$stamp\"|" core/version.gd
+          grep BUILD core/version.gd
+
       - name: Import project
         run: ./godot --headless --path . --import
 

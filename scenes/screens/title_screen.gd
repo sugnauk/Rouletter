@@ -2,6 +2,7 @@
 
 const P := preload("res://scenes/ui/palette.gd")
 const Board := preload("res://core/board.gd")
+const Version := preload("res://core/version.gd")
 const WheelView := preload("res://scenes/ui/wheel_view.gd")
 
 var main
@@ -27,6 +28,9 @@ func setup() -> void:
 		P.place(P.button(self, b[0], b[1], Vector2(140, 22)), Vector2(32, y))
 		y += 28
 	P.place(P.label(self, "F2: CRT filter    F11: fullscreen", P.FONT_SMALL, P.DIM), Vector2(32, 340))
+	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.DIM)
+	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	P.place(ver, Vector2(408, 340), Vector2(224, 10))
 
 
 func refresh() -> void:
