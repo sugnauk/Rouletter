@@ -3,6 +3,11 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.17
+- No more black borders: the game now scales smoothly to any window or phone screen instead of in whole steps, with pixel snapping to keep the art crisp.
+- New wheel select screen: one wheel at a time, shown big, with < and > buttons (or the arrow keys) to browse. Dots show where you are, locked wheels say what they cost, and the panel lists pockets, zeros, house edge, payments, starting cash, kit and built-in rules. Enter deals you in.
+- Title screen: the lifetime "paid to Vance" stat is gone (each run's marker is its own).
+
 ## 0.0.16
 - Distinct sounds for each felt action:
   - placing a bet, and stacking a chip on its twin (with a "LEVEL UP!" pop)

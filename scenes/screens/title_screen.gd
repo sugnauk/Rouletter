@@ -45,4 +45,4 @@ func refresh() -> void:
 	debt_lbl.text = "Markers %d" % p.markers
 	if not nu.is_empty():
 		debt_lbl.text += ("   -   %s ready at the Pawn Shop!" % nu.name) if p.markers >= nu.cost else ("   -   next: %s at %d" % [nu.name, nu.cost])
-	info_lbl.text = "Runs %d    Wins %d    Best night %d    Best Take %d    Paid to Vance $%s" % [p.runs, p.wins, p.best_night, p.best_take, P.money(p.total_paid)]
+	info_lbl.text = "Runs %d    Wins %d    Best night %d    Best Take %d" % [p.runs, p.wins, p.best_night, p.best_take]
