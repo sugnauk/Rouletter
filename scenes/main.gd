@@ -89,6 +89,9 @@ func _ready() -> void:
 	crt.add_child(rect)
 	add_child(crt)
 	crt.visible = profile.settings.crt
+	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
+	Sfx.play_music.call_deferred("lounge")
+	get_tree().create_timer(4.0).timeout.connect(func(): Sfx.preload_track("enforcer"))
 	var tl := CanvasLayer.new()
 	tl.layer = 9
 	transition = Transition.new()
@@ -117,6 +120,7 @@ func show_screen(n: String) -> void:
 	screens[n].call("refresh")
 	if n == "table" or n == "shop":
 		save_run()
+	Sfx.play_music("enforcer" if n == "table" and not run.table.is_empty() and run.table.boss else "lounge")
 
 
 # --- Run saves: the run in progress is kept next to the profile ---------------------------
@@ -324,9 +328,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## Change one option, apply it straight away and save it.
-func set_option(key: String, value: bool) -> void:
+func set_option(key: String, value) -> void:
 	profile.settings[key] = value
 	crt.visible = profile.settings.crt
+	Sfx.set_volumes(profile.settings.music, profile.settings.sfx)
 	save_profile()
 	if screens.has(current) and screens[current].visible:
 		screens[current].call("refresh")

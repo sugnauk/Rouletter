@@ -3,6 +3,10 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.3
+- Music: a synthesised lounge band (walking bass, brushes, comped chords, vibraphone) and a darker, faster version at Enforcer tables.
+- Music and sound volume controls in Options.
+
 ## 0.0.2
 - New players meet the Cage one window at a time: only the Cashier on night 1, the Pit Boss from night 2, the Loan Shark and Dealer after your first Enforcer.
 - One-time tips from Dolores the first time you see a flawed chip, a rare item, spare Take, or buy a chip you can level up.

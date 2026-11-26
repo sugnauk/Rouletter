@@ -22,7 +22,7 @@ var used_items: Array = []   ## Almanac: content ids you have bought
 var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
-const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true}
+const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0}
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 var save_path: String = DEFAULT_PATH
 
@@ -139,7 +139,7 @@ func from_dict(d: Dictionary) -> void:
 	var saved: Dictionary = d.get("settings", {})
 	for k in saved:
 		if settings.has(k):
-			settings[k] = bool(saved[k])
+			settings[k] = bool(saved[k]) if DEFAULT_SETTINGS[k] is bool else clampf(float(saved[k]), 0.0, 1.0)
 
 
 func save(path: String = "") -> bool:

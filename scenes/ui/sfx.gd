@@ -10,10 +10,63 @@ var _streams: Dictionary = {}
 var _pools: Dictionary = {}
 var _next: Dictionary = {}
 var muted := false
+var sfx_volume := 1.0           ## 0..1, from Options
+var music_volume := 0.6         ## 0..1, from Options
+var music: AudioStreamPlayer
+var _tracks: Dictionary = {}
+var current_track := ""
+
+const Music := preload("res://scenes/ui/music.gd")
+const SFX_DB := -8.0
+const MUSIC_DB := -10.0
+
+
+func _ready() -> void:
+	music = AudioStreamPlayer.new()
+	music.volume_db = MUSIC_DB
+	add_child(music)
+
+
+## Switch the background loop ("lounge" / "enforcer"), synthesising it the first time.
+func play_music(track: String) -> void:
+	if track == current_track or music == null:
+		return
+	current_track = track
+	if not _tracks.has(track):
+		_tracks[track] = Music.load_track(track)
+	music.stream = _tracks[track]
+	_apply_music_volume()
+	if music_volume > 0.0:
+		music.play()
+
+
+## Synthesise a track ahead of time so switching to it later doesn't hitch.
+func preload_track(track: String) -> void:
+	if not _tracks.has(track):
+		_tracks[track] = Music.load_track(track)
+
+
+func set_volumes(music_v: float, sfx_v: float) -> void:
+	music_volume = clampf(music_v, 0.0, 1.0)
+	sfx_volume = clampf(sfx_v, 0.0, 1.0)
+	_apply_music_volume()
+	for pool in _pools.values():
+		for p in pool:
+			p.volume_db = SFX_DB + linear_to_db(maxf(0.0001, sfx_volume))
+
+
+func _apply_music_volume() -> void:
+	if music == null:
+		return
+	music.volume_db = MUSIC_DB + linear_to_db(maxf(0.0001, music_volume))
+	if music_volume <= 0.0:
+		music.stop()
+	elif not music.playing and music.stream != null:
+		music.play()
 
 
 func play(cue: String, pitch: float = 1.0) -> void:
-	if muted:
+	if muted or sfx_volume <= 0.0:
 		return
 	if not _pools.has(cue):
 		var stream := _load_or_synth(cue)
@@ -22,7 +75,7 @@ func play(cue: String, pitch: float = 1.0) -> void:
 			for i in range(VOICES):
 				var p := AudioStreamPlayer.new()
 				p.stream = stream
-				p.volume_db = -8.0
+				p.volume_db = SFX_DB + linear_to_db(maxf(0.0001, sfx_volume))
 				add_child(p)
 				pool.append(p)
 		_pools[cue] = pool

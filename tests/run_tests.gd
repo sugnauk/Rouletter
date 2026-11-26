@@ -25,7 +25,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -766,6 +766,20 @@ func test_profile() -> void:
 		for item in run.shop.stock:
 			check(item.type == "loan" or item.id in Profile.default_unlocks() or item.id == "perm", "shop only stocks unlocked content (%s)" % item.id)
 		check(not ("fence" in run.shop.vendors), "the Fence needs unlocking")
+
+
+func test_music_synth() -> void:
+	var Music := preload("res://scenes/ui/music.gd")
+	for track in ["lounge", "enforcer"]:
+		var t0 := Time.get_ticks_msec()
+		var w = Music.synth(track)
+		var secs: float = w.data.size() / 2.0 / Music.RATE
+		check(w.loop_mode == AudioStreamWAV.LOOP_FORWARD and secs > 10.0 and secs < 40.0, "%s loops (%.1fs)" % [track, secs])
+		var loud := 0
+		for i in range(0, w.data.size(), 64):
+			loud = maxi(loud, absi(w.data.decode_s16(i)))
+		check(loud > 3000, "%s is audible" % track)
+		print("  music %s synthesised in %d ms" % [track, Time.get_ticks_msec() - t0])
 
 
 func test_sfx_synth() -> void:
