@@ -56,7 +56,7 @@ func pop_text(pos: Vector2, text: String, col: Color = P.GOLD, dur: float = 0.9)
 ## A notification card at the top of the screen (Feats).
 func toast(title: String, sub: String) -> void:
 	toasts.append({"title": title, "sub": sub, "t": -0.6 * toasts.size(), "dur": 2.6})
-	Sfx.play("mult", 1.3)
+	Sfx.play("feat")
 
 
 ## A full-screen white flash (big moments).

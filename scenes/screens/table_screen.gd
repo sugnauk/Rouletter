@@ -672,7 +672,7 @@ func _play_count(res: Dictionary, before: float, target: int) -> void:
 			main.shake(6.0, 0.5)
 			fx.coin_rain(60)
 			fx.burst(meter_at, 60, [P.GOLD, P.CREAM, P.GOOD, P.CYAN], 170.0)
-			Sfx.play("big_win")
+			Sfx.play("jackpot")
 			Engine.time_scale = 0.45
 			await get_tree().create_timer(0.35, true, false, true).timeout
 			Engine.time_scale = 1.0
@@ -727,7 +727,7 @@ func _near_miss(res: Dictionary) -> void:
 		if B.wheel_distance(n, res.pocket) == 1 or res.pocket in B.neighbours(n):
 			felt_view.near(c.bet)
 			main.fx.pop_text(felt_view.global_position + felt_view.key_center(c.bet) - Vector2(0, 8), "SO CLOSE", P.CREAM)
-			Sfx.play("lose", 0.8)
+			Sfx.play("near")
 			return
 
 
