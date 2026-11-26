@@ -96,6 +96,13 @@ Full-run win rate: French 11%, European 13%, American 8%, Mini 11%, Triple Zero 
 
 CI: `.github/workflows/test-branch.yml` runs the tests and the smoke screenshots on every non-main push and PR (screenshots are the run's artifact); `deploy-web.yml` publishes `main` to Pages.
 
+## Polish pass (after the roadmap)
+- **Per-run marker** (see Story): HUD marker bar, loading cards, end-screen "paid / left".
+- **Juice:** chips fly from winning squares into the Take meter, a combo counter, NICE / BIG WIN / JACKPOT tiers (flash, slow-mo, coin rain, fanfare), PAID glow on the meter, near-miss shudder with "SO CLOSE", a table-clear reward tally, SOLD! pops, cash that counts up with coin ticks, a breathing SPIN button.
+- **Progression:** 20 Feats paying Markers (`core/feats.gd`, toasts, Feats screen), the Almanac (everything seen or bought), run summary (best spin, Enforcers beaten, Feats), the next Pawn Shop unlock shown on the title and end screens.
+- **Content:** rarity tiers and weighted stock, chip levelling, Mirror / Porch Light chips, Lucky Sevens / Satin Gloves rules.
+- **Art:** pixel portraits for every character (`scenes/ui/portraits.gd`) in dialogue, Enforcer cards and the boss panel; chip shine and legendary halos; rarity frames.
+
 ## Known gaps and next steps
 - Late-game scaling is mostly additive. It needs more multiplicative synergies (Balatro-style) so builds can explode.
 - Run saves (resuming mid-run), an endless mode, more Enforcers and a Floor 2 / Owner arc.

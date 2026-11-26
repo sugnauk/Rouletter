@@ -319,6 +319,18 @@ func _refresh_tokens() -> void:
 		lbl.mouse_entered.connect(func(): _status(tok.hover_text))
 		lbl.mouse_exited.connect(func(): _status(""))
 		rules_flow.add_child(row)
+	# Dealer vouchers last the whole run: list them under the rules.
+	for v in run.vouchers:
+		var vrow := HBoxContainer.new()
+		vrow.add_theme_constant_override("separation", 4)
+		var vt = Token.new(Content.VOUCHERS[v].icon, Vector2(16, 16))
+		vt.hover_text = "%s (voucher): %s" % [Content.VOUCHERS[v].name, Content.VOUCHERS[v].desc]
+		vt.hover_target = _status
+		vrow.add_child(vt)
+		var vl := P.label(vrow, Content.VOUCHERS[v].name, P.FONT_SMALL, P.VIOLET)
+		vl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
+		vl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		rules_flow.add_child(vrow)
 
 
 func _select_item(i: int) -> void:

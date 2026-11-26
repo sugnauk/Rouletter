@@ -51,7 +51,7 @@ func setup() -> void:
 	add_child(dp)
 	desc_title = P.label(dp, "", P.FONT, P.GOLD)
 	P.place(desc_title, Vector2(6, 4))
-	desc_body = P.label(dp, "Hover something on the counter.", P.FONT_SMALL, P.CREAM)
+	desc_body = P.label(dp, "", P.FONT_SMALL, P.CREAM)
 	desc_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(desc_body, Vector2(6, 18), Vector2(276, 44))
 	next_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
@@ -154,6 +154,14 @@ func _hint() -> String:
 	return "Pick a chip from your rack, then click the felt to place it."
 
 
+## What the description panel says when nothing is hovered: who's on duty and how they deal.
+func _idle_desc(run) -> void:
+	var lines := []
+	for v in run.shop.vendors:
+		lines.append("%s: %s" % [Content.VENDORS[v].name.to_upper(), Content.VENDORS[v].blurb])
+	_describe("", "\n".join(lines))
+
+
 func _describe(title: String, body: String) -> void:
 	desc_title.text = title
 	desc_body.text = body
@@ -192,6 +200,8 @@ func refresh() -> void:
 		felt_view.layout()
 		board_id = bid
 	_build_windows(run)
+	if desc_title.text == "":
+		_idle_desc(run)
 	for ch in service_box.get_children():
 		ch.queue_free()
 	var rr = Token.new("reroll", Vector2(40, 44))
