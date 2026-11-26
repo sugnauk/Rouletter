@@ -200,6 +200,8 @@ func refresh() -> void:
 	rr.hover_target = func(_s): _describe("Reroll  $%d" % run.shop.reroll, "New stock on the counter. Gets $1 pricier each time.")
 	rr.pressed.connect(func():
 		if run.reroll():
+			for it in run.shop.stock:
+				main.profile.note_seen(it.id)
 			Sfx.play("buy")
 			main.fx.burst(Vector2(152, 110), 14, [P.GOLD, P.CREAM]))
 	service_box.add_child(rr)
@@ -345,6 +347,7 @@ func _buy(i: int) -> void:
 	var run = main.run
 	var item: Dictionary = run.shop.stock[i]
 	if run.buy(i):
+		main.profile.note_used(item.id)
 		Sfx.play("buy")
 		var tp := _token_pos(i)
 		main.fx.burst(tp, 22, [P.GOLD, P.CREAM, P.chip_color(item.id)], 130.0)

@@ -24,14 +24,14 @@ func setup() -> void:
 	info_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
 	P.place(info_lbl, Vector2(32, 138))
 	var menu := VBoxContainer.new()
-	menu.add_theme_constant_override("separation", 6)
-	P.place(menu, Vector2(32, 160))
+	menu.add_theme_constant_override("separation", 4)
+	P.place(menu, Vector2(32, 156))
 	add_child(menu)
-	continue_btn = P.button(menu, "Continue Run", func(): main.continue_run(), Vector2(140, 22))
+	continue_btn = P.button(menu, "Continue Run", func(): main.continue_run(), Vector2(140, 20))
 	for b in [["New Run", func(): main.begin_flow()], ["Pawn Shop", func(): main.show_screen("pawn")],
-			["Journal", func(): main.show_screen("journal")], ["Options", func(): main.show_screen("options")],
-			["Quit", func(): get_tree().quit()]]:
-		P.button(menu, b[0], b[1], Vector2(140, 22))
+			["Journal", func(): main.show_screen("journal")], ["Feats", func(): main.show_screen("feats")],
+			["Options", func(): main.show_screen("options")], ["Quit", func(): get_tree().quit()]]:
+		P.button(menu, b[0], b[1], Vector2(140, 20))
 	P.place(P.label(self, "F2: CRT filter    F11: fullscreen", P.FONT_SMALL, P.DIM), Vector2(32, 340))
 	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.DIM)
 	ver.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

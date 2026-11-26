@@ -11,6 +11,7 @@ const Odds := preload("res://core/odds.gd")
 const RunState := preload("res://core/run_state.gd")
 const Profile := preload("res://core/profile.gd")
 const Story := preload("res://core/story.gd")
+const Feats := preload("res://core/feats.gd")
 
 var passed := 0
 var failed := 0
@@ -23,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -571,6 +572,24 @@ func test_run_marker() -> void:
 	w.place_bet("S17", 1)
 	w.spin(17)
 	check(w.phase == RunState.Phase.VICTORY and w.marker_paid() == w.marker_total() and w.marker_left() == 0, "a win pays the marker in full")
+
+
+func test_feats() -> void:
+	var run = new_run()
+	run.place_bet("S17", 3)
+	var res: Dictionary = run.spin(17)
+	var got := Feats.check("spin", {"res": res, "run": run, "staked": 3, "target": 8}, [])
+	check("straight_up" in got and "jackpot" in got and not ("high_roller" in got), "spin feats: straight up and jackpot")
+	check(not ("straight_up" in Feats.check("spin", {"res": res, "run": run, "staked": 3, "target": 8}, ["straight_up"])), "earned feats don't repeat")
+	check("high_roller" in Feats.check("spin", {"res": res, "run": run, "staked": 25, "target": 999}, []), "high roller")
+	var info := {"spins_left": 0, "boss": true, "enforcer": "sal"}
+	var c := Feats.check("clear", {"info": info, "run": run}, [])
+	check("last_gasp" in c and "beat_sal" in c and not ("beat_oro" in c), "clear feats")
+	run.wheel_id = "american"
+	var e := Feats.check("end", {"won": true, "run": run}, [])
+	check("paid_in_full" in e and "hard_way" in e and not ("euro_win" in e), "end feats")
+	check(Feats.check("end", {"won": false, "run": run}, []).is_empty(), "losing earns no end feats")
+	check(run.best_spin == res.take, "the run remembers its best spin")
 
 
 func test_shop() -> void:

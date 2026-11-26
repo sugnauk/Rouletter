@@ -40,6 +40,8 @@ var acts: int = 1               ## 1: the Floor (4 nights). 2: on upstairs to th
 var overflow: int = 0            ## spare Take (scored past each payment): the Dealer's currency
 var favours: Array = []          ## Dealer favours waiting for the next table
 var vouchers: Array = []         ## run-wide perks from the Dealer
+var best_spin: float = 0.0       ## run summary: the biggest single spin
+var beaten: Array = []           ## run summary: Enforcers beaten this run
 var total_take: float = 0.0
 var nights_cleared: int = 0
 var message: String = ""
@@ -64,6 +66,8 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	overflow = 0
 	favours = []
 	vouchers = []
+	best_spin = 0.0
+	beaten = []
 	night = 0
 	table_idx = 0
 	total_take = 0.0
@@ -89,7 +93,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
-	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers"]
+	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten"]
 
 
 ## Everything needed to pick the run up again later (only meaningful mid-run).
@@ -412,6 +416,7 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 	if res.zero_tax:
 		table.take *= 1.0 - Content.ZERO_TAX
 	table.take += res.take
+	best_spin = maxf(best_spin, res.take)
 	table.stack += res.stack
 	if felt.boss_is("drain") and table.stack > 0:
 		var d: int = mini(Content.DRAIN_PER_SPIN, table.stack)
@@ -446,6 +451,7 @@ func _clear_table() -> void:
 		"reward": reward, "spins_left": table.spins_left, "comps": comps, "boss": table.boss,
 		"enforcer": table.enforcer}
 	if table.boss:
+		beaten.append(table.enforcer)
 		nights_cleared += 1
 		if night >= nights_total() - 1:
 			phase = Phase.VICTORY

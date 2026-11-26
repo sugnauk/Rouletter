@@ -11,6 +11,7 @@ var flyers: Array = []    ## {from, to, mid, col, t, dur, size} chips arcing int
 var texts: Array = []     ## {text, pos, col, t, dur} small floating labels anywhere
 var tally: Dictionary = {}  ## {title, rows: [[label, value, col]], t, dur, shown}
 var flash_a := 0.0
+var toasts: Array = []    ## {title, sub, t, dur} Feat notifications sliding in at the top
 
 
 func _ready() -> void:
@@ -52,6 +53,12 @@ func pop_text(pos: Vector2, text: String, col: Color = P.GOLD, dur: float = 0.9)
 	texts.append({"text": text, "pos": pos, "col": col, "t": 0.0, "dur": dur})
 
 
+## A notification card at the top of the screen (Feats).
+func toast(title: String, sub: String) -> void:
+	toasts.append({"title": title, "sub": sub, "t": -0.6 * toasts.size(), "dur": 2.6})
+	Sfx.play("mult", 1.3)
+
+
 ## A full-screen white flash (big moments).
 func flash(alpha: float = 0.6) -> void:
 	flash_a = maxf(flash_a, alpha)
@@ -88,6 +95,9 @@ func _process(delta: float) -> void:
 		x.t += delta
 	texts = texts.filter(func(x): return x.t < x.dur)
 	flash_a = maxf(0.0, flash_a - delta * 2.6)
+	for x in toasts:
+		x.t += delta
+	toasts = toasts.filter(func(x): return x.t < x.dur)
 	if not tally.is_empty():
 		tally.t += delta
 		var due := mini(tally.rows.size(), int((tally.t - 0.25) / 0.24) + 1) if tally.t > 0.25 else 0
@@ -141,6 +151,21 @@ func _draw() -> void:
 		draw_string(small, pos, x.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(x.col, a))
 	if not tally.is_empty():
 		_draw_tally(font, small)
+	var ty := 30.0
+	for x in toasts:
+		if x.t < 0.0:
+			continue
+		var k: float = x.t / x.dur
+		var slide: float = clampf(x.t / 0.18, 0.0, 1.0) * (1.0 if k < 0.85 else (1.0 - k) / 0.15)
+		var box := Rect2(470, ty - 24.0 * (1.0 - slide), 162, 26).abs()
+		box.position = box.position.round()
+		draw_rect(box, Color(0.05, 0.03, 0.08, 0.92 * slide))
+		draw_rect(box, Color(P.VIOLET, slide), false, 2.0)
+		draw_string(small, box.position + Vector2(24, 11), x.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(P.GOLD, slide))
+		draw_string(small, box.position + Vector2(24, 21), x.sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(P.CREAM, slide))
+		draw_circle(box.position + Vector2(12, 13), 7, Color(P.GOLD, slide), true, -1.0, false)
+		draw_string(small, box.position + Vector2(9, 16), "!", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(P.WOOD_DARK, slide))
+		ty += 30.0
 	if flash_a > 0.0:
 		draw_rect(Rect2(-4000, -4000, 8640, 8360), Color(1, 0.97, 0.88, flash_a))
 

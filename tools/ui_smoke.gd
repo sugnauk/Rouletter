@@ -91,7 +91,18 @@ func _process(delta: float) -> void:
 			main.screens.card.done = true
 			main.go("title", "NIGHT 2", "High Roller table  -  pay 28")],
 		[20.1, func(): shot("12_loading_card")],
-		[21.4, func(): get_tree().quit()],
+		[21.4, func():
+			main.profile.feats = ["straight_up", "jackpot", "beat_sal"]
+			main.show_screen("feats")
+			main.fx.toast("FEAT: STRAIGHT UP", "+1 Marker")],
+		[21.799999999999997, func(): shot("13_feats")],
+		[22.0, func():
+			main.profile.seen_items = ["perm", "magnet", "gilded", "la_partage", "patience"]
+			main.profile.used_items = ["perm"]
+			main.screens.feats.tab = "almanac"
+			main.screens.feats.refresh()],
+		[22.3, func(): shot("14_almanac")],
+		[22.5, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

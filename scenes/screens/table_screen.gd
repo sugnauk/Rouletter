@@ -513,7 +513,9 @@ func _on_spin() -> void:
 	Sfx.play("ball_drop")
 	var before: float = run.table.take
 	var target: int = run.table.target
+	var staked: int = run.felt.bet_stakes()
 	var res: Dictionary = run.spin(pocket)
+	main.check_feats("spin", {"res": res, "staked": staked, "target": target})
 	history.append(pocket)
 	history_view.queue_redraw()
 	await _play_count(res, before, target)

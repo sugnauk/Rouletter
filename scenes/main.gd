@@ -11,6 +11,7 @@ const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 const Profile := preload("res://core/profile.gd")
+const Feats := preload("res://core/feats.gd")
 
 const SCREENS := {
 	"card": preload("res://scenes/screens/card_screen.gd"),
@@ -22,6 +23,7 @@ const SCREENS := {
 	"pawn": preload("res://scenes/screens/pawn_screen.gd"),
 	"journal": preload("res://scenes/screens/journal_screen.gd"),
 	"options": preload("res://scenes/screens/options_screen.gd"),
+	"feats": preload("res://scenes/screens/feats_screen.gd"),
 }
 
 var run
@@ -40,6 +42,7 @@ var shake_amt := 0.0
 var pending_lines: Array = []
 var last_summary: Dictionary = {}
 var last_clear: Dictionary = {}    ## the last table_cleared info, for the reward tally
+var run_feats: Array = []          ## Feats earned during the current run (end screen)
 
 
 func _ready() -> void:
@@ -138,6 +141,7 @@ func delete_saved_run() -> void:
 
 func continue_run() -> void:
 	if run.load_from(run_save_path()):
+		run_feats = []
 		Sfx.play("click")
 		route()
 	else:
@@ -186,6 +190,8 @@ func route() -> void:
 			var names := []
 			if Story.TUTORIAL.shop.id not in profile.seen_beats:
 				_queue_scene(Story.TUTORIAL.shop)
+			for it in run.shop.stock:
+				profile.note_seen(it.id)
 			for v in run.shop.vendors:
 				names.append(Content.VENDORS[v].name)
 				var intro: Dictionary = Story.VENDOR_INTROS.get(v, {})
@@ -211,6 +217,7 @@ func begin_flow() -> void:
 
 func start_run(wheel: String, acts: int = 1) -> void:
 	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts)
+	run_feats = []
 	Sfx.play("click")
 	if Story.TUTORIAL.table.id not in profile.seen_beats:
 		_queue_scene(Story.TUTORIAL.table)
@@ -218,8 +225,24 @@ func start_run(wheel: String, acts: int = 1) -> void:
 	go("table", card[0], card[1], card[2])
 
 
+## Check Feats for an event and pay out any newly earned ones.
+func check_feats(event: String, ctx: Dictionary) -> void:
+	ctx.run = run
+	var got := Feats.check(event, ctx, profile.feats)
+	if got.is_empty():
+		return
+	for id in got:
+		var f: Dictionary = Feats.FEATS[id]
+		profile.feats.append(id)
+		profile.markers += f.reward
+		run_feats.append(id)
+		fx.toast("FEAT: " + f.name.to_upper(), "+%d Marker%s" % [f.reward, "" if f.reward == 1 else "s"])
+	save_profile()
+
+
 func _on_table_cleared(info: Dictionary) -> void:
 	last_clear = info
+	check_feats("clear", {"info": info})
 	if info.boss:
 		var e: Dictionary = Content.ENFORCERS[info.enforcer]
 		pending_lines.append({"speaker": e.name, "text": e.defeat})
@@ -239,10 +262,12 @@ func _queue_scene(scene: Dictionary) -> void:
 
 func _on_run_ended(won: bool) -> void:
 	delete_saved_run()
+	check_feats("end", {"won": won})
 	var paid: int = run.marker_paid()
 	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
-		"paid": paid, "marker": run.marker_total(), "markers": res.markers}
+		"paid": paid, "marker": run.marker_total(), "markers": res.markers, "feats": run_feats.duplicate(),
+		"best_spin": run.best_spin, "beaten": run.beaten.duplicate()}
 	save_profile()
 
 
