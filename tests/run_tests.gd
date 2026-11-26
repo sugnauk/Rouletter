@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
@@ -712,6 +712,57 @@ func test_grades() -> void:
 	p.record_run(4, 300.0, false, 1, 0, 1)
 	check(p.max_grade() == 1, "a loss doesn't")
 	check(Content.GRADES.size() == 9, "nine grades")
+
+
+func test_content_batch() -> void:
+	var bc = felt("european", [["black_cat", "S1", 2]])
+	near(Resolver.resolve_spin(bc, 2).take, 4.0, "Black Cat: +2 per level on a black hit")
+	near(Resolver.resolve_spin(bc, 3).take, 0.0, "...nothing on red")
+	var pn = felt("european", [["penny", "S9", 1]])
+	check(Resolver.resolve_spin(pn, 9).cash == 2, "Lucky Penny: +$2 when it hits")
+	var sn = felt("european", [["snowball", "S9", 1]])
+	check(Resolver.resolve_spin(sn, 9).felt_after.chips[0].value == 3, "Snowball grows 2 levels on a hit")
+	var se = felt("european", [["sentinel", "S0", 1]])
+	near(Resolver.resolve_spin(se, 0).take, 35.0 + 8.0, "Sentinel: its zero pays plus 8")
+	var cr = felt("european", [["crown", "COL1", 1], ["perm", "S1", 1]])
+	near(Resolver.resolve_spin(cr, 1).take, (2.0 + 35.0) * 1.25, "Column Crown x1.25 on its column")
+	near(Resolver.resolve_spin(cr, 2).take, 0.0, "...and nothing off it")
+	var lp = felt("european", [])
+	lp.square_upgrades[5] = "lamp"
+	check(Resolver.resolve_spin(lp, 5).cash == 3, "Lucky Lamp: +$3")
+	var sk = felt("european", [["bet", "DOZ1", 4], ["bet", "S20", 1]])
+	sk.bet_upgrades["DOZ1"] = "silk"
+	var rs := Resolver.resolve_spin(sk, 20)
+	check(rs.stack == 4 + 1 and rs.lost == 0, "Silk Box: the losing dozen bet goes back to the stack")
+	var sw = felt("european", [["perm", "S8", 1], ["perm", "ST7", 1]])
+	sw.square_upgrades[8] = "sweet_spot"
+	near(Resolver.resolve_spin(sw, 8).take, 35.0 * 1.5 + 11.0 * 1.5, "Sweet Spot: every covering bet x1.5")
+	var lc = felt("european", [["perm", "S4", 1]])
+	lc.house_rules.append("last_call")
+	near(Resolver.resolve_spin(lc, 4).take, 35.0, "Last Call: not on an ordinary spin")
+	lc.final_spin = true
+	near(Resolver.resolve_spin(lc, 4).take, 70.0, "Last Call: the final spin doubles")
+	var ins = felt("european", [["bet", "S1", 5], ["bet", "S2", 2], ["perm", "S3", 1]])
+	ins.house_rules.append("insurance")
+	near(Resolver.resolve_spin(ins, 3).take, 35.0 - 2.0, "Insurance: the biggest losing bet is forgiven")
+	var hs = felt("european", [["perm", "DOZ1", 1]])
+	hs.house_rules.append("high_society")
+	near(Resolver.resolve_spin(hs, 5).take, 3.0, "High Society: dozens pay 3:1")
+	var bt = felt("european", [["perm", "S2", 1], ["perm", "S1", 1]])
+	bt.house_rules.append("black_tie")
+	near(Resolver.resolve_spin(bt, 2).take, 52.5, "Black Tie: black straight x1.5")
+	near(Resolver.resolve_spin(bt, 1).take, 35.0, "...red untouched")
+	var run = new_run()
+	run.inventory = [{"kind": "crown", "value": 1}, {"kind": "sentinel", "value": 1}]
+	check(not run.place_chip(0, "S5") and run.place_chip(0, "COL2"), "Column Crown only on a column")
+	check(not run.place_chip(0, "S5") and run.place_chip(0, "S0"), "Sentinel only on a zero")
+	run.felt.house_rules.append("comped")
+	var cash0: int = run.cash
+	run.table.take = run.table.target
+	run.place_bet("S17", 1)
+	run.spin(17)
+	check(run.last_result.size() > 0 and run.cash >= cash0 + Content.CLEAR_CASH[0] + Content.COMPED_CASH, "Comped Drinks: +$3 a clear")
+	check(Content.CHIPS.size() >= 18 and Content.UPGRADES.size() >= 9 and Content.HOUSE_RULES.size() >= 16, "content counts")
 
 
 func test_shop() -> void:

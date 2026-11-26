@@ -16,6 +16,7 @@ var boss_rule: String = ""             ## current Enforcer twist
 var frozen_id: int = -1                ## chip frozen by the "frozen" Enforcer
 var red_streak: int = 0
 var hit_streak: int = 0                ## scoring spins in a row (Momentum)
+var final_spin := false                ## this spin is the table's last (Last Call)
 var last_pocket: int = -99
 var next_id: int = 1
 
@@ -37,6 +38,7 @@ func copy():
 	f.frozen_id = frozen_id
 	f.red_streak = red_streak
 	f.hit_streak = hit_streak
+	f.final_spin = final_spin
 	f.last_pocket = last_pocket
 	f.next_id = next_id
 	return f

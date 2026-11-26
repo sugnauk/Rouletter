@@ -388,8 +388,10 @@ func can_place_chip(kind: String, key: String) -> bool:
 	if not felt.board.has_bet(key):
 		return false
 	var straight := Board.is_straight(key)
-	if kind == "wildcard_zero":
+	if Content.CHIPS.get(kind, {}).get("zero_only", false):
 		return straight and Board.straight_number(key) <= 0
+	if Content.CHIPS.get(kind, {}).get("column_only", false):
+		return key.begins_with("COL") and can_bet_on(key)
 	if kind == "perm":
 		return can_bet_on(key) or (straight and not felt.boss_is("no_outside"))
 	if Content.CHIPS.get(kind, {}).get("line_only", false):
@@ -432,6 +434,7 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 		for c in felt.chips:
 			if c.is_bet():
 				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
+	felt.final_spin = table.spins_left <= 1
 	var res := Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
 	if res.zero_tax:
@@ -463,6 +466,8 @@ func _clear_table() -> void:
 	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
 	if "comp_card" in vouchers:
 		reward += Content.COMP_CARD_CASH
+	if felt.has_rule("comped"):
+		reward += Content.COMPED_CASH
 	cash += reward
 	overflow += maxi(0, int(t - table.target))
 	total_take += t

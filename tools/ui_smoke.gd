@@ -1,4 +1,6 @@
 ﻿extends Node
+
+const Content := preload("res://core/content.gd")
 ## Scripted UI smoke test with screenshots. Runs inside the real game (autoloads included):
 ##   godot --path . -- smoke=<out_dir> profile=user://smoke_profile.json
 ## Walks title -> intro dialogue -> wheel select -> table -> spin -> shop -> upgrade ->
@@ -140,7 +142,15 @@ func _process(delta: float) -> void:
 		[25.2, func(): shot("19_history")],
 		[25.3, func(): main.pause.open()],
 		[25.5, func(): shot("20_pause")],
-		[25.7, func(): get_tree().quit()],
+		[25.7, func():
+			main.pause.close()
+			main.profile.seen_items = Content.CHIPS.keys() + Content.UPGRADES.keys() + Content.HOUSE_RULES.keys()
+			main.show_screen("feats")
+			main.screens.feats.tab = "almanac"
+			main.screens.feats.refresh()
+			main.screens.feats.list.get_parent().set_deferred("scroll_vertical", 300)],
+		[26.0, func(): shot("21_almanac_all")],
+		[26.2, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

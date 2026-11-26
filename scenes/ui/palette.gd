@@ -26,6 +26,8 @@ const CHIP_COLORS := {
 	"respin": CYAN, "ledger": Color("#f4a261"), "collector": VIOLET,
 	"bridge": Color("#cdb4db"), "kingmaker": Color("#ffd166"),
 	"mirror": Color("#90e0ef"), "porch_light": Color("#f6bd60"),
+	"black_cat": Color("#4a4a5a"), "penny": Color("#d08a4a"), "snowball": Color("#e8f4ff"),
+	"sentinel": Color("#2ec46a"), "crown": Color("#ffd166"),
 }
 
 ## Fonts (SIL Open Font License, see fonts/*-OFL.txt):

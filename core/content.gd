@@ -159,6 +159,21 @@ const CHIPS := {
 	"porch_light": {"name": "Porch Light", "desc": "When a wheel neighbour of its number hits, scores half.",
 		"price": 6, "unlock": 0,
 		"note": "Rewards the wheel's physical order, not the felt's: the 'neighbours' gamblers chase."},
+	"black_cat": {"name": "Black Cat", "desc": "Whenever any black number hits, +2 Take (per level).",
+		"price": 5, "unlock": 0,
+		"note": "Superstition turned upside down: the black numbers bring the luck."},
+	"penny": {"name": "Lucky Penny", "desc": "When it hits, +$2 cash (per level).",
+		"price": 4, "unlock": 0,
+		"note": "A coin that pays the gambler, not the house."},
+	"snowball": {"name": "Snowball", "desc": "When it hits, it grows 2 levels.",
+		"price": 6, "unlock": 0,
+		"note": "'Let it ride', but only when it wins."},
+	"sentinel": {"name": "Sentinel", "desc": "Sits on a zero. Whenever a zero hits, +8 Take (per level).",
+		"price": 5, "unlock": 0, "zero_only": true,
+		"note": "Guards the green pockets, where the house edge lives."},
+	"crown": {"name": "Column Crown", "desc": "Sits on a column bet. When its column hits, the spin's Take x1.25 (+0.25 per extra level).",
+		"price": 7, "unlock": 2, "column_only": true,
+		"note": "Turns one of the long 2:1 boxes into a multiplier."},
 	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5 (+0.5 per extra level).",
 		"price": 7, "unlock": 0,
 		"note": "A crowned number: one pocket that makes the whole spin."},
@@ -168,13 +183,20 @@ const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zer
 ## Rarity: how often something shows up in the Cage (common unless listed) and the frame it gets.
 const RARITY := {
 	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
-	"mirror": "rare", "kingmaker": "legendary",
+	"mirror": "rare", "kingmaker": "legendary", "snowball": "rare", "crown": "legendary", "sentinel": "rare",
+	"sweet_spot": "rare", "silk": "rare", "last_call": "rare", "insurance": "rare", "high_society": "rare",
 	"link": "rare", "double_felt": "rare", "pinned": "rare",
 	"rent_control": "rare", "dealer_signature": "rare", "satin_gloves": "rare",
 	"hot_hand": "legendary", "momentum": "legendary", "sevens": "rare",
 }
 const RARITY_WEIGHT := {"common": 6, "rare": 3, "legendary": 1}
 const PORCH_SHARE := 0.5
+const BLACK_CAT_BONUS := 2.0
+const PENNY_CASH := 2
+const SENTINEL_BONUS := 8.0
+const CROWN_MULT := 1.25
+const LAMP_CASH := 3
+const COMPED_CASH := 3
 const KING_STEP := 0.5                   ## Kingmaker: +0.5x per level past the first
 
 
@@ -188,6 +210,10 @@ const TAGS := {
 	"hot": ["outside"], "porch_light": ["neighbours", "wheel"], "dealer_signature": ["wheel", "multiplier"],
 	"pinned": ["wheel"], "wildcard_zero": ["zero"], "momentum": ["multiplier"], "hot_hand": ["multiplier"],
 	"croupier": ["numbers"], "mint": ["cash"], "respin": ["spins"], "rent_control": ["easy"],
+	"black_cat": ["numbers"], "penny": ["cash", "numbers"], "snowball": ["numbers"], "sentinel": ["zero"],
+	"crown": ["outside", "multiplier"], "lamp": ["cash", "numbers"], "silk": ["outside"], "sweet_spot": ["numbers", "inside"],
+	"last_call": ["multiplier"], "comped": ["cash"], "insurance": ["even", "outside"], "high_society": ["outside"],
+	"black_tie": ["numbers"],
 }
 const TAG_NAMES := {"numbers": "single numbers", "inside": "inside bets", "even": "even-money bets", "outside": "outside bets",
 	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers"}
@@ -223,6 +249,12 @@ const UPGRADES := {
 		"price": 7, "unlock": 0, "note": "Thick felt for a favourite number."},
 	"pinned": {"name": "Pinned Pocket", "desc": "When this number hits, call bets (Voisins/Tiers/Orphelins) score double.", "target": "number",
 		"price": 6, "unlock": 2, "note": "Ties the felt to the wheel: a pocket that anchors its sector."},
+	"lamp": {"name": "Lucky Lamp", "desc": "When this number hits, +$3 cash.", "target": "number",
+		"price": 5, "unlock": 0, "note": "A lamp over one square of the felt that pays the player."},
+	"silk": {"name": "Silk Box", "desc": "Losing bets on this column or dozen go back to your stack instead of costing Take.", "target": "outside",
+		"price": 6, "unlock": 0, "note": "A safety net woven into one outside box."},
+	"sweet_spot": {"name": "Sweet Spot", "desc": "When this number hits, every bet covering it scores x1.5.", "target": "number",
+		"price": 7, "unlock": 2, "note": "One square where every kind of bet pays better."},
 	"cornerstone": {"name": "Cornerstone", "desc": "When this number hits, your split, corner, street and line bets on it score double.", "target": "number",
 		"price": 6, "unlock": 0, "note": "Rewards building inside bets around one square of the grid."},
 }
@@ -249,6 +281,16 @@ const HOUSE_RULES := {
 		"price": 6, "unlock": 0, "note": "The oldest superstition on the floor, printed onto the felt."},
 	"satin_gloves": {"name": "Satin Gloves", "desc": "Even-money bets (red/black, odd/even, high/low) pay 1.5 to 1.",
 		"price": 7, "unlock": 0, "note": "The high-limit room's courtesy: better odds on the 'safe' bets."},
+	"last_call": {"name": "Last Call", "desc": "The last spin at every table scores double.",
+		"price": 7, "unlock": 0, "note": "The bar's closing: everyone bets bigger on the final ball."},
+	"comped": {"name": "Comped Drinks", "desc": "+$3 every time you clear a table.",
+		"price": 5, "unlock": 0, "note": "The house keeps its regulars happy."},
+	"insurance": {"name": "Insurance", "desc": "Your biggest losing bet each spin doesn't count against your Take.",
+		"price": 7, "unlock": 0, "note": "Named for the real side bet that protects a hand."},
+	"high_society": {"name": "High Society", "desc": "Column and dozen bets pay +1x.",
+		"price": 7, "unlock": 2, "note": "The high-limit room's better odds on the long boxes."},
+	"black_tie": {"name": "Black Tie", "desc": "Straight-up hits on black numbers score x1.5.",
+		"price": 6, "unlock": 0, "note": "A dress code for the felt: black is formal, and it pays."},
 	"momentum": {"name": "Momentum", "desc": "Each scoring spin in a row adds +25% to the next one's Take. A blank spin resets it.",
 		"price": 8, "unlock": 2, "note": "The gambler's 'hot table', paid out as a growing multiplier."},
 }

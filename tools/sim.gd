@@ -130,8 +130,10 @@ func place_inventory(run) -> void:
 					break
 		if key == "":
 			var B = run.felt.board
-			if item.kind == "wildcard_zero":
+			if Content.CHIPS[item.kind].get("zero_only", false):
 				key = "S0" if not B.zeros.is_empty() else ""
+			elif Content.CHIPS[item.kind].get("column_only", false):
+				key = "COL%d" % (1 + run.felt.perm_chips().size() % 3)
 			elif Content.CHIPS[item.kind].get("line_only", false):
 				var n: int = favourite_numbers(run)[0]
 				for k in ["CO%d" % n, "CO%d" % (n - 1), "SP%d_%d" % [n, n + 3], "ST%d" % (n - (n - 1) % 3)]:

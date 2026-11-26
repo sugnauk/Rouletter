@@ -167,6 +167,82 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 				R.call(1 + i * 4, 3, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(2 + i * 4, 5, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(1 + i * 4, 7, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+		"black_cat":
+			# A sitting black cat with gold eyes.
+			R.call(3, 4, 6, 7, Color("#141418"))
+			R.call(3, 2, 2, 2, Color("#141418"))
+			R.call(7, 2, 2, 2, Color("#141418"))
+			R.call(4, 5, 1, 1, P.GOLD)
+			R.call(7, 5, 1, 1, P.GOLD)
+			R.call(9, 8, 2, 1, Color("#141418"))
+			R.call(10, 6, 1, 2, Color("#141418"))
+		"penny":
+			ci.draw_circle(c, 4.5 * s, Color("#b87333"), true, -1.0, false)
+			ci.draw_circle(c, 3.0 * s, Color("#d08a4a"), true, -1.0, false)
+			R.call(5, 4, 2, 4, Color("#7a4a20"))
+		"snowball":
+			ci.draw_circle(c + Vector2(0, 1) * s, 4.5 * s, P.CREAM, true, -1.0, false)
+			R.call(4, 4, 2, 1, Color.WHITE)
+			R.call(3, 9, 6, 1, P.CYAN.darkened(0.3))
+		"sentinel":
+			# A shield with a zero on it.
+			R.call(3, 2, 6, 6, P.GREEN)
+			R.call(4, 8, 4, 2, P.GREEN)
+			R.call(5, 10, 2, 1, P.GREEN)
+			R.call(5, 4, 2, 3, P.CREAM)
+			R.call(5, 5, 2, 1, P.GREEN)
+		"crown":
+			R.call(1, 7, 10, 3, P.GOLD)
+			R.call(1, 4, 2, 3, P.GOLD)
+			R.call(5, 3, 2, 4, P.GOLD)
+			R.call(9, 4, 2, 3, P.GOLD)
+			R.call(2, 9, 8, 1, P.CYAN)
+		"lamp":
+			R.call(4, 1, 4, 1, P.WOOD)
+			R.call(3, 2, 6, 4, P.GOLD.lightened(0.2))
+			R.call(5, 6, 2, 4, P.WOOD)
+			R.call(3, 10, 6, 1, P.WOOD)
+			R.call(1, 7, 1, 1, P.GOLD)
+			R.call(10, 7, 1, 1, P.GOLD)
+		"silk":
+			for i in range(4):
+				R.call(1 + i * 3, 2 + (i % 2), 2, 8, Color("#c08ad8").lightened(0.1 * i))
+		"sweet_spot":
+			ci.draw_circle(c, 5 * s, P.RED.lightened(0.2), false, 1.0 * s, false)
+			ci.draw_circle(c, 3 * s, P.GOLD, false, 1.0 * s, false)
+			R.call(5, 5, 2, 2, P.CREAM)
+		"last_call":
+			# A clock nearly at midnight.
+			ci.draw_circle(c, 5 * s, P.CREAM, true, -1.0, false)
+			ci.draw_circle(c, 4 * s, P.PANEL, true, -1.0, false)
+			R.call(5, 2, 2, 4, P.CREAM)
+			R.call(6, 5, 3, 1, P.RED)
+		"comped":
+			# A cocktail glass.
+			R.call(1, 2, 10, 1, P.CREAM)
+			R.call(2, 3, 8, 1, P.CYAN.darkened(0.2))
+			R.call(3, 4, 6, 1, P.CYAN.darkened(0.2))
+			R.call(4, 5, 4, 1, P.CYAN.darkened(0.2))
+			R.call(5, 6, 2, 4, P.CREAM)
+			R.call(3, 10, 6, 1, P.CREAM)
+			R.call(8, 1, 2, 2, P.RED)
+		"insurance":
+			# An umbrella.
+			R.call(2, 3, 8, 2, P.GOOD)
+			R.call(1, 5, 10, 1, P.GOOD)
+			R.call(5, 5, 1, 5, P.CREAM)
+			R.call(4, 9, 1, 1, P.CREAM)
+		"high_society":
+			# A top hat.
+			R.call(3, 2, 6, 6, Color("#141418"))
+			R.call(3, 6, 6, 1, P.RED)
+			R.call(1, 8, 10, 2, Color("#141418"))
+		"black_tie":
+			# A bow tie.
+			R.call(1, 4, 4, 4, Color("#141418"))
+			R.call(7, 4, 4, 4, Color("#141418"))
+			R.call(5, 5, 2, 2, Color("#2a2a33"))
+			R.call(2, 5, 1, 1, P.CREAM.darkened(0.4))
 		"mirror":
 			# A hand mirror: two halves of one number.
 			R.call(2, 2, 8, 8, P.CYAN.darkened(0.2))
@@ -247,6 +323,22 @@ static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
 			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
 		"bridge":
 			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"black_cat":
+			ci.draw_rect(Rect2(o + Vector2(0, 0), Vector2(1, 1)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 1)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 3)), col)
+		"penny":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
+		"snowball":
+			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 2)), col)
+		"sentinel":
+			ci.draw_rect(Rect2(o, Vector2(4, 3)), col)
+			ci.draw_rect(Rect2(o + Vector2(1, 3), Vector2(2, 1)), col)
+		"crown":
+			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 0), Vector2(1, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 1)), col)
 		"mirror":
 			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
 			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
