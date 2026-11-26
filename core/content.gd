@@ -138,11 +138,33 @@ const CHIPS := {
 	"bridge": {"name": "Bridge", "desc": "Sits on a split, corner, street or line. When it hits, +1 Take per number it covers.",
 		"price": 5, "unlock": 0, "line_only": true,
 		"note": "Lives on the felt's lines, the inside bets only a roulette layout has."},
-	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5.",
+	"mirror": {"name": "Mirror", "desc": "Also scores when its mirror number hits (the one the same distance from the far end: 1 and 36, 2 and 35...).",
+		"price": 6, "unlock": 0,
+		"note": "Uses the numbering of the layout itself: every number has a twin at the other end."},
+	"porch_light": {"name": "Porch Light", "desc": "When a wheel neighbour of its number hits, scores half.",
+		"price": 6, "unlock": 0,
+		"note": "Rewards the wheel's physical order, not the felt's: the 'neighbours' gamblers chase."},
+	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5 (+0.5 per extra level).",
 		"price": 7, "unlock": 0,
 		"note": "A crowned number: one pocket that makes the whole spin."},
 }
-const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zero", "mint", "respin", "ledger", "collector", "kingmaker"]
+const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zero", "mint", "respin", "ledger", "collector", "kingmaker", "mirror", "porch_light"]
+
+## Rarity: how often something shows up in the Cage (common unless listed) and the frame it gets.
+const RARITY := {
+	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
+	"mirror": "rare", "kingmaker": "legendary",
+	"link": "rare", "double_felt": "rare", "pinned": "rare",
+	"rent_control": "rare", "dealer_signature": "rare", "satin_gloves": "rare",
+	"hot_hand": "legendary", "momentum": "legendary", "sevens": "rare",
+}
+const RARITY_WEIGHT := {"common": 6, "rare": 3, "legendary": 1}
+const PORCH_SHARE := 0.5
+const KING_STEP := 0.5                   ## Kingmaker: +0.5x per level past the first
+
+
+static func rarity_of(id: String) -> String:
+	return RARITY.get(id, "common")
 
 # --- Felt upgrades -------------------------------------------------------------------
 ## target: "number" (any pocket) or "outside" (column/dozen)
@@ -179,6 +201,10 @@ const HOUSE_RULES := {
 		"price": 7, "unlock": 3, "note": "The myth that a croupier's throw lands in the same sector."},
 	"split_decision": {"name": "Split Decision", "desc": "Split, street, corner and line bets pay +1x.",
 		"price": 6, "unlock": 0, "note": "Rewrites the printed odds of the inside bets."},
+	"sevens": {"name": "Lucky Sevens", "desc": "Straight-up hits on 7, 17 and 27 score double.",
+		"price": 6, "unlock": 0, "note": "The oldest superstition on the floor, printed onto the felt."},
+	"satin_gloves": {"name": "Satin Gloves", "desc": "Even-money bets (red/black, odd/even, high/low) pay 1.5 to 1.",
+		"price": 7, "unlock": 0, "note": "The high-limit room's courtesy: better odds on the 'safe' bets."},
 	"momentum": {"name": "Momentum", "desc": "Each scoring spin in a row adds +25% to the next one's Take. A blank spin resets it.",
 		"price": 8, "unlock": 2, "note": "The gambler's 'hot table', paid out as a growing multiplier."},
 }

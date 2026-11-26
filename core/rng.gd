@@ -46,6 +46,21 @@ func pick(arr: Array):
 	return arr[_rng.randi_range(0, arr.size() - 1)]
 
 
+## Pick one entry with probability proportional to its weight.
+func pick_weighted(arr: Array, weights: Array):
+	if arr.is_empty():
+		return null
+	var total := 0.0
+	for w in weights:
+		total += w
+	var r := _rng.randf() * total
+	for i in range(arr.size()):
+		r -= weights[i]
+		if r < 0.0:
+			return arr[i]
+	return arr[-1]
+
+
 func shuffle(arr: Array) -> Array:
 	var out := arr.duplicate()
 	for i in range(out.size() - 1, 0, -1):

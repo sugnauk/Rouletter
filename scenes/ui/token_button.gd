@@ -13,6 +13,8 @@ var price := ""
 var hover_text := ""
 var selected := false
 var dim := false
+var rarity := "common"       ## "rare" (cyan frame) / "legendary" (shimmering gold frame)
+var level := 0               ## > 1: a "LV n" tag on the token
 var hover_target: Callable
 
 
@@ -55,5 +57,23 @@ func _draw() -> void:
 	if price != "":
 		draw_rect(Rect2(1, size.y - 10, size.x - 2, 9), P.BLACK)
 		Art.text(self, P.font(), Vector2(size.x / 2.0, size.y - 3), price, P.FONT_SMALL, P.GOLD if not dim else P.DIM, true)
+	if level > 1:
+		Art.text(self, P.font(), Vector2(3, 8), "LV%d" % level, P.FONT_SMALL, P.GOOD)
+	if rarity == "rare":
+		draw_rect(r.grow(-1), P.CYAN, false, 1.0)
+		draw_rect(Rect2(1, 1, 3, 1), P.CYAN.lightened(0.5))
+	elif rarity == "legendary":
+		var t := Time.get_ticks_msec() / 1000.0
+		draw_rect(r.grow(-1), P.GOLD.lerp(P.CREAM, 0.5 + 0.5 * sin(t * 4.0)), false, 1.0)
+		# A sparkle that walks around the frame.
+		var per := 2.0 * (size.x + size.y)
+		var d := fmod(t * 60.0, per)
+		var p := Vector2(d, 0) if d < size.x else (Vector2(size.x - 1, d - size.x) if d < size.x + size.y else (Vector2(size.x - (d - size.x - size.y), size.y - 1) if d < 2 * size.x + size.y else Vector2(0, per - d)))
+		draw_rect(Rect2(p - Vector2(1, 1), Vector2(3, 3)), Color.WHITE)
 	if disabled or dim:
 		draw_rect(r.grow(-1), Color(0, 0, 0, 0.45))
+
+
+func _process(_delta: float) -> void:
+	if rarity == "legendary" and is_visible_in_tree():
+		queue_redraw()

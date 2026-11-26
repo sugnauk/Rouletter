@@ -284,6 +284,8 @@ func _build_windows(run) -> void:
 			var item: Dictionary = run.shop.stock[i]
 			var tok = Token.new(item.get("icon", item.id), TOK)
 			tok.price = "SOLD" if item.sold else run.price_text(item)
+			if item.type in ["chip", "upgrade", "rule"]:
+				tok.rarity = Content.rarity_of(item.id)
 			if item.get("flaw", "") != "":
 				tok.badge = Content.FLAWS[item.flaw].short
 			elif item.type == "loan":
@@ -299,6 +301,11 @@ func _build_windows(run) -> void:
 					body += "\n" + Content.VENDORS[v].blurb
 				if item.currency == "stack":
 					body += "\n%s takes %s off your next stack (you can spare %d)." % [vname, run.price_text(item).to_lower(), maxi(0, run.stack_spare())]
+				var rar: String = Content.rarity_of(item.id)
+				if item.type in ["chip", "upgrade", "rule"] and rar != "common":
+					tag = rar.to_upper() + " " + tag
+				if item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", "")):
+					body += "\nYou own one: stack this on it to level it up."
 				_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
 			tok.pressed.connect(_buy.bind(i))
 			row.add_child(tok)

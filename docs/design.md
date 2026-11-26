@@ -42,9 +42,11 @@ Payout formula: `numbers / numbers covered − 1`, so every plain bet loses exac
 
 ## Content
 Every entry has an originality `note` in `core/content.gd`.
-- **Chips:** Permanent, Magnet, Compounding, Croupier, Wildcard Zero, Mint, Respin, Bridge (line bets only), Kingmaker, Ledger*, Collector*.
+- **Chips:** Permanent, Magnet, Compounding, Croupier, Wildcard Zero, Mint, Respin, Bridge (line bets only), Kingmaker, Mirror, Porch Light, Ledger*, Collector*.
+- **Rarity:** common / rare / legendary (`RARITY` in `core/content.gd`) sets how often things appear in the Cage (6:3:1) and their token frame (cyan, shimmering gold).
+- **Levels:** place a chip on its twin (same kind, same flaw) and it levels up (+1 value). Value scales payouts, Mint cash, Croupier rake, Bridge bonus and Kingmaker (x1.5, +0.5 per level).
 - **Felt upgrades:** Gilded, Hot, Neighbour Link, Double Felt, Cornerstone, Pinned Pocket*.
-- **House Rules:** La Partage, Red Streak, Rent Control, Thirteen, Split Decision, En Prison*, Hot Hand*, Dealer's Signature*, Momentum*.
+- **House Rules:** La Partage, Red Streak, Rent Control, Thirteen, Split Decision, Lucky Sevens, Satin Gloves, En Prison*, Hot Hand*, Dealer's Signature*, Momentum*.
 - **Vendors:** Cashier, Pit Boss, Loan Shark, Fence*.
 - **Feature:** Call Bets* (Voisins, Tiers and Orphelins on the felt).
 - **Enforcers:**

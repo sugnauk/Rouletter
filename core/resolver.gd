@@ -51,6 +51,11 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	for c in w.chips.duplicate():
 		var b: Dictionary = B.bet(c.bet)
 		var covers: bool = pocket in b.numbers
+		var mirrored := false
+		if not covers and c.kind == "mirror" and Board.is_straight(c.bet) and pocket > 0 \
+				and pocket == B.numbers + 1 - Board.straight_number(c.bet):
+			covers = true
+			mirrored = true
 		var outside: bool = B.is_outside(c.bet)
 		var dead: bool = (w.boss_is("no_outside") and outside) or (w.boss_is("no_inside") and B.is_line_bet(c.bet)) \
 				or c.id == w.frozen_id
@@ -89,8 +94,21 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			continue
 		var pamt := _score(w, c, b, pocket, res)
 		take += pamt
-		_event(res, "win", c.bet, pamt, "straight" if b.type == "straight" else b.type)
+		_event(res, "win", c.bet, pamt, "mirror" if mirrored else ("straight" if b.type == "straight" else b.type))
+		if mirrored:
+			res.log.chips.append("Mirror on %s catches %s" % [c.bet, B.label(pocket)])
 		hits.append(c)
+	# Porch Light: half a straight when the ball lands one pocket away on the wheel.
+	for c in w.perm_chips():
+		if c.kind == "porch_light" and Board.is_straight(c.bet):
+			var pn := Board.straight_number(c.bet)
+			if pn != pocket and B.wheel_distance(pn, pocket) == 1 and c.id != w.frozen_id:
+				var pl: float = c.value * B.bet(c.bet).payout * Content.PORCH_SHARE
+				if c.flaw == "cracked":
+					pl *= 0.5
+				take += pl
+				res.log.chips.append("Porch Light on %s: neighbour %s, +%s" % [B.label(pn), B.label(pocket), _fmt(pl)])
+				_event(res, "bonus", c.bet, pl, "porch light")
 	if lost > 0:
 		res.log.base.append("%d betting chips lost" % lost)
 
@@ -104,21 +122,21 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				_event(res, "bonus", Board.straight_key(m), amt, "link")
 
 	# Chip effects.
-	var kings := 0
+	var kings := []
 	for c in hits:
 		match c.kind:
 			"bridge":
-				var nb: float = Content.BRIDGE_PER_NUMBER * B.bet(c.bet).numbers.size()
+				var nb: float = Content.BRIDGE_PER_NUMBER * B.bet(c.bet).numbers.size() * c.value
 				take += nb
 				res.log.chips.append("Bridge: +%d for %d numbers" % [int(nb), B.bet(c.bet).numbers.size()])
 				_event(res, "bonus", c.bet, nb, "bridge")
 			"kingmaker":
-				kings += 1
+				kings.append(c.value)
 			"croupier":
 				if lost > 0:
-					take += lost
-					res.log.chips.append("Croupier rakes %d losing chips: +%d" % [lost, lost])
-					_event(res, "bonus", c.bet, lost, "rake")
+					take += lost * c.value
+					res.log.chips.append("Croupier rakes %d losing chips: +%d" % [lost, lost * c.value])
+					_event(res, "bonus", c.bet, lost * c.value, "rake")
 			"ledger":
 				for m in B.neighbours(pocket):
 					for pc in w.chips_on(Board.straight_key(m)):
@@ -148,9 +166,9 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				_remove(res, w, c, "confiscated")
 	for c in w.perm_chips():
 		if c.kind == "mint":
-			res.cash += 1
-			res.log.chips.append("Mint: +$1")
-			_event(res, "cash", c.bet, 1, "mint")
+			res.cash += c.value
+			res.log.chips.append("Mint: +$%d" % c.value)
+			_event(res, "cash", c.bet, c.value, "mint")
 		elif c.kind == "compounding":
 			_value(res, c, 1)
 			res.log.chips.append("Compounding on %s grows to %d" % [c.bet, c.value])
@@ -175,11 +193,12 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		take *= 1.0 + Content.SIGNATURE_BONUS
 		res.log.rules.append("Dealer's Signature: +50%")
 		_mult(res, 1.0 + Content.SIGNATURE_BONUS, "Signature")
-	for k in range(kings):
+	for kv in kings:
 		if take > 0.0:
-			take *= Content.KINGMAKER_MULT
-			res.log.chips.append("Kingmaker x%.1f" % Content.KINGMAKER_MULT)
-			_mult(res, Content.KINGMAKER_MULT, "Kingmaker")
+			var km: float = Content.KINGMAKER_MULT + Content.KING_STEP * (kv - 1)
+			take *= km
+			res.log.chips.append("Kingmaker x%.1f" % km)
+			_mult(res, km, "Kingmaker")
 	res.hit_streak = felt.hit_streak
 	if w.has_rule("momentum"):
 		if take > lost:
@@ -258,6 +277,9 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	if w.bet_upgrades.get(c.bet, "") == "hot":
 		payout += 1.0
 		res.log.upgrades.append("Hot %s: +1x" % c.bet)
+	if w.has_rule("satin_gloves") and b.type in ["red", "black", "odd", "even", "low", "high"]:
+		payout += 0.5
+		res.log.rules.append("Satin Gloves: %s pays 1.5:1" % c.bet)
 	if w.has_rule("split_decision") and b.type in Board.LINE_TYPES:
 		payout += 1.0
 		res.log.rules.append("Split Decision: %s +1x" % c.bet)
@@ -265,6 +287,9 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	if b.type in Board.LINE_TYPES and up == "cornerstone":
 		amount *= 2.0
 		res.log.upgrades.append("Cornerstone %s: x2" % B.label(pocket))
+	if w.has_rule("sevens") and straight and pocket > 0 and "7" in B.label(pocket):
+		amount *= 2.0
+		res.log.rules.append("Lucky Sevens: %s x2" % B.label(pocket))
 	if c.flaw == "cracked":
 		amount *= 0.5
 		res.log.chips.append("Cracked chip on %s scores half" % c.bet)

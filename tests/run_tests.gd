@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -590,6 +590,42 @@ func test_feats() -> void:
 	check("paid_in_full" in e and "hard_way" in e and not ("euro_win" in e), "end feats")
 	check(Feats.check("end", {"won": false, "run": run}, []).is_empty(), "losing earns no end feats")
 	check(run.best_spin == res.take, "the run remembers its best spin")
+
+
+func test_rarity_and_levels() -> void:
+	# Rarity weighting: commons show up far more often than legendaries.
+	var run = new_run()
+	var counts := {"perm": 0, "kingmaker": 0}
+	for i in range(3000):
+		var k: String = run._pick_rare(["perm", "kingmaker"])
+		counts[k] += 1
+	check(counts.perm > counts.kingmaker * 3 and counts.kingmaker > 100, "commons outnumber legendaries (%d vs %d)" % [counts.perm, counts.kingmaker])
+	check(Content.rarity_of("kingmaker") == "legendary" and Content.rarity_of("perm") == "common", "rarity lookup")
+	# Levelling: a twin stacked on its chip raises its value.
+	run.inventory = [{"kind": "magnet", "value": 1}, {"kind": "magnet", "value": 1}]
+	check(run.place_chip(0, "S9") and run.place_chip(0, "S9"), "place twins")
+	var m: Array = run.felt.chips_on("S9").filter(func(c): return c.kind == "magnet")
+	check(m.size() == 1 and m[0].value == 2, "twins merge into a level 2 chip")
+	# Levels matter for the specials.
+	var k2 = felt("european", [["kingmaker", "S7", 2], ["perm", "RED", 2]])
+	near(Resolver.resolve_spin(k2, 7).take, (70.0 + 2.0) * 2.0, "level 2 Kingmaker: x2")
+	var mi = felt("european", [["mint", "S3", 3]])
+	check(Resolver.resolve_spin(mi, 20).cash == 3, "level 3 Mint: +$3")
+	# New content.
+	var mr = felt("european", [["mirror", "S1", 1]])
+	near(Resolver.resolve_spin(mr, 36).take, 35.0, "Mirror on 1 catches 36")
+	near(Resolver.resolve_spin(mr, 1).take, 35.0, "Mirror still pays its own number")
+	near(Resolver.resolve_spin(mr, 0).take, 0.0, "zero has no mirror")
+	var pl = felt("european", [["porch_light", "S32", 2]])
+	near(Resolver.resolve_spin(pl, 15).take, 35.0, "Porch Light: wheel neighbour pays half (2 x 35 / 2)")
+	near(Resolver.resolve_spin(pl, 19).take, 0.0, "two pockets away pays nothing")
+	var sv = felt("european", [["perm", "S17", 1], ["perm", "S16", 1]])
+	sv.house_rules.append("sevens")
+	near(Resolver.resolve_spin(sv, 17).take, 70.0, "Lucky Sevens doubles 17")
+	near(Resolver.resolve_spin(sv, 16).take, 35.0, "...not 16")
+	var sg = felt("european", [["perm", "RED", 4]])
+	sg.house_rules.append("satin_gloves")
+	near(Resolver.resolve_spin(sg, 1).take, 6.0, "Satin Gloves: red pays 1.5:1")
 
 
 func test_shop() -> void:

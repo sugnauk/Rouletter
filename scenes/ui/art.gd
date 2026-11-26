@@ -167,6 +167,33 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 				R.call(1 + i * 4, 3, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(2 + i * 4, 5, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(1 + i * 4, 7, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+		"mirror":
+			# A hand mirror: two halves of one number.
+			R.call(2, 2, 8, 8, P.CYAN.darkened(0.2))
+			R.call(3, 3, 3, 6, P.CREAM)
+			R.call(6, 3, 3, 6, P.CYAN.lightened(0.4))
+			R.call(5, 10, 2, 2, P.WOOD)
+		"porch_light":
+			# A lamp casting light to both sides.
+			R.call(5, 1, 2, 2, P.WOOD)
+			R.call(4, 3, 4, 4, P.GOLD)
+			R.call(5, 7, 2, 4, P.WOOD)
+			R.call(1, 4, 2, 1, P.GOLD.darkened(0.2))
+			R.call(9, 4, 2, 1, P.GOLD.darkened(0.2))
+			R.call(1, 6, 2, 1, P.GOLD.darkened(0.4))
+			R.call(9, 6, 2, 1, P.GOLD.darkened(0.4))
+		"sevens":
+			# A gold 7.
+			R.call(2, 2, 8, 2, P.GOLD)
+			R.call(7, 4, 2, 2, P.GOLD)
+			R.call(6, 6, 2, 2, P.GOLD)
+			R.call(5, 8, 2, 3, P.GOLD)
+		"satin_gloves":
+			# A white glove.
+			R.call(3, 5, 6, 6, P.CREAM)
+			for i in range(4):
+				R.call(3 + i * 2 - (1 if i == 0 else 0), 1 + (i % 2), 1 + (1 if i == 0 else 0), 4, P.CREAM)
+			R.call(3, 9, 6, 1, P.DIM)
 		"loan":
 			# A banknote with an IOU stripe.
 			R.call(1, 3, 10, 6, P.GOOD.darkened(0.3))
@@ -220,6 +247,12 @@ static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
 			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
 		"bridge":
 			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"mirror":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
+		"porch_light":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 3)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 3), Vector2(4, 1)), col)
 		"kingmaker":
 			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 2)), col)
 			ci.draw_rect(Rect2(o, Vector2(1, 2)), col)

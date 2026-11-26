@@ -388,7 +388,8 @@ func place_chip(index: int, key: String) -> bool:
 		return false
 	inventory.remove_at(index)
 	for c in felt.chips_on(key):
-		if c.kind == "perm" and item.kind == "perm" and c.flaw == item.get("flaw", ""):
+		# Stacking a chip on its twin levels it up instead of adding a second chip.
+		if not c.is_bet() and c.kind == item.kind and c.flaw == item.get("flaw", ""):
 			c.value += item.value
 			changed.emit()
 			return true
@@ -508,6 +509,14 @@ func _restock() -> void:
 	shop.stock = stock
 
 
+## Pick by rarity: common items show up more often than rare and legendary ones.
+func _pick_rare(ids: Array):
+	var w := []
+	for id in ids:
+		w.append(Content.RARITY_WEIGHT[Content.rarity_of(id)])
+	return rng.pick_weighted(ids, w)
+
+
 func _vendor_stock(v: String) -> Array:
 	var out := []
 	var cur: String = Content.VENDORS[v].currency
@@ -518,14 +527,14 @@ func _vendor_stock(v: String) -> Array:
 				if k in unlocked:
 					chips.append(k)
 			for i in range(2):
-				var k: String = rng.pick(chips)
+				var k: String = _pick_rare(chips)
 				out.append({"type": "chip", "id": k, "price": Content.CHIPS[k].price})
 			var ups := []
 			for k in Content.UPGRADES:
 				if k in unlocked and not _targets_for(k).is_empty():
 					ups.append(k)
 			if not ups.is_empty():
-				var u: String = rng.pick(ups)
+				var u: String = _pick_rare(ups)
 				out.append({"type": "upgrade", "id": u, "price": Content.UPGRADES[u].price})
 		"dealer":
 			var fav: String = rng.pick(Content.FAVOURS.keys())
@@ -542,8 +551,11 @@ func _vendor_stock(v: String) -> Array:
 			for k in Content.HOUSE_RULES:
 				if k in unlocked and not felt.has_rule(k):
 					rules.append(k)
-			rules = rng.shuffle(rules)
-			for r in rules.slice(0, 2):
+			for n in range(2):
+				if rules.is_empty():
+					break
+				var r: String = _pick_rare(rules)
+				rules.erase(r)
 				out.append({"type": "rule", "id": r, "price": Content.HOUSE_RULES[r].price})
 		"loan_shark":
 			for l in Content.LOANS:
@@ -554,7 +566,7 @@ func _vendor_stock(v: String) -> Array:
 				if k in unlocked:
 					chips.append(k)
 			for i in range(2):
-				var k: String = rng.pick(chips)
+				var k: String = _pick_rare(chips)
 				out.append({"type": "chip", "id": k, "flaw": rng.pick(Content.FLAWS.keys()),
 					"price": maxi(1, int(ceil(Content.CHIPS[k].price * Content.FENCE_SHARE)))})
 	for item in out:
