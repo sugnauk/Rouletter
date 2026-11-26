@@ -23,6 +23,23 @@ const STACK_UPGRADE_PRICE := 5
 const RELOCATE_PRICE := 2
 const SELL_SHARE := 0.5
 
+# --- Vendors (windows in the Cage) ---------------------------------------------------------
+## Each vendor sells different things and takes a different currency:
+##   "cash"  - dollars, as usual
+##   "stack" - betting chips docked from your stack at the next table
+const VENDORS := {
+	"cashier": {"name": "Cashier", "currency": "cash", "unlock": 0,
+		"blurb": "Chips and felt work. Cash only, fair prices.",
+		"note": "The casino cage: the one window that deals in money."},
+	"pit_boss": {"name": "Pit Boss", "currency": "stack", "unlock": 0,
+		"blurb": "Sells House Rules for chips off your next stack. Every rule you own raises his price.",
+		"note": "The pit boss sets table rules and is paid in chips, not cash."},
+}
+const ALWAYS_VENDOR := "cashier"
+const VENDORS_PER_VISIT := 2              ## windows open at each Cage visit, the Cashier included
+const PIT_BOSS_STEP := 2                  ## +chips per House Rule already owned
+const MIN_STACK := 10                     ## the Pit Boss never leaves you fewer betting chips than this
+
 # --- Effect numbers -------------------------------------------------------------------
 const LINK_SHARE := 0.25
 const RED_STREAK_STEP := 0.10

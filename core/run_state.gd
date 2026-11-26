@@ -28,6 +28,7 @@ var cash: int = 0
 var inventory: Array = []        ## unplaced permanent chips: {kind, value}
 var stack_size: int = Content.START_STACK
 var stack_buys: int = 0
+var stack_owed: int = 0        ## betting chips owed to the Pit Boss, docked at the next table
 var last_bets: Dictionary = {}   ## bet layout at the last real spin: key -> chips (for rebet)
 var night: int = 0
 var table_idx: int = 0
@@ -52,6 +53,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 		inventory.append(k.duplicate())
 	stack_size = Content.START_STACK
 	stack_buys = 0
+	stack_owed = 0
 	night = 0
 	table_idx = 0
 	total_take = 0.0
@@ -97,7 +99,8 @@ func _start_table() -> void:
 	felt.red_streak = 0
 	felt.last_pocket = -99
 	table = {"target": target, "take": 0.0, "spins_left": Content.SPINS, "spins_used": 0,
-		"stack": stack_size, "boss": boss, "enforcer": enforcer}
+		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed}
+	stack_owed = 0
 	last_result = {}
 	last_bets = {}
 	phase = Phase.TABLE
@@ -105,6 +108,8 @@ func _start_table() -> void:
 		message = "%s: %s" % [Content.ENFORCERS[enforcer].name, Content.ENFORCERS[enforcer].desc]
 	else:
 		message = "Night %d, %s table. Payment due: %d." % [night + 1, table_name(), target]
+	if table.docked > 0:
+		message += " The Pit Boss takes %d chips off your stack." % table.docked
 	changed.emit()
 
 
@@ -298,28 +303,77 @@ func _open_shop() -> void:
 
 
 func _restock() -> void:
+	var vendors := [Content.ALWAYS_VENDOR]
+	var pool := []
+	for v in Content.VENDORS:
+		if v != Content.ALWAYS_VENDOR and (Content.VENDORS[v].unlock == 0 or v in unlocked):
+			pool.append(v)
+	pool = rng.shuffle(pool)
+	while vendors.size() < Content.VENDORS_PER_VISIT and not pool.is_empty():
+		vendors.append(pool.pop_front())
 	var stock := []
-	var chips := ["perm"]
-	for k in Content.CHIPS:
-		if k in unlocked:
-			chips.append(k)
-	for i in range(2):
-		var k: String = rng.pick(chips)
-		stock.append({"type": "chip", "id": k, "price": Content.CHIPS[k].price, "sold": false})
-	var ups := []
-	for k in Content.UPGRADES:
-		if k in unlocked:
-			ups.append(k)
-	var u: String = rng.pick(ups)
-	stock.append({"type": "upgrade", "id": u, "price": Content.UPGRADES[u].price, "sold": false})
-	var rules := []
-	for k in Content.HOUSE_RULES:
-		if k in unlocked and not felt.has_rule(k):
-			rules.append(k)
-	if not rules.is_empty():
-		var r: String = rng.pick(rules)
-		stock.append({"type": "rule", "id": r, "price": Content.HOUSE_RULES[r].price, "sold": false})
+	for v in vendors:
+		stock.append_array(_vendor_stock(v))
+	shop.vendors = vendors
 	shop.stock = stock
+
+
+func _vendor_stock(v: String) -> Array:
+	var out := []
+	var cur: String = Content.VENDORS[v].currency
+	match v:
+		"cashier":
+			var chips := ["perm"]
+			for k in Content.CHIPS:
+				if k in unlocked:
+					chips.append(k)
+			for i in range(2):
+				var k: String = rng.pick(chips)
+				out.append({"type": "chip", "id": k, "price": Content.CHIPS[k].price})
+			var ups := []
+			for k in Content.UPGRADES:
+				if k in unlocked:
+					ups.append(k)
+			var u: String = rng.pick(ups)
+			out.append({"type": "upgrade", "id": u, "price": Content.UPGRADES[u].price})
+		"pit_boss":
+			var rules := []
+			for k in Content.HOUSE_RULES:
+				if k in unlocked and not felt.has_rule(k):
+					rules.append(k)
+			rules = rng.shuffle(rules)
+			for r in rules.slice(0, 2):
+				out.append({"type": "rule", "id": r, "price": Content.HOUSE_RULES[r].price})
+	for item in out:
+		item.vendor = v
+		item.currency = cur
+		item.sold = false
+	return out
+
+
+## What an item costs right now, in its vendor's currency.
+func price_of(item: Dictionary) -> int:
+	if item.get("vendor", "") == "pit_boss":
+		return item.price + Content.PIT_BOSS_STEP * felt.house_rules.size()
+	return item.price
+
+
+## Chips you could still hand the Pit Boss without dropping below the minimum stack.
+func stack_spare() -> int:
+	return stack_size - stack_owed - Content.MIN_STACK
+
+
+func can_afford(item: Dictionary) -> bool:
+	if item.get("currency", "cash") == "stack":
+		return stack_spare() >= price_of(item)
+	return cash >= price_of(item)
+
+
+## "$6" or "8 chips", for price tags.
+func price_text(item: Dictionary) -> String:
+	if item.get("currency", "cash") == "stack":
+		return "%d CHIPS" % price_of(item)
+	return "$%d" % price_of(item)
 
 
 func item_name(item: Dictionary) -> String:
@@ -344,11 +398,14 @@ func buy(i: int) -> bool:
 	if phase != Phase.SHOP or shop.pending_upgrade != "" or i < 0 or i >= shop.stock.size():
 		return false
 	var item: Dictionary = shop.stock[i]
-	if item.sold or cash < item.price:
+	if item.sold or not can_afford(item):
 		return false
 	if item.type == "rule" and felt.house_rules.size() >= Content.RELIC_SLOTS:
 		return false
-	cash -= item.price
+	if item.get("currency", "cash") == "stack":
+		stack_owed += price_of(item)
+	else:
+		cash -= price_of(item)
 	item.sold = true
 	match item.type:
 		"chip":

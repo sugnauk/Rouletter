@@ -23,7 +23,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -328,12 +328,36 @@ func test_rebet_and_clear() -> void:
 	check(run.rebet() == 0, "an empty spin leaves nothing to rebet")
 
 
+func test_pit_boss() -> void:
+	var run = new_run()
+	run.place_bet("S17", 1)
+	run.spin(17)
+	check(run.phase == RunState.Phase.SHOP, "in the Cage")
+	var rules := []
+	for i in range(run.shop.stock.size()):
+		if run.shop.stock[i].vendor == "pit_boss":
+			rules.append(i)
+	check(rules.size() == 2, "Pit Boss shows two rules")
+	var a: Dictionary = run.shop.stock[rules[0]]
+	var b: Dictionary = run.shop.stock[rules[1]]
+	var cash_before: int = run.cash
+	var pa: int = run.price_of(a)
+	check(a.currency == "stack" and run.price_text(a) == "%d CHIPS" % pa, "priced in chips")
+	check(run.buy(rules[0]) and run.cash == cash_before and run.stack_owed == pa, "paid with stack chips, not cash")
+	check(run.price_of(b) == b.price + Content.PIT_BOSS_STEP, "each rule owned raises his price")
+	run.stack_owed = run.stack_size - Content.MIN_STACK
+	check(not run.can_afford(b) and not run.buy(rules[1]), "never below the minimum stack")
+	run.stack_owed = pa
+	run.leave_shop()
+	check(run.table.stack == run.stack_size - pa and run.table.docked == pa and run.stack_owed == 0, "docked at the next table, once")
+
+
 func test_shop() -> void:
 	var run = new_run()
 	run.place_bet("S17", 1)
 	run.spin(17)
 	run.cash = 100
-	check(run.shop.stock.size() == 4, "2 chips + upgrade + rule")
+	check(run.shop.vendors == ["cashier", "pit_boss"] and run.shop.stock.size() == 5, "Cashier (2 chips + upgrade) and Pit Boss (2 rules)")
 	var up_i := -1
 	for i in range(run.shop.stock.size()):
 		if run.shop.stock[i].type == "upgrade":
