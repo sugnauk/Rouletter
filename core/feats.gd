@@ -9,6 +9,7 @@ extends RefCounted
 
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
+const Wheels := preload("res://core/wheels.gd")
 
 const FEATS := {
 	"straight_up": {"name": "Straight Up", "desc": "Hit a straight-up number.", "reward": 1, "on": "spin"},
@@ -38,6 +39,9 @@ const FEATS := {
 	"graded": {"name": "Paper Climber", "desc": "Win a run on a Grade 3 marker or higher.", "reward": 2, "on": "end"},
 	"vance_paper": {"name": "Vance's Own", "desc": "Win a run on the Grade 9 marker.", "reward": 5, "on": "end"},
 	"hard_way": {"name": "The Hard Way", "desc": "Win a run on the American, Triple Zero or Cheater's wheel.", "reward": 2, "on": "end"},
+	"mini_win": {"name": "Small Wonder", "desc": "Win a run on the Mini wheel.", "reward": 2, "on": "end", "wheel": "mini"},
+	"sunrise_win": {"name": "Dawn Patrol", "desc": "Win a run on the Sunrise wheel.", "reward": 2, "on": "end", "wheel": "sunrise"},
+	"grand_tour": {"name": "Grand Tour", "desc": "Win a run on every wheel.", "reward": 5, "on": "end"},
 	"ch_no_outside": {"name": "Nothing on the Outside", "desc": "Win the No Outside Bets challenge.", "reward": 3, "on": "end", "challenge": "no_outside"},
 	"ch_fence_run": {"name": "Fell Off a Truck", "desc": "Win The Fence's Run challenge.", "reward": 3, "on": "end", "challenge": "fence_run"},
 	"ch_gauntlet": {"name": "Ran the Gauntlet", "desc": "Win the Enforcer Gauntlet challenge.", "reward": 4, "on": "end", "challenge": "gauntlet"},
@@ -107,6 +111,9 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 			return ctx.won and run.wheel_id in ["american", "triple_zero", "no_zero"]
 	if f.has("challenge"):
 		return ctx.won and run.challenge == f.challenge
+	if id == "grand_tour":
+		var won: Array = ctx.get("wheels_won", [])
+		return ctx.won and Wheels.ORDER.all(func(w): return w in won or w == run.wheel_id)
 	if id == "weekly_win":
 		return ctx.won and run.weekly != ""
 	if f.has("enforcer"):

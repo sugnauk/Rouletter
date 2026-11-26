@@ -1150,6 +1150,9 @@ func test_long_term() -> void:
 	g.leave_shop()
 	check(g.table.boss and g.table.enforcer != g.beaten[0], "Gauntlet: the second table is a different Enforcer")
 	check(Feats.check("end", {"won": true, "run": g}, []).has("ch_gauntlet"), "challenge Feat")
+	var tour := Feats.check("end", {"won": true, "run": g, "wheels_won": ["european", "american", "mini", "triple_zero", "sunrise", "no_zero"]}, [])
+	check(tour.has("grand_tour"), "Grand Tour once every wheel is won")
+	check(not Feats.check("end", {"won": true, "run": g, "wheels_won": []}, []).has("grand_tour"), "...not before")
 	# Starter kits.
 	var k = RunState.new()
 	k.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"starter": "banker_kit"})

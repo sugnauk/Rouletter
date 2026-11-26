@@ -3,6 +3,14 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.23
+- Art pass: the 31 items that showed two-letter tiles now have real pixel icons (a die, a sailboat, an owl, a piggy bank, a clover, a pocket watch and more). So do the four bridge rules.
+- New Feats:
+  - Small Wonder: win on the Mini wheel.
+  - Dawn Patrol: win on the Sunrise wheel.
+  - Grand Tour: win a run on every wheel.
+- Design doc updated with everything from 0.0.15 on.
+
 ## 0.0.22
 - Run modes on the wheel screen (the MODE button):
   - Weekly challenge: the same wheel, seed and Grade 2 marker for everyone this week, worked out from the date (no server needed). Your best weekly run is remembered. Winning it earns the Weekly Winner Feat.

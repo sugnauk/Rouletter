@@ -20,6 +20,7 @@ var best_spin: int = 0       ## best single spin ever (personal-best celebration
 var feats: Array = []        ## Feats earned (core/feats.gd)
 var seen_items: Array = []   ## Almanac: content ids that have appeared in the Cage
 var used_items: Array = []   ## Almanac: content ids you have bought
+var wheels_won: Array = []        ## wheels you've won a run on (the Grand Tour Feat)
 var weekly_best: Dictionary = {}   ## this week's best weekly challenge run: {id, nights, won, take}
 var best_grade: int = -1     ## highest marker grade won (-1: none yet)
 var history: Array = []      ## the last runs, newest first: {wheel, acts, nights, take, best_spin, won}
@@ -140,7 +141,7 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 func to_dict() -> Dictionary:
 	return {"markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
 		"runs": runs, "wins": wins, "best_night": best_night,
-		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "weekly_best": weekly_best, "settings": settings}
+		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "weekly_best": weekly_best, "wheels_won": wheels_won, "settings": settings}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -151,6 +152,7 @@ func from_dict(d: Dictionary) -> void:
 			unlocked.append(id)
 	seen_beats = d.get("seen_beats", [])
 	weekly_best = d.get("weekly_best", {})
+	wheels_won = d.get("wheels_won", [])
 	runs = int(d.get("runs", 0))
 	wins = int(d.get("wins", 0))
 	best_night = int(d.get("best_night", 0))

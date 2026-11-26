@@ -302,7 +302,9 @@ func _queue_scene(scene: Dictionary) -> void:
 
 func _on_run_ended(won: bool) -> void:
 	delete_saved_run()
-	check_feats("end", {"won": won})
+	check_feats("end", {"won": won, "wheels_won": profile.wheels_won})
+	if won and not run.wheel_id in profile.wheels_won:
+		profile.wheels_won.append(run.wheel_id)
 	var paid: int = run.marker_paid()
 	profile.add_history({"wheel": run.wheel_id, "acts": run.acts, "nights": run.nights_cleared,
 		"take": int(run.total_take), "best_spin": int(run.best_spin), "won": won, "grade": run.grade,
