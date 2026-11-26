@@ -3,6 +3,29 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.13
+- 10 new chips (28 total):
+  - Street Light: +3 when another number in its street hits.
+  - Red Herring: +2 on any red.
+  - Jackpot Jar: grows every miss, pays big, then empties.
+  - Hedge: sits on an even-money box, +1 every spin it misses.
+  - Wheel Spoke: +4 when the ball lands 1-2 pockets away on the wheel.
+  - Echo (legendary): when it hits, every other chip levels up.
+  - Ace of Spades (legendary): black numbers only, x2 spin.
+  - Tip Jar: $1 per losing betting chip.
+  - Green Thumb: a zero chip that grows on every zero.
+  - Signpost: a line chip that pays $2.
+- 8 new felt upgrades (17 total):
+  - Diamond Square: levels its chips when it hits.
+  - Magnetized Square: its chips score half on grid neighbours.
+  - Twin Square: its chips also pay on the mirror number.
+  - Spoke Square: wheel neighbours' chips score half when it hits.
+  - Gold Trim: +0.5x and +$1.
+  - Fat Box: +2 per winning chip.
+  - Repeat Box: x2 if the last ball landed there too.
+  - Lucky Colour: a new kind of upgrade for the even-money boxes, pays 2:1.
+- Icons, rarities, Almanac categories, Cage hints and on-felt markers for all of them.
+
 ## 0.0.12
 - Fix: the macOS build (universal, for Apple Silicon too) now exports; Windows and Linux already did.
 

@@ -28,6 +28,9 @@ const CHIP_COLORS := {
 	"mirror": Color("#90e0ef"), "porch_light": Color("#f6bd60"),
 	"black_cat": Color("#4a4a5a"), "penny": Color("#d08a4a"), "snowball": Color("#e8f4ff"),
 	"sentinel": Color("#2ec46a"), "crown": Color("#ffd166"),
+	"street_light": Color("#e9c46a"), "red_herring": Color("#e76f51"), "jar": Color("#8ecae6"), "hedge": Color("#52b788"),
+	"wheel_spoke": Color("#d4a373"), "echo": Color("#a2d2ff"), "ace": Color("#f8f9fa"), "tip_jar": Color("#90be6d"),
+	"green_thumb": Color("#38b000"), "signpost": Color("#bc8a5f"),
 }
 
 ## Fonts (SIL Open Font License, see fonts/*-OFL.txt):

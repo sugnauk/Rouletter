@@ -390,6 +390,10 @@ func can_place_chip(kind: String, key: String) -> bool:
 	var straight := Board.is_straight(key)
 	if Content.CHIPS.get(kind, {}).get("zero_only", false):
 		return straight and Board.straight_number(key) <= 0
+	if Content.CHIPS.get(kind, {}).get("even_only", false):
+		return key in Content.EVEN_KEYS and can_bet_on(key)
+	if Content.CHIPS.get(kind, {}).get("black_only", false):
+		return straight and Board.straight_number(key) > 0 and not felt.board.is_red(Board.straight_number(key))
 	if Content.CHIPS.get(kind, {}).get("column_only", false):
 		return key.begins_with("COL") and can_bet_on(key)
 	if kind == "perm":
@@ -784,6 +788,10 @@ func _targets_for(up: String) -> Array:
 		for k in ["COL1", "COL2", "COL3", "DOZ1", "DOZ2", "DOZ3"]:
 			if not felt.bet_upgrades.has(k):
 				out.append(k)
+	elif Content.UPGRADES[up].target == "even":
+		for k in Content.EVEN_KEYS:
+			if not felt.bet_upgrades.has(k):
+				out.append(k)
 	else:
 		for p in felt.board.pockets:
 			if not felt.square_upgrades.has(p):
@@ -795,7 +803,7 @@ func apply_upgrade(target: String) -> bool:
 	if target not in upgrade_targets():
 		return false
 	var up: String = shop.pending_upgrade
-	if Content.UPGRADES[up].target == "outside":
+	if Content.UPGRADES[up].target in ["outside", "even"]:
 		felt.bet_upgrades[target] = up
 	else:
 		felt.square_upgrades[Board.straight_number(target)] = up

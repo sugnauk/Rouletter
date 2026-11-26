@@ -168,6 +168,36 @@ const CHIPS := {
 	"snowball": {"name": "Snowball", "desc": "When it hits, it grows 2 levels.",
 		"price": 6, "unlock": 0,
 		"note": "'Let it ride', but only when it wins."},
+	"street_light": {"name": "Street Light", "desc": "Whenever another number in its street (its row of three) hits, +3 Take (per level).",
+		"price": 5, "unlock": 0,
+		"note": "Lights up the three-number street a straight bet sits in."},
+	"red_herring": {"name": "Red Herring", "desc": "Whenever any red number hits, +2 Take (per level).",
+		"price": 5, "unlock": 0,
+		"note": "The Black Cat's cousin, for the other colour."},
+	"jar": {"name": "Jackpot Jar", "desc": "Grows a level every spin it misses. When it hits it pays, then empties back to level 1.",
+		"price": 6, "unlock": 0,
+		"note": "Saving up for the one big night."},
+	"hedge": {"name": "Hedge", "desc": "Sits on an even-money box (red, black, odd, even, high, low). Every spin it misses, +1 Take (per level).",
+		"price": 5, "unlock": 0, "even_only": true,
+		"note": "Pays you a little for being wrong: a hedge, built into the felt."},
+	"wheel_spoke": {"name": "Wheel Spoke", "desc": "When the ball lands 1 or 2 pockets from its number on the wheel, +4 Take (per level).",
+		"price": 6, "unlock": 2,
+		"note": "Plays the wheel's order, the way a 'neighbours' bet does."},
+	"echo": {"name": "Echo", "desc": "When it hits, every other permanent chip you own gains a level.",
+		"price": 9, "unlock": 3,
+		"note": "One hit that ripples across the whole felt."},
+	"ace": {"name": "Ace of Spades", "desc": "Sits on a black number only. When it hits, the spin's Take x2 (+0.5 per extra level).",
+		"price": 9, "unlock": 3, "black_only": true,
+		"note": "The death card of the deck, dealt onto roulette's black squares."},
+	"tip_jar": {"name": "Tip Jar", "desc": "+$1 for every betting chip that loses (up to $5 a spin, per level).",
+		"price": 5, "unlock": 0,
+		"note": "The croupier's tip box, emptied into your pocket."},
+	"green_thumb": {"name": "Green Thumb", "desc": "Sits on a zero. Grows a level every time any zero hits.",
+		"price": 5, "unlock": 0, "zero_only": true,
+		"note": "Grows on the green, the one colour the house owns."},
+	"signpost": {"name": "Signpost", "desc": "Sits on a split, corner, street or line. When it hits, +$2 cash (per level).",
+		"price": 5, "unlock": 0, "line_only": true,
+		"note": "Marks a crossroads on the felt's lines, and charges a toll."},
 	"sentinel": {"name": "Sentinel", "desc": "Sits on a zero. Whenever a zero hits, +8 Take (per level).",
 		"price": 5, "unlock": 0, "zero_only": true,
 		"note": "Guards the green pockets, where the house edge lives."},
@@ -183,6 +213,8 @@ const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zer
 ## Rarity: how often something shows up in the Cage (common unless listed) and the frame it gets.
 const RARITY := {
 	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
+	"jar": "rare", "wheel_spoke": "rare", "echo": "legendary", "ace": "legendary", "green_thumb": "rare",
+	"diamond": "rare", "magnetized": "rare", "twin_square": "rare", "spoke": "rare", "repeat_box": "rare", "lucky_colour": "rare",
 	"mirror": "rare", "kingmaker": "legendary", "snowball": "rare", "crown": "legendary", "sentinel": "rare",
 	"sweet_spot": "rare", "silk": "rare", "last_call": "rare", "insurance": "rare", "high_society": "rare",
 	"link": "rare", "double_felt": "rare", "pinned": "rare",
@@ -196,6 +228,13 @@ const PENNY_CASH := 2
 const SENTINEL_BONUS := 8.0
 const CROWN_MULT := 1.25
 const LAMP_CASH := 3
+const STREET_LIGHT_BONUS := 3.0
+const RED_HERRING_BONUS := 2.0
+const HEDGE_BONUS := 1.0
+const SPOKE_CHIP_BONUS := 4.0
+const TIP_JAR_CAP := 5
+const SIGNPOST_CASH := 2
+const EVEN_KEYS := ["RED", "BLACK", "ODD", "EVEN", "LOW", "HIGH"]
 const COMPED_CASH := 3
 const KING_STEP := 0.5                   ## Kingmaker: +0.5x per level past the first
 
@@ -214,6 +253,11 @@ const TAGS := {
 	"crown": ["outside", "multiplier"], "lamp": ["cash", "numbers"], "silk": ["outside"], "sweet_spot": ["numbers", "inside"],
 	"last_call": ["multiplier"], "comped": ["cash"], "insurance": ["even", "outside"], "high_society": ["outside"],
 	"black_tie": ["numbers"],
+	"street_light": ["numbers"], "red_herring": ["numbers"], "jar": ["numbers"], "hedge": ["even"],
+	"wheel_spoke": ["wheel", "neighbours"], "echo": ["numbers", "multiplier"], "ace": ["numbers", "multiplier"],
+	"tip_jar": ["cash"], "green_thumb": ["zero"], "signpost": ["inside", "cash"],
+	"diamond": ["numbers"], "magnetized": ["numbers", "neighbours"], "twin_square": ["numbers"], "spoke": ["wheel", "neighbours"],
+	"gold_trim": ["outside", "cash"], "fat_box": ["outside"], "repeat_box": ["outside", "multiplier"], "lucky_colour": ["even"],
 }
 const TAG_NAMES := {"numbers": "single numbers", "inside": "inside bets", "even": "even-money bets", "outside": "outside bets",
 	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers"}
@@ -231,13 +275,13 @@ const COUNTERS := {
 
 ## The Almanac's categories: [title, source table name, ids]. Every item appears exactly once.
 const ALMANAC := [
-	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "croupier", "collector", "ledger"]],
-	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball"]],
-	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "crown", "bridge"]],
-	["ZERO CHIPS", "CHIPS", ["wildcard_zero", "sentinel"]],
-	["CASH & TIME CHIPS", "CHIPS", ["mint", "penny", "respin"]],
-	["NUMBER UPGRADES", "UPGRADES", ["gilded", "double_felt", "link", "sweet_spot", "lamp", "cornerstone", "pinned"]],
-	["OUTSIDE UPGRADES", "UPGRADES", ["hot", "silk"]],
+	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "red_herring", "street_light", "wheel_spoke", "hedge", "croupier", "collector", "ledger"]],
+	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "echo"]],
+	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "ace", "crown", "bridge"]],
+	["ZERO CHIPS", "CHIPS", ["wildcard_zero", "sentinel", "green_thumb"]],
+	["CASH & TIME CHIPS", "CHIPS", ["mint", "penny", "tip_jar", "signpost", "respin"]],
+	["NUMBER UPGRADES", "UPGRADES", ["gilded", "double_felt", "diamond", "magnetized", "twin_square", "link", "spoke", "sweet_spot", "lamp", "cornerstone", "pinned"]],
+	["OUTSIDE UPGRADES", "UPGRADES", ["hot", "silk", "gold_trim", "fat_box", "repeat_box", "lucky_colour"]],
 	["PAYOUT RULES", "HOUSE_RULES", ["split_decision", "sevens", "satin_gloves", "high_society", "black_tie", "thirteen"]],
 	["MULTIPLIER RULES", "HOUSE_RULES", ["red_streak", "hot_hand", "dealer_signature", "momentum", "last_call"]],
 	["SAFETY RULES", "HOUSE_RULES", ["la_partage", "en_prison", "insurance", "rent_control", "comped"]],
@@ -279,6 +323,22 @@ const UPGRADES := {
 		"price": 7, "unlock": 0, "note": "Thick felt for a favourite number."},
 	"pinned": {"name": "Pinned Pocket", "desc": "When this number hits, call bets (Voisins/Tiers/Orphelins) score double.", "target": "number",
 		"price": 6, "unlock": 2, "note": "Ties the felt to the wheel: a pocket that anchors its sector."},
+	"diamond": {"name": "Diamond Square", "desc": "When this number hits, your permanent chips on it gain a level.", "target": "number",
+		"price": 7, "unlock": 0, "note": "A square that polishes whatever sits on it."},
+	"magnetized": {"name": "Magnetized Square", "desc": "Your chips on this number also score half when a grid neighbour hits.", "target": "number",
+		"price": 6, "unlock": 0, "note": "A Magnet built into the felt itself."},
+	"twin_square": {"name": "Twin Square", "desc": "Your chips on this number also score when its mirror number hits (1 and 36, 2 and 35...).", "target": "number",
+		"price": 6, "unlock": 0, "note": "Stitches a square to its twin at the far end of the layout."},
+	"spoke": {"name": "Spoke Square", "desc": "When this number hits, your chips on its two wheel neighbours score half.", "target": "number",
+		"price": 6, "unlock": 2, "note": "Ties a square of the felt to its neighbours on the wheel."},
+	"gold_trim": {"name": "Gold Trim", "desc": "This column or dozen pays +0.5x and +$1 cash when it hits.", "target": "outside",
+		"price": 6, "unlock": 0, "note": "Gilt edging for one of the long boxes."},
+	"fat_box": {"name": "Fat Box", "desc": "Winning chips on this column or dozen score +2 Take each.", "target": "outside",
+		"price": 5, "unlock": 0, "note": "A bigger box pays bigger, chip by chip."},
+	"repeat_box": {"name": "Repeat Box", "desc": "Bets on this column or dozen score double if the last ball also landed in it.", "target": "outside",
+		"price": 7, "unlock": 2, "note": "Rewards the streaks gamblers swear by."},
+	"lucky_colour": {"name": "Lucky Colour", "desc": "This even-money box (red, black, odd, even, high or low) pays 2 to 1.", "target": "even",
+		"price": 7, "unlock": 0, "note": "One 'safe' box that pays like a column."},
 	"lamp": {"name": "Lucky Lamp", "desc": "When this number hits, +$3 cash.", "target": "number",
 		"price": 5, "unlock": 0, "note": "A lamp over one square of the felt that pays the player."},
 	"silk": {"name": "Silk Box", "desc": "Losing bets on this column or dozen go back to your stack instead of costing Take.", "target": "outside",

@@ -147,10 +147,12 @@ func _process(delta: float) -> void:
 			main.profile.seen_items = Content.CHIPS.keys() + Content.UPGRADES.keys() + Content.HOUSE_RULES.keys()
 			main.show_screen("feats")
 			main.screens.feats.tab = "almanac"
-			main.screens.feats.refresh()
-			main.screens.feats.list.get_parent().set_deferred("scroll_vertical", 300)],
-		[26.0, func(): shot("21_almanac_all")],
-		[26.2, func(): get_tree().quit()],
+			main.screens.feats.refresh()],
+		[26.0, func(): main.screens.feats.list.get_parent().scroll_vertical = 330],
+		[26.25, func(): shot("21_almanac_chips")],
+		[26.35, func(): main.screens.feats.list.get_parent().scroll_vertical = 990],
+		[26.6, func(): shot("22_almanac_upgrades")],
+		[26.8, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

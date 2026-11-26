@@ -167,6 +167,86 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 				R.call(1 + i * 4, 3, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(2 + i * 4, 5, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
 				R.call(1 + i * 4, 7, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+		"street_light":
+			R.call(5, 2, 2, 9, P.DIM)
+			R.call(3, 1, 6, 2, P.DIM)
+			R.call(3, 3, 2, 2, P.GOLD)
+			R.call(1, 5, 4, 1, Color(P.GOLD, 0.5))
+			R.call(3, 10, 6, 1, P.DIM)
+		"red_herring":
+			R.call(2, 4, 7, 4, P.RED)
+			R.call(9, 3, 2, 6, P.RED.darkened(0.2))
+			R.call(3, 5, 1, 1, P.CREAM)
+		"jar":
+			R.call(3, 2, 6, 1, P.WOOD)
+			R.call(2, 3, 8, 8, Color("#6fa8c8"))
+			R.call(3, 7, 6, 3, P.GOLD)
+			R.call(3, 4, 1, 5, Color(1, 1, 1, 0.5))
+		"hedge":
+			for x in [1, 4, 7]:
+				R.call(x, 3, 4, 7, P.GOOD.darkened(0.3))
+			R.call(1, 9, 10, 2, P.WOOD)
+		"wheel_spoke":
+			ci.draw_arc(c, 4.5 * s, 0, TAU, 16, P.CREAM, 1.0 * s, false)
+			R.call(5, 1, 2, 10, P.CREAM)
+			R.call(1, 5, 10, 2, P.CREAM)
+			R.call(5, 5, 2, 2, P.GOLD)
+		"echo":
+			for i in range(3):
+				ci.draw_arc(c, (1.5 + i * 1.8) * s, 0, TAU, 14, Color(P.CYAN, 1.0 - i * 0.3), 1.0 * s, false)
+		"ace":
+			R.call(2, 1, 8, 10, P.CREAM)
+			R.call(5, 3, 2, 2, P.BLACK)
+			R.call(4, 5, 4, 2, P.BLACK)
+			R.call(5, 7, 2, 2, P.BLACK)
+			R.call(3, 2, 1, 1, P.BLACK)
+		"tip_jar":
+			R.call(3, 4, 6, 7, Color("#6fa8c8"))
+			R.call(3, 3, 6, 1, P.WOOD)
+			R.call(4, 7, 2, 2, P.GOLD)
+			R.call(6, 8, 2, 2, P.GOLD.darkened(0.2))
+			R.call(4, 1, 4, 2, P.GOOD)
+		"green_thumb":
+			R.call(5, 5, 2, 6, P.GOOD.darkened(0.3))
+			R.call(2, 3, 4, 3, P.GOOD)
+			R.call(6, 2, 4, 3, P.GOOD)
+		"signpost":
+			R.call(5, 3, 2, 8, P.WOOD)
+			R.call(1, 2, 8, 2, P.GOLD.darkened(0.2))
+			R.call(4, 5, 7, 2, P.GOLD.darkened(0.4))
+		"diamond":
+			R.call(5, 1, 2, 2, Color("#9ad7ff"))
+			R.call(3, 3, 6, 2, Color("#9ad7ff"))
+			R.call(2, 5, 8, 2, Color("#6cb6e8"))
+			R.call(4, 7, 4, 2, Color("#4a90c8"))
+			R.call(5, 9, 2, 2, Color("#4a90c8"))
+		"magnetized":
+			R.call(1, 1, 10, 10, P.FELT.lightened(0.2))
+			R.call(3, 3, 2, 5, P.RED)
+			R.call(7, 3, 2, 5, P.RED)
+			R.call(3, 7, 6, 2, P.RED)
+		"twin_square":
+			R.call(1, 3, 4, 6, P.RED)
+			R.call(7, 3, 4, 6, P.RED)
+			R.call(5, 5, 2, 2, P.GOLD)
+		"spoke":
+			R.call(1, 1, 10, 10, P.FELT.lightened(0.2))
+			ci.draw_arc(c, 3.5 * s, 0, TAU, 12, P.GOLD, 1.0 * s, false)
+			R.call(5, 2, 2, 8, P.GOLD.darkened(0.3))
+		"gold_trim":
+			R.call(1, 3, 10, 6, P.FELT)
+			ci.draw_rect(Rect2(o + Vector2(1, 3) * s, Vector2(10, 6) * s), P.GOLD, false, 1.0 * s)
+		"fat_box":
+			R.call(1, 2, 10, 8, P.FELT)
+			R.call(3, 4, 6, 4, P.GOLD)
+		"repeat_box":
+			R.call(1, 3, 10, 6, P.FELT)
+			R.call(3, 5, 2, 2, P.CREAM)
+			R.call(7, 5, 2, 2, P.CREAM)
+		"lucky_colour":
+			R.call(1, 3, 5, 6, P.RED)
+			R.call(6, 3, 5, 6, P.BLACK.lightened(0.3))
+			R.call(5, 1, 2, 2, P.GOLD)
 		"black_cat":
 			# A sitting black cat with gold eyes.
 			R.call(3, 4, 6, 7, Color("#141418"))
@@ -323,6 +403,21 @@ static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
 			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
 		"bridge":
 			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"street_light", "wheel_spoke":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 1)), col)
+		"red_herring", "hedge":
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"jar", "tip_jar":
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 3)), col)
+		"echo":
+			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
+		"ace":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 1)), col)
+		"green_thumb", "signpost":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(2, 0), Vector2(2, 1)), col)
 		"black_cat":
 			ci.draw_rect(Rect2(o + Vector2(0, 0), Vector2(1, 1)), col)
 			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 1)), col)

@@ -132,6 +132,13 @@ func place_inventory(run) -> void:
 			var B = run.felt.board
 			if Content.CHIPS[item.kind].get("zero_only", false):
 				key = "S0" if not B.zeros.is_empty() else ""
+			elif Content.CHIPS[item.kind].get("even_only", false):
+				key = "RED"
+			elif Content.CHIPS[item.kind].get("black_only", false):
+				for n in range(1, B.numbers + 1):
+					if not B.is_red(n) and run.felt.chips_on(Board.straight_key(n)).is_empty():
+						key = Board.straight_key(n)
+						break
 			elif Content.CHIPS[item.kind].get("column_only", false):
 				key = "COL%d" % (1 + run.felt.perm_chips().size() % 3)
 			elif Content.CHIPS[item.kind].get("line_only", false):

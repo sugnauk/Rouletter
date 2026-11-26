@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
@@ -777,6 +777,74 @@ func test_almanac_categories() -> void:
 	for table in [Content.CHIPS, Content.UPGRADES, Content.HOUSE_RULES, Content.FAVOURS, Content.VOUCHERS]:
 		for id in table:
 			check(counted.has(id), "%s appears in an Almanac category" % id)
+
+
+func test_big_content_batch() -> void:
+	var sl = felt("european", [["street_light", "S4", 1]])
+	near(Resolver.resolve_spin(sl, 5).take, 3.0, "Street Light: another number in its street")
+	near(Resolver.resolve_spin(sl, 7).take, 0.0, "...not the next street")
+	var rh = felt("european", [["red_herring", "S2", 2]])
+	near(Resolver.resolve_spin(rh, 1).take, 4.0, "Red Herring: +2 per level on red")
+	var jr = felt("european", [["jar", "S9", 1]])
+	var j1 := Resolver.resolve_spin(jr, 10)
+	var j2 := Resolver.resolve_spin(j1.felt_after, 11)
+	check(j2.felt_after.chips[0].value == 3, "Jackpot Jar grows on every miss")
+	var j3 := Resolver.resolve_spin(j2.felt_after, 9)
+	near(j3.take, 3.0 * 35.0, "...pays at its full level")
+	check(j3.felt_after.chips[0].value == 1, "...then empties")
+	var hg = felt("european", [["hedge", "RED", 1]])
+	near(Resolver.resolve_spin(hg, 2).take, 1.0, "Hedge: +1 when red misses")
+	near(Resolver.resolve_spin(hg, 1).take, 1.0, "...and the red pays normally when it hits")
+	var ws = felt("european", [["wheel_spoke", "S32", 1]])
+	near(Resolver.resolve_spin(ws, 19).take, 4.0, "Wheel Spoke: two pockets away")
+	near(Resolver.resolve_spin(ws, 4).take, 0.0, "...three is too far")
+	var ec = felt("european", [["echo", "S5", 1], ["perm", "S6", 1], ["magnet", "S30", 2]])
+	var er := Resolver.resolve_spin(ec, 5)
+	check(er.felt_after.chips[1].value == 2 and er.felt_after.chips[2].value == 3, "Echo levels every other chip")
+	var ac = felt("european", [["ace", "S2", 1], ["perm", "BLACK", 2]])
+	near(Resolver.resolve_spin(ac, 2).take, (35.0 + 2.0) * 2.0, "Ace of Spades doubles the spin")
+	var tj = felt("european", [["tip_jar", "S1", 1], ["bet", "S2", 3], ["bet", "S3", 4]])
+	check(Resolver.resolve_spin(tj, 20).cash == 5, "Tip Jar: $1 per losing chip, capped at 5")
+	var gt = felt("european", [["green_thumb", "S0", 1]])
+	check(Resolver.resolve_spin(gt, 0).felt_after.chips[0].value == 2, "Green Thumb grows on a zero")
+	var sp = felt("european", [["signpost", "CO1", 1]])
+	check(Resolver.resolve_spin(sp, 1).cash == 2, "Signpost: +$2 when its corner hits")
+	var dm = felt("european", [["perm", "S8", 1]])
+	dm.square_upgrades[8] = "diamond"
+	check(Resolver.resolve_spin(dm, 8).felt_after.chips[0].value == 2, "Diamond Square levels its chips")
+	var mg = felt("european", [["perm", "S8", 2]])
+	mg.square_upgrades[8] = "magnetized"
+	near(Resolver.resolve_spin(mg, 11).take, 35.0, "Magnetized: half on a grid neighbour")
+	var tw = felt("european", [["perm", "S2", 1]])
+	tw.square_upgrades[2] = "twin_square"
+	near(Resolver.resolve_spin(tw, 35).take, 35.0, "Twin Square: pays on its mirror")
+	var sk = felt("european", [["perm", "S32", 2], ["perm", "S26", 2]])
+	sk.square_upgrades[0] = "spoke"
+	near(Resolver.resolve_spin(sk, 0).take, 35.0 + 35.0, "Spoke: both wheel neighbours of 0 score half")
+	var gtm = felt("european", [["perm", "DOZ1", 2]])
+	gtm.bet_upgrades["DOZ1"] = "gold_trim"
+	var gr := Resolver.resolve_spin(gtm, 3)
+	near(gr.take, 5.0, "Gold Trim: 2.5:1")
+	check(gr.cash == 1, "...and +$1")
+	var fb = felt("european", [["perm", "COL1", 3]])
+	fb.bet_upgrades["COL1"] = "fat_box"
+	near(Resolver.resolve_spin(fb, 1).take, 6.0 + 6.0, "Fat Box: +2 per chip")
+	var rb = felt("european", [["perm", "DOZ2", 1]])
+	rb.bet_upgrades["DOZ2"] = "repeat_box"
+	rb.last_pocket = 14
+	near(Resolver.resolve_spin(rb, 20).take, 4.0, "Repeat Box doubles a repeat")
+	rb.last_pocket = 3
+	near(Resolver.resolve_spin(rb, 20).take, 2.0, "...not otherwise")
+	var lc = felt("european", [["perm", "RED", 1]])
+	lc.bet_upgrades["RED"] = "lucky_colour"
+	near(Resolver.resolve_spin(lc, 1).take, 2.0, "Lucky Colour: red pays 2:1")
+	var run = new_run()
+	run.inventory = [{"kind": "hedge", "value": 1}, {"kind": "ace", "value": 1}]
+	check(not run.place_chip(0, "S5") and run.place_chip(0, "ODD"), "Hedge only on an even-money box")
+	check(not run.place_chip(0, "S1") and run.place_chip(0, "S2"), "Ace of Spades only on black")
+	run.shop = {"pending_upgrade": "lucky_colour"}
+	check(run.upgrade_targets().size() == 6 and "RED" in run.upgrade_targets(), "Lucky Colour targets the even-money boxes")
+	check(Content.CHIPS.size() >= 28 and Content.UPGRADES.size() >= 17, "content counts (%d chips, %d upgrades)" % [Content.CHIPS.size(), Content.UPGRADES.size()])
 
 
 func test_shop() -> void:

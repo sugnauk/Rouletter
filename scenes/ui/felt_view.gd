@@ -359,6 +359,18 @@ func _upgrade_color(up: String) -> Color:
 			return P.GOOD
 		"pinned":
 			return P.VIOLET
+		"diamond":
+			return Color("#9ad7ff")
+		"magnetized":
+			return P.RED
+		"twin_square", "spoke":
+			return P.CYAN.darkened(0.2)
+		"gold_trim", "lamp", "sweet_spot":
+			return P.GOLD
+		"fat_box", "repeat_box", "silk":
+			return Color("#c08ad8")
+		"lucky_colour":
+			return P.GOOD
 	return P.CREAM
 
 
