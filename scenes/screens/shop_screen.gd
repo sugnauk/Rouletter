@@ -11,6 +11,7 @@ const RunState := preload("res://core/run_state.gd")
 const FeltView := preload("res://scenes/ui/felt_view.gd")
 const Preview := preload("res://core/preview.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
+const Portraits := preload("res://scenes/ui/portraits.gd")
 
 const CAGE := Rect2(8, 28, 288, 150)
 
@@ -62,7 +63,10 @@ func setup() -> void:
 	P.place(desc_body, Vector2(6, 18), Vector2(276, 62))
 	next_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
 	next_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(next_lbl, Vector2(8, 320), Vector2(200, 36))
+	P.place(next_lbl, Vector2(8, 318), Vector2(200, 40))
+	next_lbl.add_theme_constant_override("line_spacing", -2)
+	next_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+	next_lbl.mouse_entered.connect(func(): _describe("NEXT TABLE", main.run.next_table_detail()))
 	var nb := P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
 	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 14), P.FONT_SMALL)
 	P.place(mb, Vector2(594, 6))
@@ -198,6 +202,9 @@ func _next() -> void:
 			selected_item = 0
 			refresh()
 			status_lbl.text = "Place the chips in your rack before you leave."
+	elif not main.run.shop.get("routes", []).is_empty():
+		status_lbl.text = "Pick your table first."
+		Sfx.play("click")
 	elif main.run.leave_shop():
 		Sfx.play("click")
 		main.route()
@@ -260,9 +267,8 @@ func refresh() -> void:
 		nxt += "  (stack %d, -%d to the Pit Boss)" % [run.stack_size - run.stack_owed, run.stack_owed]
 	if run.loan_pct > 0.0:
 		nxt += "  (+%d%% to the Loan Shark)" % int(round(run.loan_pct * 100))
-	if run.table_idx == 2:
-		var e: Dictionary = Content.ENFORCERS[run.night_enforcer()]
-		nxt += "\n%s: %s" % [e.name, e.desc]
+	for l in run.next_table_lines():
+		nxt += "\n" + l
 	next_lbl.text = nxt
 	next_lbl.add_theme_color_override("font_color", P.DANGER if run.table_idx == 2 else P.CREAM)
 	for b in mode_box.get_children():
@@ -284,7 +290,9 @@ func _refresh_choice(run) -> void:
 	var bonus: Array = run.shop.get("bonus", [])
 	if refine_id >= 0 and not run.can_refine(refine_id):
 		refine_id = -1
-	if offer.is_empty() and bonus.is_empty() and refine_id < 0:
+	var event: String = run.shop.get("event", "")
+	var routes: Array = run.shop.get("routes", [])
+	if offer.is_empty() and bonus.is_empty() and refine_id < 0 and event == "" and routes.is_empty():
 		return
 	choice = Panel.new()
 	choice.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.96), P.GOLD, 1))
@@ -338,6 +346,43 @@ func _refresh_choice(run) -> void:
 		P.place(sk, Vector2(CAGE.size.x - 78, CAGE.size.y - 22))
 		var sub := P.label(choice, "Three ways to build: keep one.", P.FONT_SMALL, P.DIM)
 		P.place(sub, Vector2(8, CAGE.size.y - 20))
+	elif bonus.is_empty() and event != "":
+		var ev: Dictionary = Content.EVENTS[event]
+		title.text = ev.who.to_upper()
+		row.queue_free()
+		var face := Control.new()
+		P.place(face, Vector2(12, 26), Vector2(48, 48))
+		face.draw.connect(func(): Portraits.draw(face, ev.who, Rect2(Vector2.ZERO, Vector2(48, 48))))
+		choice.add_child(face)
+		var said := P.label(choice, "", P.FONT_SMALL, P.CREAM)
+		said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		P.place(said, Vector2(70, 26), Vector2(CAGE.size.x - 80, 64))
+		said.text = "\"%s\"" % ev.text
+		for i in range(ev.options.size()):
+			var o: Array = ev.options[i]
+			var b := P.button(choice, o[0], func():
+				var got: String = run.answer_event(i)
+				if i == 0 and got == "" and event == "lou_bet":
+					_describe("Not enough cash", "Lou wants $%d up front." % Content.LOU_STAKE)
+					return
+				Sfx.play("buy" if got != "" else "click")
+				if got != "":
+					_describe(ev.who, got)
+				refresh(), Vector2(120, 18), P.FONT_SMALL)
+			P.place(b, Vector2(12 + i * 134, CAGE.size.y - 50))
+			b.mouse_entered.connect(func(): _describe(o[0], o[1]))
+	elif bonus.is_empty() and not routes.is_empty():
+		title.text = "PICK YOUR NEXT TABLE"
+		for id in routes:
+			var rt: Dictionary = Content.ROUTES[id]
+			_choice_option(row, "respin" if id == "back_room" else "spin", "%d BALLS" % rt.spins, rt.name, rt.desc, func():
+				run.pick_route(id)
+				Sfx.play("click")
+				refresh())
+		_choice_option(row, "stack", "%d BALLS" % Content.SPINS, "The usual", "The ordinary High Roller table.", func():
+			run.pick_route("")
+			Sfx.play("click")
+			refresh())
 	else:
 		title.text = "PAID WITH BALLS TO SPARE: PICK A BONUS"
 		for i in range(bonus.size()):

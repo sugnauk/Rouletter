@@ -64,6 +64,9 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		if c.is_bet():
 			if covers and not dead:
 				var amt := _score(w, c, b, pocket, res)
+				if w.boss_is("crowd") and c.value >= Content.CROWD_PILE:
+					amt *= 0.5
+					res.log.rules.append("The Duchess: the %d-chip pile on %s pays half" % [c.value, c.bet])
 				take += amt
 				_event(res, "win", c.bet, amt, "straight" if b.type == "straight" else b.type)
 				res.stack += c.value
@@ -337,6 +340,19 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				_value(res, c, 1)
 				res.log.rules.append("Inside Track: %s chip grows to %d" % [c.kind, c.value])
 				break
+
+	# Table condition "Spread Out": bets covering all three dozens score +25%.
+	if w.condition == "regions" and take > 0.0:
+		var doz := {}
+		for c in felt.chips:
+			if c.is_bet():
+				for n in B.bet(c.bet).numbers:
+					if n > 0:
+						doz[B.dozen_of(n)] = true
+		if doz.size() >= 3:
+			take *= Content.REGIONS_MULT
+			res.log.rules.append("Spread Out: x%s" % _fmt(Content.REGIONS_MULT))
+			_mult(res, Content.REGIONS_MULT, "Spread Out")
 
 	# House Rules multiply the spin.
 	if w.has_rule("red_streak"):

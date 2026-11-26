@@ -3,6 +3,26 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.21
+- Four new Act I Enforcers. Each run now meets four of the eight, so no two runs face the same lineup:
+  - The Duchess: any bet of 5+ chips on one spot pays half. Spread out.
+  - Miss Tempo: every spin that scores nothing costs 10% of the Take you've built.
+  - The Timekeeper: the payment grows 5% every spin.
+  - Countess Ilsa: no encores. You can't bet on a spot you bet on last spin.
+- Table conditions: from night 2, ordinary tables can roll a twist.
+  - Spread Out: spins covering all three dozens score +25%.
+  - Tight Felt: 6 bet spots at most.
+  - Early Bird: clear by the 3rd ball for +$2.
+  - Short Stack: 4 fewer chips, but +$2 when you clear.
+- Side jobs: every table has an optional objective that pays on the clear: Clean Hands, Bullseye, Hat Trick or Light Touch. Progress shows in the table's side panel.
+- Pick your table: before each night's High Roller, choose one:
+  - The Back Room: 4 balls, payment x0.8.
+  - The Long Table: 8 balls, payment x1.2, Tight Felt.
+  - The usual table.
+- Between tables: before the Enforcer, someone in the Cage may have an offer. Dolores' tip, Lucky Lou's side bet, or a free (hot) chip from the Fence.
+- The Cage now previews the next table: its Enforcer, route, condition and side job. Hover it for the details.
+- The clear tally lists every condition, route, side job and side bet that paid.
+
 ## 0.0.20
 - Every wheel now starts you on a different plan, named on the select screen:
   - French: Safety Net. A Permanent x2 and a Hedge.

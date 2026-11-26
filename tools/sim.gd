@@ -70,6 +70,10 @@ func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1, grade: i
 					run.take_offer(0)
 				if not run.shop.bonus.is_empty():
 					run.take_bonus(0)
+				if not run.shop.get("routes", []).is_empty():
+					run.pick_route("")
+				if run.shop.get("event", "") != "":
+					run.answer_event(1)
 				bot_shop(run)
 				run.leave_shop()
 			else:
@@ -98,7 +102,12 @@ func bot_bet(run) -> void:
 		keys = ["DOZ1"]
 	else:
 		var fav := favourite_numbers(run)
-		keys = [Board.straight_key(fav[0]), Board.straight_key(fav[1])]
+		keys = []
+		for n in fav:
+			if keys.size() < 2 and run.can_bet_on(Board.straight_key(n)):
+				keys.append(Board.straight_key(n))
+	if keys.is_empty():
+		return
 	var i := 0
 	while per > 0 and run.table.stack > 0 and i < 40:
 		run.place_bet(keys[i % keys.size()], 1)

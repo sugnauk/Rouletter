@@ -182,7 +182,42 @@ func _process(delta: float) -> void:
 		[26.95, func(): shot("21_almanac_chips")],
 		[27.05, func(): main.screens.feats.list.get_parent().scroll_vertical = 990],
 		[27.3, func(): shot("22_almanac_upgrades")],
-		[27.5, func(): get_tree().quit()],
+		[27.5, func(): main.start_run("european")],
+		[28.6, func():
+			_close_dialogue()
+			var r = main.run
+			r.night = 1
+			r.table.condition = "scarce"
+			r.felt.condition = "scarce"
+			r.table.objective = "three_hits"
+			r.table.obj_hits = 1
+			r.place_bet("S17", 3)
+			r.place_bet("RED", 2)
+			main.screens.table.refresh()],
+		[28.9, func(): shot("23_table_job")],
+		[29.0, func():
+			var r = main.run
+			var guard := 0
+			while r.phase == 0 and guard < 20:
+				guard += 1
+				r.place_bet("S17", mini(5, r.table.stack))
+				r.spin(17)
+			r.shop.offer = []
+			r.shop.bonus = []
+			r.shop.event = "lou_bet"
+			main.route()],
+		[30.4, func():
+			_close_dialogue()
+			main.screens.shop.refresh()],
+		[30.6, func(): shot("24_shop_event")],
+		[30.7, func():
+			main.run.shop.event = ""
+			main.run.shop.routes = Content.ROUTES.keys()
+			main.screens.shop.refresh()],
+		[30.9, func(): shot("25_shop_routes")],
+		[31.0, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
+		[31.3, func(): shot("26_portrait_duchess")],
+		[31.5, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

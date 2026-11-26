@@ -364,7 +364,48 @@ const COUNTERS := {
 	"no_inside": {"good": ["numbers", "outside", "even"], "bad": ["inside"]},
 	"drain": {"good": ["multiplier"], "bad": []},
 	"short": {"good": ["spins", "multiplier"], "bad": []},
+	"crowd": {"good": ["outside", "inside", "even"], "bad": []},
+	"tempo": {"good": ["even", "outside"], "bad": []},
+	"clock": {"good": ["multiplier", "numbers"], "bad": ["spins"]},
+	"no_repeat": {"good": ["wheel", "neighbours", "numbers"], "bad": []},
 }
+
+## Table conditions: a twist on ordinary tables from night 2 on, each with visible counterplay.
+const CONDITIONS := {
+	"regions": {"name": "Spread Out", "desc": "Spins where your bets cover all three dozens score +25%."},
+	"scarce": {"name": "Tight Felt", "desc": "At most 6 bet spots at once."},
+	"early": {"name": "Early Bird", "desc": "Clear by the 3rd ball: +$2."},
+	"short_stack": {"name": "Short Stack", "desc": "4 fewer betting chips, but +$2 when you clear."},
+}
+const REGIONS_MULT := 1.25
+const SCARCE_SPOTS := 6
+const CROWD_PILE := 5
+const TEMPO_CUT := 0.1
+const CLOCK_STEP := 0.05
+## Side objectives: one optional job per table, paid on the clear.
+const OBJECTIVES := {
+	"outside_only": {"name": "Clean Hands", "desc": "Clear using only outside bets.", "cash": 2},
+	"straight": {"name": "Bullseye", "desc": "Win a straight-up bet.", "cash": 2},
+	"three_hits": {"name": "Hat Trick", "desc": "Score on 3 different spins.", "cash": 2},
+	"few": {"name": "Light Touch", "desc": "Never bet on more than 3 spots in a spin.", "cash": 2},
+}
+## Route choice before the High Roller table each night.
+const ROUTES := {
+	"back_room": {"name": "The Back Room", "desc": "4 balls, payment x0.8. +$1 when you clear.", "spins": 4, "target": 0.8, "cash": 1},
+	"long_table": {"name": "The Long Table", "desc": "8 balls, payment x1.2, Tight Felt (6 spots). +$2 when you clear.", "spins": 8, "target": 1.2, "cash": 2, "condition": "scarce"},
+}
+## Between-table events: someone in the Cage offers a choice.
+const EVENTS := {
+	"dolores_tip": {"who": "Dolores", "text": "Psst. The Enforcer's table is next. I can get you an extra ball, or slip you a couple of bucks.",
+		"options": [["An extra ball", "+1 ball at the next table."], ["$2", "+$2 now."]]},
+	"lou_bet": {"who": "Lucky Lou", "text": "Side bet, pal: $3 says you can't clear the next one with 2 balls to spare. You do, I pay $9.",
+		"options": [["Take the bet", "Pay $3. Clear the next table with 2+ balls left: +$9."], ["Pass", "Keep your money."]]},
+	"fence_hot": {"who": "Fence", "text": "Free chip. Don't ask where it's been. Don't let it near a zero, either.",
+		"options": [["Take it", "A random chip, free, but HOT: lost the first time a zero hits."], ["Pass", "Leave it."]]},
+}
+const EVENT_CHANCE := 0.6
+const LOU_STAKE := 3
+const LOU_PAYOUT := 9
 
 
 ## The Almanac's categories: [title, source table name, ids]. Every item appears exactly once.
@@ -534,6 +575,22 @@ const ENFORCERS := {
 		"desc": "Every 3rd spin is called: you can't place new bets on it.",
 		"intro": "I call the spins at my table. You just watch.",
 		"defeat": "Huh. Didn't call that one."},
+	"duchess": {"name": "The Duchess", "rule": "crowd",
+		"desc": "Piles are vulgar: any bet of 5 or more chips on one spot pays half.",
+		"intro": "Darling, nobody needs that many chips in one place. Spread them out or pay for it.",
+		"defeat": "How very... democratic of you."},
+	"tempo": {"name": "Miss Tempo", "rule": "tempo",
+		"desc": "Keep the beat: every spin that scores nothing costs 10% of the Take you've built.",
+		"intro": "One, two, one, two. Miss a beat and the band stops playing for you.",
+		"defeat": "You kept time. Barely."},
+	"timekeeper": {"name": "The Timekeeper", "rule": "clock",
+		"desc": "The clock is running: the payment grows by 5% every spin.",
+		"intro": "Every tick costs you. I'd hurry.",
+		"defeat": "...Time's up. For me, apparently."},
+	"ilsa": {"name": "Countess Ilsa", "rule": "no_repeat",
+		"desc": "No encores: you can't bet on a spot you bet on last spin.",
+		"intro": "The same bet twice? How dreadfully dull. I won't allow it.",
+		"defeat": "At least you were never boring."},
 	# Act II: the Floor Above (nights 5-7), then the Owner on night 8.
 	"inspector": {"name": "The Inspector", "rule": "no_inside", "act": 2,
 		"desc": "Inside bets are under review: no splits, streets, corners or lines, and those chips don't pay.",

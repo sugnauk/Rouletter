@@ -165,6 +165,11 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 	else:
 		t.shown_take = after
 		near_miss(res)
+	if res.get("tempo_cut", 0.0) > 0.0:
+		fx.banner("MISSED A BEAT  -%d" % int(res.tempo_cut), P.DANGER, 1.0, 140, 8)
+		Sfx.play("lose")
+	if run.phase == RunState.Phase.TABLE and run.table.target > target:
+		fx.pop_text(meter_at + Vector2(0, 14), "PAYMENT +%d" % (run.table.target - target), P.DANGER, 1.0)
 	await _wait(0.6 if exceptional else 0.25)
 
 
@@ -229,6 +234,8 @@ func show_tally() -> void:
 		rows.append(["%d SPIN%s LEFT" % [info.spins_left, "" if info.spins_left == 1 else "S"], "+$%d" % (info.spins_left * Content.CASH_PER_SPIN_LEFT), P.GOLD])
 	if info.comps > 0:
 		rows.append(["COMPS", "+$%d" % info.comps, P.GOLD])
+	for x in info.get("extras", []):
+		rows.append([x[0], "+$%d" % x[1], P.CYAN])
 	var spare: int = maxi(0, int(info.take - info.target))
 	if spare > 0:
 		rows.append(["SPARE TAKE", "+%d" % spare, P.VIOLET])

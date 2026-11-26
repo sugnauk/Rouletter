@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -309,6 +309,7 @@ func test_run_table_flow() -> void:
 	check(run.place_bet("SP1_4", 1) and run.take_back("SP1_4"), "splits can be bet on")
 	check(run.place_chip(0, "S30"), "place kit magnet")
 	run.place_bet("S17", 1)
+	run.table.objective = ""
 	var before_cash: int = run.cash
 	run.spin(17)
 	check(run.table.stack == Content.START_STACK - 1 + 1 and run.table.take == 35.0, "win returns stake and scores")
@@ -1017,6 +1018,90 @@ func test_refine() -> void:
 	check(run.pick_up(c.id) and run.inventory.back().get("mod", "") == "focused", "moving a chip keeps its refine")
 
 
+func test_table_variety() -> void:
+	# Eight Act I Enforcers, four per run, all different.
+	var act1 := Content.ENFORCERS.keys().filter(func(k): return Content.ENFORCERS[k].get("act", 1) == 1)
+	check(act1.size() == 8, "eight Act I Enforcers (%d)" % act1.size())
+	var run = new_run()
+	var first4: Array = run.enforcer_order.slice(0, 4)
+	check(first4.all(func(k): return k in act1), "a run meets four Act I Enforcers")
+	for e in Content.ENFORCERS:
+		check(Content.COUNTERS.has(Content.ENFORCERS[e].rule) or Content.ENFORCERS[e].rule == "owner", "%s has counter hints" % e)
+	# The Duchess: piles of 5+ pay half.
+	var f = felt("european", [["bet", "RED", 6]])
+	var full: float = Resolver.resolve_spin(f, 1).take
+	f.boss_rule = "crowd"
+	near(Resolver.resolve_spin(f, 1).take, full * 0.5, "The Duchess halves big piles")
+	# Spread Out: covering all three dozens scores +25%.
+	var g = felt("european", [["bet", "DOZ1", 2], ["bet", "DOZ2", 1], ["bet", "DOZ3", 1]])
+	near(Resolver.resolve_spin(g, 5).take, 2.0, "three dozens: 4 won, 2 lost")
+	g.condition = "regions"
+	near(Resolver.resolve_spin(g, 5).take, 3.0, "Spread Out multiplies the winnings")
+	# Tight Felt: at most 6 spots.
+	run.table.condition = "scarce"
+	run.felt.condition = "scarce"
+	for k in ["S1", "S2", "S3", "S4", "S5", "S6"]:
+		run.place_bet(k, 1)
+	check(not run.place_bet("S7", 1) and run.place_bet("S6", 1), "Tight Felt blocks a 7th spot but not stacking")
+	check(run.bet_block_reason("S7") != "", "...and says why")
+	# Countess Ilsa: no encores.
+	var r2 = new_run()
+	r2.felt.boss_rule = "no_repeat"
+	r2.place_bet("S17", 1)
+	r2.spin(5)
+	check(not r2.place_bet("S17", 1) and r2.place_bet("S18", 1), "Ilsa blocks last spin's spots")
+	# Miss Tempo: a blank spin costs 10% of the Take built.
+	var r3 = new_run()
+	r3.table.take = 20.0
+	r3.felt.boss_rule = "tempo"
+	r3.place_bet("S17", 1)
+	r3.spin(5)
+	near(r3.table.take, 18.0, "Miss Tempo cuts a blank spin")
+	# The Timekeeper: the payment grows 5% a spin.
+	var r4 = new_run()
+	r4.felt.boss_rule = "clock"
+	var t0: int = r4.table.target
+	r4.place_bet("S17", 1)
+	r4.spin(5)
+	check(r4.table.target == t0 + int(ceil(t0 * 0.05)), "the Timekeeper grows the payment")
+	# Objectives.
+	var r5 = new_run()
+	r5.table.objective = "outside_only"
+	r5.place_bet("RED", 5)
+	r5.spin(1)
+	check(r5.objective_met(), "Clean Hands: outside bets only")
+	r5.place_bet("S17", 1)
+	r5.spin(5)
+	check(not r5.objective_met() and r5.objective_text().ends_with("(blown)"), "...blown by an inside bet")
+	var r6 = new_run()
+	r6.table.objective = "straight"
+	r6.place_bet("S17", 1)
+	var c6: int = r6.cash
+	r6.spin(17)
+	check(r6.last_result.size() > 0 and r6.phase == RunState.Phase.SHOP, "cleared")
+	# Routes.
+	check(r6.shop.get("routes", []).size() == 2, "a route choice before the High Roller")
+	check(r6.pick_route("back_room") and r6.shop.routes.is_empty(), "pick a route")
+	r6.take_offer(0) if not r6.shop.offer.is_empty() else null
+	r6.inventory = []
+	r6.leave_shop()
+	check(r6.table.spins_left <= 5 and r6.table.route == "back_room", "the Back Room is a short table")
+	# Events.
+	var r7 = new_run()
+	r7.place_bet("S17", 1)
+	r7.spin(17)
+	r7.shop.event = "lou_bet"
+	r7.cash = 10
+	r7.answer_event(0)
+	check(r7.cash == 7 and r7.shop.lou_bet and r7.shop.event == "", "Lou's side bet costs $3")
+	r7.shop.event = "fence_hot"
+	r7.answer_event(0)
+	check(r7.inventory.back().get("flaw", "") == "hot", "the Fence's free chip is hot")
+	r7.shop.event = "dolores_tip"
+	r7.answer_event(0)
+	check("extra_spin" in r7.favours, "Dolores' extra ball")
+
+
 func test_new_rules() -> void:
 	var zt = felt("european", [["bet", "RED", 4]])
 	zt.house_rules.append("zero_tolerance")
@@ -1166,7 +1251,7 @@ func test_profile() -> void:
 	for i in range(20):
 		run._restock()
 		for item in run.shop.stock:
-			check(item.type == "loan" or item.id in Profile.default_unlocks() or item.id == "perm", "shop only stocks unlocked content (%s)" % item.id)
+			check(item.type in ["loan", "favour", "voucher"] or item.id in Profile.default_unlocks() or item.id == "perm", "shop only stocks unlocked content (%s)" % item.id)
 		check(not ("fence" in run.shop.vendors), "the Fence needs unlocking")
 
 

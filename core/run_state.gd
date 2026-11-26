@@ -91,7 +91,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 			act2.append(k)
 		else:
 			act1.append(k)
-	enforcer_order = rng.shuffle(act1) + rng.shuffle(act2) + finale
+	enforcer_order = rng.shuffle(act1).slice(0, 4) + rng.shuffle(act2) + finale
 	shop = {}
 	_start_table()
 
@@ -257,7 +257,10 @@ func _start_table() -> void:
 	felt.red_streak = 0
 	felt.hit_streak = 0
 	felt.last_pocket = -99
-	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else Content.SPINS
+	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {}) if not boss else {}
+	if not route.is_empty():
+		target = int(ceil(target * route.target))
+	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else route.get("spins", Content.SPINS)
 	if graded(5) and table_idx >= 1:
 		spins -= 1
 	if boss and felt.has_rule("patron"):
@@ -266,7 +269,18 @@ func _start_table() -> void:
 		spins += 1
 	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
 		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan,
-		"favours": favours.duplicate()}
+		"favours": favours.duplicate(), "base_target": target, "route": shop.get("route", ""),
+		"lou_bet": shop.get("lou_bet", false), "condition": "", "objective": "", "obj_ok": true, "obj_hits": 0, "obj_spins": 0,
+		"prev_keys": []}
+	# Table conditions (ordinary tables from night 2) and a side objective (every table).
+	var cond: String = route.get("condition", "")
+	if cond == "" and not boss:
+		cond = shop.get("next_condition", _roll_condition())
+	table.condition = cond
+	felt.condition = cond
+	if cond == "short_stack":
+		table.stack = maxi(Content.MIN_STACK, table.stack - 4)
+	table.objective = shop.get("next_objective", _roll_objective())
 	for f in favours:
 		match f:
 			"extra_spin":
@@ -310,7 +324,28 @@ func can_bet_on(key: String) -> bool:
 		return false
 	if felt.boss_is("no_inside") and felt.board.is_line_bet(key):
 		return false
+	if phase == Phase.TABLE and not table.is_empty():
+		if felt.boss_is("no_repeat") and key in table.get("prev_keys", []):
+			return false
+		if felt.condition == "scarce" and not felt.chips_on(key).any(func(c): return c.is_bet()):
+			var spots := {}
+			for c in felt.chips:
+				if c.is_bet():
+					spots[c.bet] = true
+			if spots.size() >= Content.SCARCE_SPOTS:
+				return false
 	return true
+
+
+## Why a spot can't take a bet right now ("" if it can), for the status line.
+func bet_block_reason(key: String) -> String:
+	if can_bet_on(key):
+		return ""
+	if felt.boss_is("no_repeat") and key in table.get("prev_keys", []):
+		return "Countess Ilsa: no encores. You bet there last spin."
+	if felt.condition == "scarce":
+		return "Tight Felt: %d spots at most." % Content.SCARCE_SPOTS
+	return ""
 
 
 func place_bet(key: String, amount: int) -> bool:
@@ -448,11 +483,35 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
 	felt.final_spin = table.spins_left <= 1
 	felt.spin_no = table.spins_used + 1
+	var keys := {}
+	for c in felt.chips:
+		if c.is_bet():
+			keys[c.bet] = true
 	var res := Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
 	if res.zero_tax:
 		table.take *= 1.0 - Content.ZERO_TAX
+	if felt.boss_is("tempo") and res.take <= 0.0 and table.take > 0.0:
+		var cut: float = floor(table.take * Content.TEMPO_CUT)
+		table.take -= cut
+		res.log.rules.append("Miss Tempo: a missed beat costs %d Take" % int(cut))
+		res.tempo_cut = cut
 	table.take += res.take
+	# Side objective bookkeeping.
+	if not keys.is_empty():
+		table.obj_spins = table.get("obj_spins", 0) + 1
+		match table.get("objective", ""):
+			"outside_only":
+				if keys.keys().any(func(k): return not felt.board.is_outside(k)):
+					table.obj_ok = false
+			"few":
+				if keys.size() > 3:
+					table.obj_ok = false
+	if res.take > 0.0:
+		table.obj_hits = table.get("obj_hits", 0) + 1
+	if res.events.any(func(e): return e.kind == "win" and e.label == "straight"):
+		table.obj_straight = true
+	table.prev_keys = keys.keys()
 	best_spin = maxf(best_spin, res.take)
 	table.stack += res.stack
 	if felt.boss_is("drain") and table.stack > 0:
@@ -463,6 +522,10 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 	table.spins_used += 1
 	table.spins_left += res.respins - 1
 	last_result = res
+	if felt.boss_is("clock") and table.take < table.target:
+		var grow := int(ceil(table.get("base_target", table.target) * Content.CLOCK_STEP))
+		table.target += grow
+		res.log.rules.append("The Timekeeper: the payment grows by %d" % grow)
 	if table.take >= table.target:
 		_clear_table()
 	elif table.spins_left <= 0:
@@ -485,13 +548,29 @@ func _clear_table() -> void:
 		reward += Content.COMPED_CASH
 	if felt.has_rule("compound_interest"):
 		reward += cash / 10
+	var extras := []   # [label, cash]: conditions, routes, objectives and side bets
+	match table.get("condition", ""):
+		"early":
+			if table.spins_used <= 3:
+				extras.append(["EARLY BIRD", 2])
+		"short_stack":
+			extras.append(["SHORT STACK", 2])
+	var route: Dictionary = Content.ROUTES.get(table.get("route", ""), {})
+	if not route.is_empty() and not table.boss:
+		extras.append([route.name.to_upper(), route.cash])
+	if objective_met():
+		extras.append([Content.OBJECTIVES[table.objective].name.to_upper(), Content.OBJECTIVES[table.objective].cash])
+	if table.get("lou_bet", false) and table.spins_left >= 2:
+		extras.append(["LOU'S SIDE BET", Content.LOU_PAYOUT])
+	for x in extras:
+		reward += x[1]
 	cash += reward
 	overflow += maxi(0, int(t - table.target))
 	total_take += t
 	felt.clear_bets()
 	felt.frozen_id = -1
 	var info := {"night": night, "table": table_idx, "take": t, "target": table.target,
-		"reward": reward, "spins_left": table.spins_left, "spins_used": table.spins_used, "comps": comps, "boss": table.boss, "bonus_pick": pick,
+		"reward": reward, "spins_left": table.spins_left, "spins_used": table.spins_used, "comps": comps, "boss": table.boss, "bonus_pick": pick, "extras": extras,
 		"enforcer": table.enforcer}
 	if table.boss:
 		beaten.append(table.enforcer)
@@ -509,6 +588,35 @@ func _clear_table() -> void:
 	message = "Paid! +$%d (%d base, %d spins left, %d comps)." % [reward, Content.CLEAR_CASH[info.table], info.spins_left, comps]
 	_open_shop(info)
 	table_cleared.emit(info)
+
+
+## Has this table's side objective been done (checked at the clear)?
+func objective_met() -> bool:
+	match table.get("objective", ""):
+		"outside_only", "few":
+			return table.obj_ok and table.get("obj_spins", 0) > 0
+		"straight":
+			return table.get("obj_straight", false)
+		"three_hits":
+			return table.get("obj_hits", 0) >= 3
+	return false
+
+
+## Progress text for the HUD.
+func objective_text() -> String:
+	var o: String = table.get("objective", "")
+	if o == "":
+		return ""
+	var d: Dictionary = Content.OBJECTIVES[o]
+	var state := ""
+	match o:
+		"outside_only", "few":
+			state = "" if table.obj_ok else "  (blown)"
+		"straight":
+			state = "  DONE" if table.get("obj_straight", false) else ""
+		"three_hits":
+			state = "  %d/3" % mini(3, table.get("obj_hits", 0))
+	return "%s: %s +$%d%s" % [d.name, d.desc, d.cash, state]
 
 
 ## Walk away mid-run: counts as a loss (Markers for nights already cleared are kept).
@@ -535,6 +643,15 @@ func _open_shop(info: Dictionary = {}) -> void:
 	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors(),
 		"reserved": -1, "free_rerolls": 0, "offer": [], "bonus": []}
 	_restock()
+	# Roll the next table's twist and side job now, so the Cage can show them.
+	shop.next_condition = _roll_condition() if table_idx != 2 else ""
+	shop.next_objective = _roll_objective()
+	# Before the High Roller table: pick a route (from night 2, or always for veterans).
+	if table_idx == 1 and (night >= 1 or not new_player):
+		shop.routes = Content.ROUTES.keys()
+	# Before the Enforcer: sometimes someone in the Cage has an offer.
+	if table_idx == 2 and rng.chance(Content.EVENT_CHANCE):
+		shop.event = rng.pick(Content.EVENTS.keys())
 	# After the very first table: a free pick from three different build directions.
 	if night == 0 and table_idx == 1:
 		shop.offer = _opening_offer()
@@ -546,6 +663,53 @@ func _open_shop(info: Dictionary = {}) -> void:
 			{"type": "favour", "id": fav},
 			{"type": "reroll", "amount": 1},
 		]
+
+
+func _roll_condition() -> String:
+	return rng.pick(Content.CONDITIONS.keys()) if night >= 1 and table_idx != 2 else ""
+
+
+func _roll_objective() -> String:
+	return "" if new_player and night == 0 else rng.pick(Content.OBJECTIVES.keys())
+
+
+## What the next table holds, for the Cage's preview card.
+func next_table_lines() -> Array:
+	var out := []
+	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {})
+	var cond: String = route.get("condition", shop.get("next_condition", ""))
+	if table_idx == 2:
+		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+		out.append("%s: %s" % [e.name, e.desc])
+	var bits := []
+	if not route.is_empty():
+		bits.append(route.name)
+	if cond != "":
+		bits.append(Content.CONDITIONS[cond].name)
+	var o: String = shop.get("next_objective", "")
+	if o != "":
+		bits.append("Job: %s +$%d" % [Content.OBJECTIVES[o].name, Content.OBJECTIVES[o].cash])
+	if not bits.is_empty():
+		out.append("  ·  ".join(bits))
+	return out
+
+
+## The full text behind next_table_lines(), for the Cage's description panel.
+func next_table_detail() -> String:
+	var out := []
+	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {})
+	var cond: String = route.get("condition", shop.get("next_condition", ""))
+	if table_idx == 2:
+		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+		out.append("%s: %s" % [e.name, e.desc])
+	if not route.is_empty():
+		out.append("%s: %s" % [route.name, route.desc])
+	if cond != "":
+		out.append("%s: %s" % [Content.CONDITIONS[cond].name, Content.CONDITIONS[cond].desc])
+	var o: String = shop.get("next_objective", "")
+	if o != "":
+		out.append("Side job, %s: %s +$%d" % [Content.OBJECTIVES[o].name, Content.OBJECTIVES[o].desc, Content.OBJECTIVES[o].cash])
+	return "\n".join(out)
 
 
 ## Three free items, each pointing the build a different way.
@@ -590,6 +754,47 @@ func skip_offer() -> void:
 	if shop.has("offer"):
 		shop.offer = []
 		changed.emit()
+
+
+func pick_route(id: String) -> bool:
+	if phase != Phase.SHOP or (id != "" and not id in shop.get("routes", [])):
+		return false
+	shop.route = id
+	shop.routes = []
+	changed.emit()
+	return true
+
+
+## Answer a between-table event (option 0 or 1).
+func answer_event(opt: int) -> String:
+	var ev: String = shop.get("event", "")
+	if phase != Phase.SHOP or ev == "":
+		return ""
+	var out := ""
+	match [ev, opt]:
+		["dolores_tip", 0]:
+			favours.append("extra_spin")
+			out = "+1 ball at the next table."
+		["dolores_tip", 1]:
+			cash += 2
+			out = "+$2."
+		["lou_bet", 0]:
+			if cash < Content.LOU_STAKE:
+				return ""
+			cash -= Content.LOU_STAKE
+			shop.lou_bet = true
+			out = "Lou holds your $%d. Clear with 2 balls left for $%d." % [Content.LOU_STAKE, Content.LOU_PAYOUT]
+		["fence_hot", 0]:
+			var pool := ["perm"]
+			for k in Content.CHIPS:
+				if k in unlocked:
+					pool.append(k)
+			var k: String = _pick_rare(pool)
+			inventory.append({"kind": k, "value": 1, "flaw": "hot"})
+			out = "A hot %s chip, on the house." % Content.CHIPS[k].name
+	shop.event = ""
+	changed.emit()
+	return out
 
 
 func take_bonus(i: int) -> bool:

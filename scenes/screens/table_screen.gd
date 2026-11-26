@@ -40,6 +40,8 @@ var rack_grid: GridContainer
 var rules_flow: VBoxContainer
 var boss_panel: Panel
 var boss_lbl: Label
+var job_panel: Panel
+var job_lbl: Label
 var boss_face: Control
 var boss_who := ""
 var boss_name: Label
@@ -168,6 +170,15 @@ func setup() -> void:
 	boss_lbl = P.label(boss_panel, "", P.FONT_SMALL, P.CREAM)
 	boss_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(boss_lbl, Vector2(5, 38), Vector2(RIGHT_W - 10, 62))
+	# Ordinary tables: the condition and side job, in the same spot.
+	job_panel = Panel.new()
+	job_panel.add_theme_stylebox_override("panel", P.box(Color("#10201a"), P.LINE, 1))
+	P.place(job_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
+	add_child(job_panel)
+	job_lbl = P.label(job_panel, "", P.FONT_SMALL, P.CREAM)
+	job_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	job_lbl.add_theme_constant_override("line_spacing", -2)
+	P.place(job_lbl, Vector2(5, 4), Vector2(RIGHT_W - 10, 96))
 	# Tap-to-zoom felt (touch screens, or the Options toggle): a dim layer under a big felt.
 	zoom_bg = ColorRect.new()
 	zoom_bg.color = Color(0.02, 0.01, 0.02, 0.82)
@@ -378,7 +389,11 @@ func refresh() -> void:
 	if t.boss:
 		var e: Dictionary = Content.ENFORCERS[t.enforcer]
 		boss_panel.visible = true
+		job_panel.visible = false
 		boss_lbl.text = e.desc
+		if t.get("objective", "") != "":
+			var o: Dictionary = Content.OBJECTIVES[t.objective]
+			boss_lbl.text += "\nJOB: %s +$%d%s" % [o.name, o.cash, " (done)" if run.objective_met() else ""]
 		boss_who = e.name
 		boss_face.queue_redraw()
 		boss_name.text = "ENFORCER\n" + e.name.to_upper()
@@ -388,6 +403,24 @@ func refresh() -> void:
 			main.say([{"speaker": e.name, "text": e.intro}])
 	else:
 		boss_panel.visible = false
+		var lines := []
+		if t.get("route", "") != "":
+			lines.append(Content.ROUTES[t.route].name.to_upper())
+		if t.get("condition", "") != "":
+			var c: Dictionary = Content.CONDITIONS[t.condition]
+			lines.append("%s\n%s" % [c.name.to_upper(), c.desc])
+		if t.get("objective", "") != "":
+			var o: Dictionary = Content.OBJECTIVES[t.objective]
+			var st := ""
+			if run.objective_met():
+				st = " DONE"
+			elif t.objective in ["outside_only", "few"] and not t.obj_ok:
+				st = " BLOWN"
+			elif t.objective == "three_hits":
+				st = " %d/3" % mini(3, t.get("obj_hits", 0))
+			lines.append("SIDE JOB +$%d%s\n%s: %s" % [o.cash, st, o.name, o.desc])
+		job_panel.visible = not lines.is_empty()
+		job_lbl.text = "\n".join(lines)
 	if status_lbl.text == "":
 		_status("")
 	hud.queue_redraw()
@@ -704,7 +737,8 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	elif run.table.stack <= 0:
 		_status("Your stack is empty.")
 	else:
-		_status("Closed tonight.")
+		var why: String = run.bet_block_reason(key)
+		_status(why if why != "" else "Closed tonight.")
 
 
 func _unhandled_input(event: InputEvent) -> void:
