@@ -32,7 +32,7 @@ func refresh() -> void:
 	title_lbl.text = ("THE OWNER FALLS" if main.run.acts == 2 else "PAID IN FULL") if won else "THE HOUSE COLLECTS"
 	title_lbl.add_theme_color_override("font_color", P.GOLD if won else P.DANGER)
 	msg_lbl.text = main.run.message
-	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Best spin", "Marker paid", "Left unpaid", "Enforcers beaten", "Markers earned", "Feats"])
+	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Best spin", "Marker paid", "Left unpaid", "Enforcers beaten", "Markers earned", "Feats", "Next unlock"])
 	values_lbl.text = "\n".join([
 		main.run.felt.board.def.name,
 		("%d (endless)" % s.get("nights", 0)) if main.run.endless() else "%d / %d" % [s.get("nights", 0), main.run.nights_total()],
@@ -43,6 +43,7 @@ func refresh() -> void:
 		_names(s.get("beaten", []), func(e): return Content.ENFORCERS[e].name),
 		"%d   (now %d)" % [s.get("markers", 0) + _feat_markers(s.get("feats", [])), main.profile.markers],
 		_names(s.get("feats", []), func(f): return Feats.FEATS[f].name),
+		_next_unlock(),
 	])
 
 
@@ -54,6 +55,19 @@ func _names(ids: Array, name_of: Callable) -> String:
 		out.append(name_of.call(i))
 	var txt := ", ".join(out)
 	return txt if txt.length() <= 60 else txt.substr(0, 57) + "..."
+
+
+func _next_unlock() -> String:
+	var nu: Dictionary = main.profile.next_unlock()
+	if nu.is_empty():
+		return "everything owned"
+	var m: int = main.profile.markers
+	if m >= nu.cost:
+		return "%s - ready to buy at the Pawn Shop!" % nu.name
+	var bar := ""
+	for i in range(nu.cost):
+		bar += "#" if i < m else "-"
+	return "%s  [%s] %d/%d" % [nu.name, bar, m, nu.cost]
 
 
 func _feat_markers(ids: Array) -> int:

@@ -71,6 +71,14 @@ func buy_unlock(id: String) -> bool:
 	return false
 
 
+## The cheapest thing still locked in the Pawn Shop (a goal to aim for), or {} if none.
+func next_unlock() -> Dictionary:
+	for e in catalogue():
+		if not is_unlocked(e.id):
+			return e
+	return {}
+
+
 func note_seen(id: String) -> void:
 	if id not in seen_items:
 		seen_items.append(id)
