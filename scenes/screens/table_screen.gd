@@ -28,6 +28,7 @@ var history_view: Control
 var score_view: Control
 var gauge_view: Control
 var spin_btn: Button
+var clear_btn: Button
 var status_lbl: Label
 var denom_box: HBoxContainer
 var rack_grid: GridContainer
@@ -67,7 +68,11 @@ func setup() -> void:
 	spin_btn.add_theme_stylebox_override("disabled", P.box(Color("#4a3a1c"), P.BLACK, 1))
 	for s in ["font_color", "font_hover_color", "font_pressed_color"]:
 		spin_btn.add_theme_color_override(s, P.WOOD_DARK)
+	spin_btn.custom_minimum_size = Vector2(114, 22)
 	P.place(spin_btn, Vector2(8, 204))
+	clear_btn = P.button(self, "CLEAR", _on_clear, Vector2(50, 22), P.FONT_SMALL)
+	clear_btn.tooltip_text = ""
+	P.place(clear_btn, Vector2(126, 204))
 	gauge_view = _canvas(Vector2(4, 232), Vector2(176, 124), _draw_gauges)
 
 	felt_view = FeltView.new()
@@ -135,7 +140,23 @@ func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
 
 
 func _hint() -> String:
-	return "Click: bet %d   Right-click: take back   Space: spin" % bet_size
+	return "Click: bet %d   Right-click: take back   C: clear   Space: spin" % bet_size
+
+
+func _has_bets() -> bool:
+	for c in main.run.felt.chips:
+		if c.is_bet():
+			return true
+	return false
+
+
+func _on_clear() -> void:
+	var run = main.run
+	if spinning or main.dialogue.is_open():
+		return
+	if run.clear_bets():
+		Sfx.play("chip_remove")
+		refresh()
 
 
 func _status(s: String) -> void:
@@ -182,6 +203,7 @@ func refresh() -> void:
 		take_per_spin = ev.take
 		chance = Odds.hit_chance(run.felt, t.target - t.take, t.spins_left)
 	spin_btn.disabled = spinning or run.phase != RunState.Phase.TABLE
+	clear_btn.disabled = spinning or run.phase != RunState.Phase.TABLE or run.is_called_spin() or not _has_bets()
 	spin_btn.text = "CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN")
 	_refresh_tokens()
 	if t.boss:
@@ -411,6 +433,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_SPACE:
 			_on_spin()
 			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_C:
+			_on_clear()
 		elif event.keycode == KEY_L:
 			log_box.visible = not log_box.visible
 
@@ -460,6 +484,8 @@ func _on_spin() -> void:
 		main.route()
 	else:
 		spinning = false
+		if run.rebet() > 0:
+			Sfx.play("chip_place")
 		refresh()
 
 

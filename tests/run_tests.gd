@@ -23,7 +23,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -310,6 +310,22 @@ func test_run_table_flow() -> void:
 	check(run.phase == RunState.Phase.SHOP, "target 30 cleared in one hit -> shop")
 	check(run.cash == before_cash + Content.CLEAR_CASH[0] + 5 + mini(before_cash / 5, 5), "clear reward with comps")
 	check(run.felt.bet_chips().is_empty() and run.felt.perm_chips().size() == 1, "bets cleared, perm stays")
+
+
+func test_rebet_and_clear() -> void:
+	var run = new_run()
+	run.place_bet("S17", 3)
+	run.place_bet("SP1_4", 2)
+	run.spin(5)  # a miss: both bets lost
+	check(run.felt.chips_on("S17").is_empty(), "bets are consumed by the spin")
+	var start: int = run.table.stack
+	check(run.rebet() == 5, "rebet lays the same 5 chips")
+	check(run.felt.value_on("S17") == 3 and run.felt.value_on("SP1_4") == 2 and run.table.stack == start - 5, "rebet restores the layout from the stack")
+	check(run.rebet() == 0, "rebet does not double bets already out")
+	check(run.clear_bets() and run.table.stack == start, "clear returns every bet to the stack")
+	check(not run.clear_bets(), "clear with nothing out is a no-op")
+	run.spin(5)
+	check(run.rebet() == 0, "an empty spin leaves nothing to rebet")
 
 
 func test_shop() -> void:

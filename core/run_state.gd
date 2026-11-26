@@ -28,6 +28,7 @@ var cash: int = 0
 var inventory: Array = []        ## unplaced permanent chips: {kind, value}
 var stack_size: int = Content.START_STACK
 var stack_buys: int = 0
+var last_bets: Dictionary = {}   ## bet layout at the last real spin: key -> chips (for rebet)
 var night: int = 0
 var table_idx: int = 0
 var table: Dictionary = {}
@@ -98,6 +99,7 @@ func _start_table() -> void:
 	table = {"target": target, "take": 0.0, "spins_left": Content.SPINS, "spins_used": 0,
 		"stack": stack_size, "boss": boss, "enforcer": enforcer}
 	last_result = {}
+	last_bets = {}
 	phase = Phase.TABLE
 	if boss:
 		message = "%s: %s" % [Content.ENFORCERS[enforcer].name, Content.ENFORCERS[enforcer].desc]
@@ -138,6 +140,38 @@ func place_bet(key: String, amount: int) -> bool:
 	felt.add_chip("bet", key, amount)
 	changed.emit()
 	return true
+
+
+## Pick up every betting chip on the felt (permanent chips stay put).
+func clear_bets() -> bool:
+	if phase != Phase.TABLE or is_called_spin():
+		return false
+	var got := false
+	for c in felt.chips.duplicate():
+		if c.is_bet():
+			table.stack += c.value
+			felt.remove(c.id)
+			got = true
+	if got:
+		changed.emit()
+	return got
+
+
+## Lay the previous spin's bets again, as far as the stack allows (bets already out count).
+## Returns the number of chips placed. Does nothing on a called spin.
+func rebet() -> int:
+	if phase != Phase.TABLE or is_called_spin():
+		return 0
+	var placed := 0
+	for key in last_bets:
+		var have := 0
+		for c in felt.chips_on(key):
+			if c.is_bet():
+				have += c.value
+		var amt: int = mini(last_bets[key] - have, table.stack)
+		if amt > 0 and place_bet(key, amt):
+			placed += amt
+	return placed
 
 
 ## Pick your betting chips back up from a square before spinning.
@@ -195,6 +229,11 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 		return {}
 	var pockets: Array = felt.board.pockets
 	var pocket: int = forced_pocket if forced_pocket != -99 else pockets[rng.range_i(0, pockets.size() - 1)]
+	if not is_called_spin():
+		last_bets = {}
+		for c in felt.chips:
+			if c.is_bet():
+				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
 	var res := Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
 	if res.zero_tax:
