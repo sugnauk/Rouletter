@@ -54,73 +54,77 @@ func _process(delta: float) -> void:
 		[10, func(): shot("06_shop")],
 		[10.05, func(): _staff(["cashier"])],
 		[10.15, func(): shot("06e_shop_cashier_only")],
-		[10.2, func(): _staff(["cashier", "fence"])],
-		[10.4, func(): shot("06b_shop_fence")],
-		[10.5, func(): _staff(["cashier", "loan_shark"])],
-		[10.7, func(): shot("06c_shop_loan_shark")],
-		[10.8, func():
+		[10.2, func():
+			var it: Dictionary = main.run.shop.stock[0]
+			main.screens.shop._describe("%s  -  CHIP  %s" % [main.run.item_name(it), main.run.price_text(it)], main.run.item_desc(it) + "\nYou own one: stack this on it to level it up.\nWorks with your Magnet, Gilded Number.\nGood against Big Sal at the next table.")],
+		[10.35, func(): shot("06f_shop_hover")],
+		[10.5, func(): _staff(["cashier", "fence"])],
+		[10.7, func(): shot("06b_shop_fence")],
+		[10.8, func(): _staff(["cashier", "loan_shark"])],
+		[11, func(): shot("06c_shop_loan_shark")],
+		[11.1, func():
 			main.run.overflow = 14
 			_staff(["cashier", "dealer"])],
-		[10.95, func(): shot("06d_shop_dealer")],
-		[11, func(): _staff(["cashier", "pit_boss"])],
-		[11.1, func():
+		[11.25, func(): shot("06d_shop_dealer")],
+		[11.3, func(): _staff(["cashier", "pit_boss"])],
+		[11.4, func():
 			for i in range(run.shop.stock.size()):
 				if run.shop.stock[i].type == "upgrade":
 					run.buy(i)
 			main.screens.shop.refresh()],
-		[11.4, func(): shot("07_shop_upgrade_target")],
-		[11.5, func():
+		[11.7, func(): shot("07_shop_upgrade_target")],
+		[11.8, func():
 			if run.shop.pending_upgrade != "":
 				run.apply_upgrade(run.upgrade_targets()[0])
 			run.table_idx = 2
 			run.leave_shop()
 			main.route()],
-		[12.3, func(): shot("08_enforcer")],
-		[12.4, func():
+		[12.6, func(): shot("08_enforcer")],
+		[12.7, func():
 			_close_dialogue()
 			run.table.spins_left = 1
 			run.spin(_empty_pocket(run))
 			main.route()],
-		[15.8, func(): shot("09_game_over")],
-		[15.9, func(): main.show_screen("pawn")],
-		[16.2, func(): shot("10_pawn")],
-		[16.4, func(): main.show_screen("journal")],
-		[16.6, func(): shot("10b_journal")],
-		[16.7, func(): main.show_screen("options")],
-		[16.9, func(): shot("10c_options")],
-		[17.1, func():
+		[16.1, func(): shot("09_game_over")],
+		[16.2, func(): main.show_screen("pawn")],
+		[16.5, func(): shot("10_pawn")],
+		[16.7, func(): main.show_screen("journal")],
+		[16.9, func(): shot("10b_journal")],
+		[17, func(): main.show_screen("options")],
+		[17.2, func(): shot("10c_options")],
+		[17.4, func():
 			main.fast_ui = false
 			main.show_screen("card")],
-		[19.8, func(): shot("11_title_card")],
-		[19.9, func():
+		[20.1, func(): shot("11_title_card")],
+		[20.2, func():
 			main.screens.card.done = true
 			main.go("title", "NIGHT 2", "High Roller table  -  pay 28")],
-		[20.5, func(): shot("12_loading_card")],
-		[21.8, func():
+		[20.8, func(): shot("12_loading_card")],
+		[22.1, func():
 			main.profile.feats = ["straight_up", "jackpot", "beat_sal"]
 			main.show_screen("feats")
 			main.fx.toast("FEAT: STRAIGHT UP", "+1 Marker")],
-		[22.2, func(): shot("13_feats")],
-		[22.4, func():
+		[22.5, func(): shot("13_feats")],
+		[22.7, func():
 			main.profile.seen_items = ["perm", "magnet", "gilded", "la_partage", "patience"]
 			main.profile.used_items = ["perm"]
 			main.screens.feats.tab = "almanac"
 			main.screens.feats.refresh()],
-		[22.7, func(): shot("14_almanac")],
-		[22.9, func():
+		[23, func(): shot("14_almanac")],
+		[23.2, func():
 			main.show_screen("title")
 			main.say([{"speaker": "Mr. Vance", "text": "Portrait check."}])],
-		[23.2, func(): shot("15_portrait_vance")],
-		[23.3, func():
+		[23.5, func(): shot("15_portrait_vance")],
+		[23.6, func():
 			main.dialogue.lines = [{"speaker": "Dolores", "text": "Portrait check."}]
 			main.dialogue.idx = 0
 			main.dialogue._show_line()],
-		[23.6, func(): shot("16_portrait_dolores")],
-		[23.7, func():
+		[23.9, func(): shot("16_portrait_dolores")],
+		[24, func():
 			main.dialogue.lines = [{"speaker": "Madame Oro", "text": "Portrait check."}]
 			main.dialogue._show_line()],
-		[24, func(): shot("17_portrait_oro")],
-		[24.2, func(): get_tree().quit()],
+		[24.3, func(): shot("17_portrait_oro")],
+		[24.5, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

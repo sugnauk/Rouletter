@@ -163,6 +163,35 @@ const PORCH_SHARE := 0.5
 const KING_STEP := 0.5                   ## Kingmaker: +0.5x per level past the first
 
 
+## Build families, for "works with your ..." hints in the Cage.
+const TAGS := {
+	"perm": ["numbers"], "magnet": ["numbers"], "mirror": ["numbers"], "kingmaker": ["numbers", "multiplier"],
+	"gilded": ["numbers"], "double_felt": ["numbers"], "link": ["numbers", "neighbours"], "thirteen": ["numbers"],
+	"sevens": ["numbers"], "ledger": ["numbers", "neighbours"], "collector": ["numbers"], "compounding": ["numbers"],
+	"bridge": ["inside"], "cornerstone": ["inside"], "split_decision": ["inside"],
+	"satin_gloves": ["even"], "la_partage": ["even", "zero"], "en_prison": ["even", "zero"], "red_streak": ["even", "multiplier"],
+	"hot": ["outside"], "porch_light": ["neighbours", "wheel"], "dealer_signature": ["wheel", "multiplier"],
+	"pinned": ["wheel"], "wildcard_zero": ["zero"], "momentum": ["multiplier"], "hot_hand": ["multiplier"],
+	"croupier": ["numbers"], "mint": ["cash"], "respin": ["spins"], "rent_control": ["easy"],
+}
+const TAG_NAMES := {"numbers": "single numbers", "inside": "inside bets", "even": "even-money bets", "outside": "outside bets",
+	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers"}
+## How each Enforcer rule meets your purchases: tags that help or are useless against it.
+const COUNTERS := {
+	"no_outside": {"good": ["numbers", "inside"], "bad": ["outside", "even"]},
+	"zero_tax": {"good": ["zero"], "bad": []},
+	"frozen": {"good": ["numbers", "inside"], "bad": []},
+	"called": {"good": ["numbers", "inside", "multiplier"], "bad": []},
+	"no_inside": {"good": ["numbers", "outside", "even"], "bad": ["inside"]},
+	"drain": {"good": ["multiplier"], "bad": []},
+	"short": {"good": ["spins", "multiplier"], "bad": []},
+}
+
+
+static func tags_of(id: String) -> Array:
+	return TAGS.get(id, [])
+
+
 static func rarity_of(id: String) -> String:
 	return RARITY.get(id, "common")
 

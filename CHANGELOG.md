@@ -3,6 +3,10 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.5
+- Cage hints: hovering an item says which of your chips, rules and upgrades it works with ("Works with your Porch Light"), and whether it's good or useless against the Enforcer at the next table.
+- Bigger description panel in the Cage.
+
 ## 0.0.4
 - Tap-to-zoom felt: on touch screens (or with the new Options toggle) the first tap zooms the felt to nearly full screen so splits and corners are easy to hit; tap outside to close. Spinning closes it too.
 - Fix: win sparkles and floating text now land on the right square on widescreen windows.

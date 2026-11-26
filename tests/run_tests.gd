@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
@@ -655,6 +655,23 @@ func test_staged_vendors() -> void:
 	check(run._pick_vendors().size() == 2, "returning players get two windows from the start")
 	for k in Story.TIPS:
 		check(Story.TIPS[k].id.begins_with("tip_") and not Story.TIPS[k].lines.is_empty(), "tip %s" % k)
+
+
+func test_item_hints() -> void:
+	var run = new_run()
+	run.felt.add_chip("porch_light", "S5", 1)
+	run.felt.house_rules.append("satin_gloves")
+	var h: Array = run.item_hints({"type": "rule", "id": "dealer_signature"})
+	check(h.size() >= 1 and "Porch Light" in h[0], "wheel items point at your Porch Light")
+	check(run.item_hints({"type": "chip", "id": "kingmaker"}).is_empty() or not "Satin" in run.item_hints({"type": "chip", "id": "kingmaker"})[0], "no false friends")
+	run.enforcer_order = ["accountant", "accountant", "accountant", "accountant"]
+	run.table_idx = 2
+	var bad: Array = run.item_hints({"type": "rule", "id": "satin_gloves"})
+	check(bad.any(func(x): return x.begins_with("Useless against The Accountant")), "even-money rules flagged useless against the Accountant")
+	var good: Array = run.item_hints({"type": "chip", "id": "bridge"})
+	check(good.any(func(x): return x.begins_with("Good against The Accountant")), "inside chips flagged good against the Accountant")
+	for id in Content.TAGS:
+		check(Content.CHIPS.has(id) or Content.UPGRADES.has(id) or Content.HOUSE_RULES.has(id), "tagged item %s exists" % id)
 
 
 func test_shop() -> void:

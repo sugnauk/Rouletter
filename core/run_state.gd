@@ -627,6 +627,44 @@ func price_text(item: Dictionary) -> String:
 	return "$%d" % price_of(item)
 
 
+## "Works with your Porch Light" / "Good against Big Sal": hints for a Cage item.
+func item_hints(item: Dictionary) -> Array:
+	var out := []
+	var tags := Content.tags_of(item.id)
+	if tags.is_empty():
+		return out
+	var owned := {}
+	for c in felt.perm_chips():
+		owned[c.kind] = Content.CHIPS[c.kind].name
+	for r in felt.house_rules:
+		owned[r] = Content.HOUSE_RULES[r].name
+	for u in felt.square_upgrades.values() + felt.bet_upgrades.values():
+		owned[u] = Content.UPGRADES[u].name
+	var friends := []
+	for id in owned:
+		if id == item.id:
+			continue
+		for t in Content.tags_of(id):
+			if t in tags and t != "easy":
+				friends.append(owned[id])
+				break
+	if not friends.is_empty():
+		out.append("Works with your " + ", ".join(friends.slice(0, 3)) + ".")
+	# The next Enforcer (the third table of this night, once we're past the first two).
+	if table_idx == 2:
+		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+		var rules: Array = Content.OWNER_RULES if e.rule == "owner" else [e.rule]
+		for r in rules:
+			var c: Dictionary = Content.COUNTERS.get(r, {})
+			if tags.any(func(t): return t in c.get("bad", [])):
+				out.append("Useless against %s at the next table." % e.name)
+				break
+			if tags.any(func(t): return t in c.get("good", [])):
+				out.append("Good against %s at the next table." % e.name)
+				break
+	return out
+
+
 func item_name(item: Dictionary) -> String:
 	match item.type:
 		"chip":

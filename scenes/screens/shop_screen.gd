@@ -47,13 +47,14 @@ func setup() -> void:
 	add_child(service_box)
 	var dp := Panel.new()
 	dp.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.WOOD, 1))
-	P.place(dp, Vector2(8, 252), Vector2(288, 64))
+	P.place(dp, Vector2(8, 234), Vector2(288, 82))
 	add_child(dp)
 	desc_title = P.label(dp, "", P.FONT, P.GOLD)
 	P.place(desc_title, Vector2(6, 4))
 	desc_body = P.label(dp, "", P.FONT_SMALL, P.CREAM)
 	desc_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(desc_body, Vector2(6, 18), Vector2(276, 44))
+	desc_body.add_theme_constant_override("line_spacing", -1)
+	P.place(desc_body, Vector2(6, 18), Vector2(276, 62))
 	next_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
 	next_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(next_lbl, Vector2(8, 320), Vector2(200, 36))
@@ -316,6 +317,8 @@ func _build_windows(run) -> void:
 					tag = rar.to_upper() + " " + tag
 				if item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", "")):
 					body += "\nYou own one: stack this on it to level it up."
+				for h in run.item_hints(item):
+					body += "\n" + h
 				_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
 			tok.pressed.connect(_buy.bind(i))
 			row.add_child(tok)
