@@ -95,7 +95,7 @@ func setup() -> void:
 	grid.add_theme_constant_override("v_separation", 6)
 	P.place(grid, Vector2(18, 244))
 	add_child(grid)
-	for b in [["Pawn Shop", func(): main.show_screen("pawn")], ["Feats", func(): main.show_screen("feats")],
+	for b in [["Pawn Shop", func(): main.show_screen("pawn")], ["Almanac", func(): main.show_screen("feats")],
 			["Journal", func(): main.show_screen("journal")], ["Options", func(): main.open_options()],
 			["Credits", func(): main.show_screen("credits")], ["Quit", func(): get_tree().quit()]]:
 		P.button(grid, b[0], b[1], Vector2(104, 22))

@@ -52,6 +52,39 @@ const FEATS := {
 
 const LINE_TYPES := ["split", "corner", "street", "line"]
 
+## Goal groups for the Pawn Shop's GOALS tab, in display order.
+const GROUPS := ["Spins", "Tables", "Enforcers", "Runs", "Wheels", "Challenges"]
+const CHALLENGE_FEATS := ["graded", "vance_paper", "weekly_win", "ch_master"]
+const WHEEL_FEATS := ["hard_way", "grand_tour"]
+
+
+## Which goal group a Feat belongs to (worked out from how it's earned).
+static func group_of(id: String) -> String:
+	var f: Dictionary = FEATS[id]
+	if id.begins_with("ch_") or id in CHALLENGE_FEATS:
+		return "Challenges"
+	if f.has("wheel") or id in WHEEL_FEATS:
+		return "Wheels"
+	if f.has("enforcer") or id == "last_ball_enforcer":
+		return "Enforcers"
+	match f.on:
+		"spin":
+			return "Spins"
+		"clear":
+			return "Tables"
+	return "Runs"
+
+
+## Unearned Feats, easiest first (the order they're listed in), up to `n`.
+static func next_goals(earned: Array, n: int = 3) -> Array:
+	var out := []
+	for id in FEATS:
+		if not id in earned:
+			out.append(id)
+			if out.size() >= n:
+				break
+	return out
+
 
 ## Feats newly earned by this event (not already in `earned`).
 static func check(event: String, ctx: Dictionary, earned: Array) -> Array:

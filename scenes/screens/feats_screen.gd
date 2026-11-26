@@ -11,7 +11,7 @@ const Wheels := preload("res://core/wheels.gd")
 var main
 var count_lbl: Label
 var list: VBoxContainer
-var tab := "feats"
+var tab := "almanac"   ## Feats moved to the Pawn Shop (GOALS); this screen is the Almanac and run history
 var tab_btn: Button
 var head: Label
 
@@ -31,7 +31,7 @@ func setup() -> void:
 	scroll.add_child(list)
 	P.place(P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 22)), Vector2(16, 326))
 	tab_btn = P.button(self, "", func():
-		tab = {"feats": "almanac", "almanac": "history", "history": "feats"}[tab]
+		tab = "history" if tab == "almanac" else "almanac"
 		Sfx.play("click")
 		refresh(), Vector2(140, 22))
 	P.place(tab_btn, Vector2(484, 326))
@@ -40,7 +40,9 @@ func setup() -> void:
 func refresh() -> void:
 	for c in list.get_children():
 		c.queue_free()
-	tab_btn.text = {"feats": "ALMANAC >", "almanac": "HISTORY >", "history": "FEATS >"}[tab]
+	if tab == "feats":
+		tab = "almanac"
+	tab_btn.text = "HISTORY >" if tab == "almanac" else "ALMANAC >"
 	head.text = tab.to_upper()
 	if tab == "almanac":
 		_almanac()

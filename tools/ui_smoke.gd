@@ -145,9 +145,11 @@ func _process(delta: float) -> void:
 		[21.8, func(): shot("12_loading_card")],
 		[23.1, func():
 			main.profile.feats = ["straight_up", "jackpot", "beat_sal"]
-			main.show_screen("feats")
+			main.profile.markers = 1
+			main.screens.pawn.tab = "goals"
+			main.show_screen("pawn")
 			main.fx.toast("FEAT: STRAIGHT UP", "+1 Marker")],
-		[23.5, func(): shot("13_feats")],
+		[23.5, func(): shot("13_pawn_goals")],
 		[23.7, func():
 			main.profile.seen_items = ["perm", "magnet", "gilded", "la_partage", "patience"]
 			main.profile.used_items = ["perm"]

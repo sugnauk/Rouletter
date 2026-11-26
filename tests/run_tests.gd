@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1442,6 +1442,16 @@ func test_speed() -> void:
 	s.from_dict({"settings": {"speed": 9}})
 	check(s.settings.speed == Profile.SPEEDS.size() - 1, "speed is clamped")
 	check(Profile.SPEEDS[1].time == 1.0 and not Profile.SPEEDS[1].short and Profile.SPEEDS[2].short, "Fast is today's speed, Fastest shortens spins")
+
+
+func test_goal_groups() -> void:
+	for id in Feats.FEATS:
+		check(Feats.group_of(id) in Feats.GROUPS, "%s has a goal group" % id)
+	for g in Feats.GROUPS:
+		check(Feats.FEATS.keys().any(func(id): return Feats.group_of(id) == g), "goal group %s isn't empty" % g)
+	check(Feats.group_of("beat_sal") == "Enforcers" and Feats.group_of("ch_gauntlet") == "Challenges" and Feats.group_of("euro_win") == "Wheels", "groups read sensibly")
+	var next := Feats.next_goals(["straight_up"], 3)
+	check(next.size() == 3 and not "straight_up" in next, "next goals skip earned Feats")
 
 
 func test_new_rules() -> void:

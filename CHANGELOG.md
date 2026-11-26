@@ -3,6 +3,16 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.36
+- The Pawn Shop is now the hub for everything about Markers: earning them and spending them.
+  - **Top bar:** your Markers and a progress bar to the next unlock you can buy. If you're short, it names the Feats that would earn the rest.
+  - **UNLOCKS tab:** the unlock tree. Hovering an unlock you can't afford yet lists the Feats that would pay for it. Clicking one you can't afford says how many Markers you need and how to get them.
+  - **GOALS tab:** every Feat, grouped into Spins, Tables, Enforcers, Runs, Wheels and Challenges.
+    - Each group has a progress bar and the Markers still left to earn.
+    - Each Feat shows its reward.
+    - A gold arrow marks any Feat that would, on its own, pay for the next unlock.
+- The separate Feats screen is gone; the title menu's "Feats" button became "Almanac" until the Casebook arrives.
+
 ## 0.0.35
 - Casino-marquee look: every button is now a lit sign. They have a black lacquer face, gold trim and a ring of light bulbs.
   - At rest the bulbs glow warm and twinkle.
