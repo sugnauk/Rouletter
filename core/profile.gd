@@ -20,6 +20,7 @@ var best_spin: int = 0       ## best single spin ever (personal-best celebration
 var feats: Array = []        ## Feats earned (core/feats.gd)
 var seen_items: Array = []   ## Almanac: content ids that have appeared in the Cage
 var used_items: Array = []   ## Almanac: content ids you have bought
+var weekly_best: Dictionary = {}   ## this week's best weekly challenge run: {id, nights, won, take}
 var best_grade: int = -1     ## highest marker grade won (-1: none yet)
 var history: Array = []      ## the last runs, newest first: {wheel, acts, nights, take, best_spin, won}
 const HISTORY_MAX := 10
@@ -49,7 +50,7 @@ static func default_unlocks() -> Array:
 static func catalogue() -> Array:
 	var out := []
 	var cats := {"wheel": Wheels.WHEELS, "chip": Content.CHIPS, "upgrade": Content.UPGRADES,
-		"rule": Content.HOUSE_RULES, "feature": Content.FEATURES, "vendor": Content.VENDORS}
+		"rule": Content.HOUSE_RULES, "feature": Content.FEATURES, "vendor": Content.VENDORS, "starter": Content.STARTERS}
 	for cat in cats:
 		var table: Dictionary = cats[cat]
 		for id in table:
@@ -139,7 +140,7 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 func to_dict() -> Dictionary:
 	return {"markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
 		"runs": runs, "wins": wins, "best_night": best_night,
-		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "settings": settings}
+		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "weekly_best": weekly_best, "settings": settings}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -149,6 +150,7 @@ func from_dict(d: Dictionary) -> void:
 		if id not in unlocked:
 			unlocked.append(id)
 	seen_beats = d.get("seen_beats", [])
+	weekly_best = d.get("weekly_best", {})
 	runs = int(d.get("runs", 0))
 	wins = int(d.get("wins", 0))
 	best_night = int(d.get("best_night", 0))

@@ -235,8 +235,13 @@ func begin_flow() -> void:
 		show_screen("select")
 
 
-func start_run(wheel: String, acts: int = 1, grade: int = 0) -> void:
-	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts, mini(grade, profile.max_grade()))
+## opts: {seed (0 = random), challenge, starter, weekly}
+func start_run(wheel: String, acts: int = 1, grade: int = 0, opts: Dictionary = {}) -> void:
+	var seed_v: int = opts.get("seed", 0)
+	if seed_v == 0:
+		seed_v = (int(Time.get_unix_time_from_system()) ^ randi()) % 1000000000
+	var g: int = grade if opts.get("weekly", "") != "" else mini(grade, profile.max_grade())
+	run.start_run(seed_v, wheel, profile.unlocked, acts, g, opts)
 	run.new_player = profile.best_night == 0 and profile.wins == 0
 	run_feats = []
 	last_layout = {}
@@ -300,12 +305,31 @@ func _on_run_ended(won: bool) -> void:
 	check_feats("end", {"won": won})
 	var paid: int = run.marker_paid()
 	profile.add_history({"wheel": run.wheel_id, "acts": run.acts, "nights": run.nights_cleared,
-		"take": int(run.total_take), "best_spin": int(run.best_spin), "won": won, "grade": run.grade})
+		"take": int(run.total_take), "best_spin": int(run.best_spin), "won": won, "grade": run.grade,
+		"seed": run.run_seed, "challenge": run.challenge, "weekly": run.weekly, "kit": _kit_summary()})
 	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid, run.grade)
+	if run.weekly != "":
+		var wb: Dictionary = profile.weekly_best
+		if wb.get("id", "") != run.weekly or run.nights_cleared > int(wb.get("nights", -1)) or (won and not wb.get("won", false)):
+			profile.weekly_best = {"id": run.weekly, "nights": run.nights_cleared, "won": won, "take": int(run.total_take)}
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
 		"paid": paid, "marker": run.marker_total(), "markers": res.markers, "feats": run_feats.duplicate(),
 		"best_spin": run.best_spin, "beaten": run.beaten.duplicate()}
 	save_profile()
+
+
+## The run's key chips, biggest first (for the history and the Continue card).
+func _kit_summary() -> Array:
+	return kit_summary(run)
+
+
+static func kit_summary(r) -> Array:
+	var chips: Array = r.felt.perm_chips()
+	chips.sort_custom(func(a, b): return a.value > b.value)
+	var out := []
+	for c in chips.slice(0, 3):
+		out.append("%s%s" % [Content.CHIPS[c.kind].name, (" x%d" % c.value) if c.value > 1 else ""])
+	return out
 
 
 func say(lines: Array, done: Callable = Callable()) -> void:

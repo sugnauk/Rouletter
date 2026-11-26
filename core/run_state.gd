@@ -44,6 +44,10 @@ var best_spin: float = 0.0       ## run summary: the biggest single spin
 var beaten: Array = []           ## run summary: Enforcers beaten this run
 var new_player := false
 var used_outside := false        ## any outside bet placed this run (the "no outside bets" Feat)
+var run_seed: int = 0           ## the run's seed (shareable: the same seed deals the same run)
+var challenge: String = ""       ## a named challenge (Content.CHALLENGES), or ""
+var starter: String = ""         ## an alternative starting kit (Content.STARTERS), or "" for the wheel's
+var weekly: String = ""          ## the weekly challenge's id ("W2917"), or ""
 var grade: int = 0               ## marker grade (difficulty), see Content.GRADES          ## first runs: vendors open up one at a time (see _vendor_open)
 var total_take: float = 0.0
 var nights_cleared: int = 0
@@ -51,7 +55,14 @@ var message: String = ""
 var last_result: Dictionary = {}
 
 
-func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1, grade_in: int = 0) -> void:
+func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1, grade_in: int = 0, opts: Dictionary = {}) -> void:
+	run_seed = seed_in
+	challenge = opts.get("challenge", "")
+	starter = opts.get("starter", "")
+	weekly = opts.get("weekly", "")
+	if challenge != "":
+		acts_in = 1
+		grade_in = 0
 	acts = acts_in
 	grade = clampi(grade_in, 0, Content.GRADES.size() - 1)
 	rng = GameRng.new(seed_in)
@@ -61,11 +72,28 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	var def: Dictionary = Wheels.get_def(wheel)
 	cash = Content.START_CASH + def.cash
 	inventory = []
-	for k in def.kit:
-		inventory.append(k.duplicate())
+	var st: Dictionary = Content.STARTERS.get(starter, {})
+	if st.is_empty():
+		for k in def.kit:
+			inventory.append(k.duplicate())
+	else:
+		cash += st.cash
+		for k in st.get("kit", []):
+			inventory.append(k.duplicate())
+		var commons := []
+		for k in Content.CHIPS:
+			if (k in unlocked or k == "perm") and Content.rarity_of(k) == "common" and not Content.CHIPS[k].get("zero_only", false):
+				commons.append(k)
+		for i in range(st.get("random", 0)):
+			inventory.append({"kind": rng.pick(commons), "value": 1})
+	if challenge == "fence_run":
+		inventory = [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}]
+		cash += Content.FENCE_RUN_CASH
 	for r in def.get("house", []):
 		felt.house_rules.append(r)
 	stack_size = Content.START_STACK - (5 if graded(1) else 0)
+	if challenge == "shoestring":
+		stack_size = Content.SHOESTRING_STACK
 	stack_buys = 0
 	stack_owed = 0
 	loan_pct = 0.0
@@ -92,12 +120,36 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 		else:
 			act1.append(k)
 	enforcer_order = rng.shuffle(act1).slice(0, 4) + rng.shuffle(act2) + finale
+	if challenge == "gauntlet":
+		enforcer_order = rng.shuffle(act1) + rng.shuffle(act1)
 	shop = {}
 	_start_table()
 
 
 # --- Run saves ------------------------------------------------------------------------------
 
+## The weekly challenge for the week containing `unix` (UTC): the same wheel, seed and grade
+## for everyone, worked out from the date alone (no server).
+static func weekly_preset(unix: int) -> Dictionary:
+	var week: int = int(floor((unix / 86400.0 + 3.0) / 7.0))   # Monday-based weeks since 1970
+	var monday: int = (week * 7 - 3) * 86400
+	var wheels: Array = Wheels.ORDER
+	return {"id": "W%d" % week, "seed": week * 7919 + 104729, "wheel": wheels[week % wheels.size()],
+		"grade": 1, "monday": Time.get_date_string_from_unix_time(monday)}
+
+
+## A seed typed by a player: digits are used as-is, anything else is hashed.
+static func parse_seed(text: String) -> int:
+	var t := text.strip_edges()
+	if t == "":
+		return 0
+	if t.is_valid_int():
+		return absi(t.to_int())
+	return absi(t.hash())
+
+
+## Saved too, but optional, so saves from before they existed still load.
+const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": ""}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
 	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade", "used_outside"]
@@ -109,6 +161,8 @@ func to_dict() -> Dictionary:
 	for k in SAVE_FIELDS:
 		var v = get(k)
 		d[k] = v.duplicate(true) if (v is Dictionary or v is Array) else v
+	for k in OPTIONAL_FIELDS:
+		d[k] = get(k)
 	return d
 
 
@@ -121,6 +175,8 @@ func from_dict(d: Dictionary) -> bool:
 	for k in SAVE_FIELDS:
 		var v = d[k]
 		set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
+	for k in OPTIONAL_FIELDS:
+		set(k, d.get(k, OPTIONAL_FIELDS[k]))
 	rng.set_state(d.rng)
 	felt = FeltState.from_dict(d.felt)
 	last_result = {}
@@ -236,14 +292,25 @@ func night_enforcer() -> String:
 	return enforcer_order[night % enforcer_order.size()]
 
 
+## Is table `idx` of this night an Enforcer table? (Every table is, in the Gauntlet.)
+func table_is_boss(idx: int) -> bool:
+	return idx == 2 or challenge == "gauntlet"
+
+
+func table_enforcer(idx: int) -> String:
+	if challenge == "gauntlet":
+		return enforcer_order[(night * 3 + idx) % enforcer_order.size()]
+	return night_enforcer()
+
+
 func _start_table() -> void:
 	var target: int = current_target()
 	var loan := loan_pct
 	if loan > 0.0:
 		target = int(ceil(target * (1.0 + loan)))
 	loan_pct = 0.0
-	var boss := table_idx == 2
-	var enforcer: String = night_enforcer() if boss else ""
+	var boss := table_is_boss(table_idx)
+	var enforcer: String = table_enforcer(table_idx) if boss else ""
 	felt.clear_bets()
 	felt.boss_rule = Content.ENFORCERS[enforcer].rule if boss else ""
 	felt.frozen_id = -1
@@ -320,7 +387,7 @@ func can_bet_on(key: String) -> bool:
 	var b: Dictionary = felt.board.bet(key)
 	if b.type == "sector" and not has_feature("call_bets"):
 		return false
-	if felt.boss_is("no_outside") and felt.board.is_outside(key):
+	if (felt.boss_is("no_outside") or challenge == "no_outside") and felt.board.is_outside(key):
 		return false
 	if felt.boss_is("no_inside") and felt.board.is_line_bet(key):
 		return false
@@ -554,7 +621,7 @@ func _clear_table() -> void:
 			if table.spins_used <= 3:
 				extras.append(["EARLY BIRD", 2])
 		"short_stack":
-			extras.append(["SHORT STACK", 2])
+			extras.append(["THIN STACK", 2])
 	var route: Dictionary = Content.ROUTES.get(table.get("route", ""), {})
 	if not route.is_empty() and not table.boss:
 		extras.append([route.name.to_upper(), route.cash])
@@ -574,6 +641,7 @@ func _clear_table() -> void:
 		"enforcer": table.enforcer}
 	if table.boss:
 		beaten.append(table.enforcer)
+	if table_idx == 2:
 		nights_cleared += 1
 		if night >= nights_total() - 1:
 			phase = Phase.VICTORY
@@ -644,10 +712,10 @@ func _open_shop(info: Dictionary = {}) -> void:
 		"reserved": -1, "free_rerolls": 0, "offer": [], "bonus": []}
 	_restock()
 	# Roll the next table's twist and side job now, so the Cage can show them.
-	shop.next_condition = _roll_condition() if table_idx != 2 else ""
+	shop.next_condition = _roll_condition() if not table_is_boss(table_idx) else ""
 	shop.next_objective = _roll_objective()
 	# Before the High Roller table: pick a route (from night 2, or always for veterans).
-	if table_idx == 1 and (night >= 1 or not new_player):
+	if table_idx == 1 and (night >= 1 or not new_player) and not table_is_boss(1):
 		shop.routes = Content.ROUTES.keys()
 	# Before the Enforcer: sometimes someone in the Cage has an offer.
 	if table_idx == 2 and rng.chance(Content.EVENT_CHANCE):
@@ -666,7 +734,7 @@ func _open_shop(info: Dictionary = {}) -> void:
 
 
 func _roll_condition() -> String:
-	return rng.pick(Content.CONDITIONS.keys()) if night >= 1 and table_idx != 2 else ""
+	return rng.pick(Content.CONDITIONS.keys()) if night >= 1 and not table_is_boss(table_idx) else ""
 
 
 func _roll_objective() -> String:
@@ -678,8 +746,8 @@ func next_table_lines() -> Array:
 	var out := []
 	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {})
 	var cond: String = route.get("condition", shop.get("next_condition", ""))
-	if table_idx == 2:
-		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+	if table_is_boss(table_idx):
+		var e: Dictionary = Content.ENFORCERS[table_enforcer(table_idx)]
 		out.append("%s: %s" % [e.name, e.desc])
 	var bits := []
 	if not route.is_empty():
@@ -699,8 +767,8 @@ func next_table_detail() -> String:
 	var out := []
 	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {})
 	var cond: String = route.get("condition", shop.get("next_condition", ""))
-	if table_idx == 2:
-		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+	if table_is_boss(table_idx):
+		var e: Dictionary = Content.ENFORCERS[table_enforcer(table_idx)]
 		out.append("%s: %s" % [e.name, e.desc])
 	if not route.is_empty():
 		out.append("%s: %s" % [route.name, route.desc])
@@ -889,9 +957,13 @@ func _vendor_open(v: String) -> bool:
 
 
 func _pick_vendors() -> Array:
+	if challenge == "fence_run":
+		return ["fence"]
 	var vendors := [Content.ALWAYS_VENDOR]
 	var pool := []
 	for v in Content.VENDORS:
+		if challenge == "shoestring" and v in ["pit_boss", "loan_shark"]:
+			continue
 		if v != Content.ALWAYS_VENDOR and (Content.VENDORS[v].unlock == 0 or v in unlocked) and _vendor_open(v):
 			pool.append(v)
 	pool = rng.shuffle(pool)
@@ -1051,8 +1123,8 @@ func item_hints(item: Dictionary) -> Array:
 	if not friends.is_empty():
 		out.append("Works with your " + ", ".join(friends.slice(0, 3)) + ".")
 	# The next Enforcer (the third table of this night, once we're past the first two).
-	if table_idx == 2:
-		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+	if table_is_boss(table_idx):
+		var e: Dictionary = Content.ENFORCERS[table_enforcer(table_idx)]
 		var rules: Array = Content.OWNER_RULES if e.rule == "owner" else [e.rule]
 		for r in rules:
 			var c: Dictionary = Content.COUNTERS.get(r, {})

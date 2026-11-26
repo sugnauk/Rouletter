@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1100,6 +1100,64 @@ func test_table_variety() -> void:
 	r7.shop.event = "dolores_tip"
 	r7.answer_event(0)
 	check("extra_spin" in r7.favours, "Dolores' extra ball")
+
+
+func test_long_term() -> void:
+	# Seeds: the same seed deals the same run.
+	var a = RunState.new()
+	a.start_run(777, "european", Profile.default_unlocks())
+	var b = RunState.new()
+	b.start_run(777, "european", Profile.default_unlocks())
+	check(a.run_seed == 777 and a.enforcer_order == b.enforcer_order and a.table.objective == b.table.objective, "same seed, same run")
+	check(RunState.parse_seed("12345") == 12345 and RunState.parse_seed("lucky") == RunState.parse_seed("lucky") and RunState.parse_seed("") == 0, "seed parsing")
+	# Weekly preset: stable within a week, changes week to week.
+	var w1: Dictionary = RunState.weekly_preset(1795000000)
+	var w2: Dictionary = RunState.weekly_preset(1795000000 + 3600)
+	var w3: Dictionary = RunState.weekly_preset(1795000000 + 7 * 86400)
+	check(w1.id == w2.id and w1.seed == w2.seed and w1.id != w3.id, "weekly preset is per week")
+	check(w1.wheel in Wheels.ORDER, "weekly wheel is real")
+	# Saves keep the new fields; old saves without them still load.
+	var c = RunState.new()
+	c.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"challenge": "shoestring", "weekly": "W1"})
+	var d: Dictionary = c.to_dict()
+	var e = RunState.new()
+	check(e.from_dict(d) and e.challenge == "shoestring" and e.weekly == "W1" and e.run_seed == 5, "challenge and seed survive a save")
+	d.erase("challenge")
+	check(RunState.new().from_dict(d), "old saves without the new fields load")
+	# Challenges.
+	check(c.stack_size == Content.SHOESTRING_STACK, "Shoestring stack")
+	c.place_bet("S17", 1)
+	c.spin(17)
+	check(not "pit_boss" in c.shop.vendors and not "loan_shark" in c.shop.vendors, "Shoestring: no Pit Boss or Loan Shark")
+	var n = RunState.new()
+	n.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"challenge": "no_outside"})
+	check(not n.place_bet("RED", 1) and n.place_bet("S1", 1), "No Outside Bets closes the boxes")
+	var f = RunState.new()
+	f.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"challenge": "fence_run"})
+	check(f.inventory.size() == 2 and f.cash == Content.START_CASH + Content.FENCE_RUN_CASH, "Fence's Run kit")
+	f.place_bet("S17", 1)
+	f.spin(17)
+	check(f.shop.vendors == ["fence"], "Fence's Run: only the Fence")
+	var g = RunState.new()
+	g.start_run(5, "french", Profile.default_unlocks(), 1, 0, {"challenge": "gauntlet"})
+	check(g.table.boss and g.table.enforcer != "", "Gauntlet: the first table is an Enforcer")
+	g.place_bet("S17", 1)
+	g.table.take = g.table.target
+	g.spin(17)
+	check(g.phase == RunState.Phase.SHOP and g.table_idx == 1 and g.night == 0, "Gauntlet: an Enforcer table doesn't end the night early")
+	g.inventory = []
+	g.shop.offer = []
+	g.leave_shop()
+	check(g.table.boss and g.table.enforcer != g.beaten[0], "Gauntlet: the second table is a different Enforcer")
+	check(Feats.check("end", {"won": true, "run": g}, []).has("ch_gauntlet"), "challenge Feat")
+	# Starter kits.
+	var k = RunState.new()
+	k.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"starter": "banker_kit"})
+	check(k.inventory.is_empty() and k.cash == Content.START_CASH + 8, "Banker's Kit")
+	var k2 = RunState.new()
+	k2.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"starter": "collector_kit"})
+	check(k2.inventory.size() == 3, "Collector's Kit")
+	check(Profile.catalogue().any(func(x): return x.category == "starter"), "starters are sold at the Pawn Shop")
 
 
 func test_new_rules() -> void:

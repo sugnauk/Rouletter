@@ -375,7 +375,7 @@ const CONDITIONS := {
 	"regions": {"name": "Spread Out", "desc": "Spins where your bets cover all three dozens score +25%."},
 	"scarce": {"name": "Tight Felt", "desc": "At most 6 bet spots at once."},
 	"early": {"name": "Early Bird", "desc": "Clear by the 3rd ball: +$2."},
-	"short_stack": {"name": "Short Stack", "desc": "4 fewer betting chips, but +$2 when you clear."},
+	"short_stack": {"name": "Thin Stack", "desc": "4 fewer betting chips, but +$2 when you clear."},
 }
 const REGIONS_MULT := 1.25
 const SCARCE_SPOTS := 6
@@ -404,6 +404,29 @@ const EVENTS := {
 		"options": [["Take it", "A random chip, free, but HOT: lost the first time a zero hits."], ["Pass", "Leave it."]]},
 }
 const EVENT_CHANCE := 0.6
+
+## Named challenges: handcrafted runs with their own Feat (Act I, base marker).
+const CHALLENGES := {
+	"no_outside": {"name": "No Outside Bets", "wheel": "european",
+		"desc": "The outside boxes are closed all run. Numbers, splits and streets only."},
+	"fence_run": {"name": "The Fence's Run", "wheel": "european",
+		"desc": "Only the Fence works the Cage. You start with a Magnet, a Permanent and +$10."},
+	"gauntlet": {"name": "Enforcer Gauntlet", "wheel": "french",
+		"desc": "Every table is an Enforcer table."},
+	"shoestring": {"name": "Shoestring", "wheel": "european",
+		"desc": "A 12-chip stack, and no Pit Boss or Loan Shark to lean on."},
+}
+const SHOESTRING_STACK := 12
+const FENCE_RUN_CASH := 10
+## Alternative starting kits, bought at the Pawn Shop and picked on the wheel screen.
+const STARTERS := {
+	"banker_kit": {"name": "Banker's Kit", "unlock": 4, "kit": [], "cash": 8,
+		"desc": "Start with no chips, but +$8."},
+	"collector_kit": {"name": "Collector's Kit", "unlock": 5, "random": 3, "cash": 0,
+		"desc": "Start with three random common chips instead of the wheel's kit."},
+	"high_roller_kit": {"name": "High Roller's Kit", "unlock": 6, "kit": [{"kind": "kingmaker", "value": 1}], "cash": 0,
+		"desc": "Start with a Kingmaker instead of the wheel's kit."},
+}
 const LOU_STAKE := 3
 const LOU_PAYOUT := 9
 

@@ -3,6 +3,23 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.22
+- Run modes on the wheel screen (the MODE button):
+  - Weekly challenge: the same wheel, seed and Grade 2 marker for everyone this week, worked out from the date (no server needed). Your best weekly run is remembered. Winning it earns the Weekly Winner Feat.
+  - Four named challenges, each with its own Feat:
+    - No Outside Bets: the boxes are closed all run.
+    - The Fence's Run: only the Fence works the Cage. You start with a Magnet, a Permanent and +$10.
+    - Enforcer Gauntlet: every table is an Enforcer.
+    - Shoestring: a 12-chip stack, and no Pit Boss or Loan Shark.
+- Seeds: every run has one, shown in the pause menu and the run history. Type a seed (a number or any word) on the wheel screen to replay or share a run.
+- Starting kits: buy alternative kits at the Pawn Shop and pick one with the KIT button.
+  - Banker's Kit: no chips, +$8.
+  - Collector's Kit: three random common chips.
+  - High Roller's Kit: a Kingmaker.
+- Continue Run now shows the saved run: wheel, night, where you are, marker left, mode or grade, your key chips, cash and seed.
+- The pause menu lists your marker grade's modifiers.
+- The "Short Stack" table condition is now "Thin Stack", so it isn't confused with the Grade 2 marker.
+
 ## 0.0.21
 - Four new Act I Enforcers. Each run now meets four of the eight, so no two runs face the same lineup:
   - The Duchess: any bet of 5+ chips on one spot pays half. Spread out.
@@ -13,7 +30,7 @@ the last number; a bigger change of direction bumps the middle one.
   - Spread Out: spins covering all three dozens score +25%.
   - Tight Felt: 6 bet spots at most.
   - Early Bird: clear by the 3rd ball for +$2.
-  - Short Stack: 4 fewer chips, but +$2 when you clear.
+  - Thin Stack: 4 fewer chips, but +$2 when you clear.
 - Side jobs: every table has an optional objective that pays on the clear: Clean Hands, Bullseye, Hat Trick or Light Touch. Progress shows in the table's side panel.
 - Pick your table: before each night's High Roller, choose one:
   - The Back Room: 4 balls, payment x0.8.

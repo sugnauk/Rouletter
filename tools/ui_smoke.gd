@@ -217,7 +217,22 @@ func _process(delta: float) -> void:
 		[30.9, func(): shot("25_shop_routes")],
 		[31.0, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
 		[31.3, func(): shot("26_portrait_duchess")],
-		[31.5, func(): get_tree().quit()],
+		[31.5, func():
+			main.dialogue.visible = false
+			main.show_screen("select")
+			main.screens.select.mode = "weekly"
+			main.screens.select._cycle_mode(0)],
+		[31.8, func(): shot("27_select_weekly")],
+		[31.9, func():
+			main.screens.select.mode = "gauntlet"
+			main.screens.select._cycle_mode(0)],
+		[32.1, func(): shot("28_select_challenge")],
+		[32.2, func():
+			main.run.run_seed = 424242
+			main.save_run()
+			main.show_screen("title")],
+		[32.5, func(): shot("29_title_continue")],
+		[32.7, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

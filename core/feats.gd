@@ -38,6 +38,11 @@ const FEATS := {
 	"graded": {"name": "Paper Climber", "desc": "Win a run on a Grade 3 marker or higher.", "reward": 2, "on": "end"},
 	"vance_paper": {"name": "Vance's Own", "desc": "Win a run on the Grade 9 marker.", "reward": 5, "on": "end"},
 	"hard_way": {"name": "The Hard Way", "desc": "Win a run on the American, Triple Zero or Cheater's wheel.", "reward": 2, "on": "end"},
+	"ch_no_outside": {"name": "Nothing on the Outside", "desc": "Win the No Outside Bets challenge.", "reward": 3, "on": "end", "challenge": "no_outside"},
+	"ch_fence_run": {"name": "Fell Off a Truck", "desc": "Win The Fence's Run challenge.", "reward": 3, "on": "end", "challenge": "fence_run"},
+	"ch_gauntlet": {"name": "Ran the Gauntlet", "desc": "Win the Enforcer Gauntlet challenge.", "reward": 4, "on": "end", "challenge": "gauntlet"},
+	"ch_shoestring": {"name": "On a Shoestring", "desc": "Win the Shoestring challenge.", "reward": 3, "on": "end", "challenge": "shoestring"},
+	"weekly_win": {"name": "Weekly Winner", "desc": "Win a weekly challenge run.", "reward": 2, "on": "end"},
 }
 
 const LINE_TYPES := ["split", "corner", "street", "line"]
@@ -100,6 +105,10 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 			return ctx.won and run.grade >= 8
 		"hard_way":
 			return ctx.won and run.wheel_id in ["american", "triple_zero", "no_zero"]
+	if f.has("challenge"):
+		return ctx.won and run.challenge == f.challenge
+	if id == "weekly_win":
+		return ctx.won and run.weekly != ""
 	if f.has("enforcer"):
 		return ctx.info.boss and ctx.info.enforcer == f.enforcer
 	if f.has("wheel"):

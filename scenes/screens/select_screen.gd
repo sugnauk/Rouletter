@@ -7,6 +7,7 @@ const Board := preload("res://core/board.gd")
 const Wheels := preload("res://core/wheels.gd")
 const Content := preload("res://core/content.gd")
 const WheelView := preload("res://scenes/ui/wheel_view.gd")
+const RunState := preload("res://core/run_state.gd")
 
 var main
 var selected := "french"
@@ -24,6 +25,13 @@ var acts := 1
 var grade := 0
 var grade_box: HBoxContainer
 var grade_lbl: Button
+var mode := ""             ## "" standard, "weekly", or a Content.CHALLENGES id
+var kit := ""              ## "" the wheel's kit, or a Content.STARTERS id
+var mode_btn: Button
+var kit_btn: Button
+var seed_edit: LineEdit
+var seed_lbl: Label
+var browse: Array = []     ## the < > buttons (hidden when a mode fixes the wheel)
 
 
 func setup() -> void:
@@ -39,6 +47,29 @@ func setup() -> void:
 	P.place(prev, Vector2(16, 132))
 	var next := P.button(self, ">", func(): _step(1), Vector2(34, 64), P.FONT_BIG)
 	P.place(next, Vector2(298, 132))
+	browse = [prev, next]
+	# Run mode (standard / weekly / named challenges), starting kit, and an optional seed.
+	mode_btn = P.button(self, "", func(): _cycle_mode(1), Vector2(138, 16), P.FONT_SMALL)
+	P.place(mode_btn, Vector2(344, 4))
+	kit_btn = P.button(self, "", func(): _cycle_kit(1), Vector2(138, 16), P.FONT_SMALL)
+	P.place(kit_btn, Vector2(486, 4))
+	seed_lbl = P.label(self, "SEED", P.FONT_SMALL, P.DIM)
+	P.place(seed_lbl, Vector2(344, 28))
+	seed_edit = LineEdit.new()
+	seed_edit.placeholder_text = "random"
+	seed_edit.max_length = 24
+	seed_edit.add_theme_font_override("font", P.font())
+	seed_edit.add_theme_font_size_override("font_size", P.FONT_SMALL)
+	for st in ["normal", "focus", "read_only"]:
+		var sb: StyleBoxFlat = P.box(Color("#120c08"), P.GOLD if st == "focus" else P.LINE, 1)
+		sb.content_margin_top = 1
+		sb.content_margin_bottom = 1
+		sb.content_margin_left = 4
+		seed_edit.add_theme_stylebox_override(st, sb)
+	seed_edit.add_theme_color_override("font_color", P.CREAM)
+	seed_edit.add_theme_color_override("font_placeholder_color", P.DIM)
+	P.place(seed_edit, Vector2(374, 23), Vector2(110, 14))
+	add_child(seed_edit)
 	lock_lbl = P.label(self, "", P.FONT, P.DANGER)
 	lock_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	P.place(lock_lbl, Vector2(16, 286), Vector2(316, 14))
@@ -48,7 +79,7 @@ func setup() -> void:
 	add_child(dots)
 	# Details on the right.
 	var panel := Panel.new()
-	P.place(panel, Vector2(344, 48), Vector2(280, 264))
+	P.place(panel, Vector2(344, 50), Vector2(280, 262))
 	add_child(panel)
 	index_lbl = P.label(panel, "", P.FONT_SMALL, P.DIM)
 	P.place(index_lbl, Vector2(8, 6))
@@ -63,7 +94,7 @@ func setup() -> void:
 	stat_lbl = P.label(panel, "", P.FONT_SMALL, P.DIM)
 	stat_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(stat_lbl, Vector2(8, 160), Vector2(264, 100))
-	go_btn = P.button(self, "Deal me in", func(): main.start_run(selected, acts, grade), Vector2(120, 24))
+	go_btn = P.button(self, "Deal me in", _deal, Vector2(120, 24))
 	act_btn = P.button(self, "", _toggle_act, Vector2(166, 24))
 	P.place(act_btn, Vector2(334, 322))
 	# Marker grade (difficulty) picker, shown once you've won a run.
@@ -76,6 +107,44 @@ func setup() -> void:
 	P.button(grade_box, ">", func(): _grade(1), Vector2(22, 24))
 	P.place(go_btn, Vector2(504, 322))
 	P.place(P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 24)), Vector2(16, 322))
+
+
+func _deal() -> void:
+	var opts := {"seed": RunState.parse_seed(seed_edit.text), "starter": kit}
+	if mode == "weekly":
+		var w: Dictionary = RunState.weekly_preset(int(Time.get_unix_time_from_system()))
+		opts = {"seed": w.seed, "weekly": w.id}
+		main.start_run(w.wheel, 1, w.grade, opts)
+	elif mode != "":
+		opts.challenge = mode
+		main.start_run(selected, 1, 0, opts)
+	else:
+		main.start_run(selected, acts, grade, opts)
+
+
+func _modes() -> Array:
+	return [""] + ["weekly"] + Content.CHALLENGES.keys()
+
+
+func _cycle_mode(d: int) -> void:
+	var ms := _modes()
+	mode = ms[(ms.find(mode) + d + ms.size()) % ms.size()]
+	if mode == "weekly":
+		selected = RunState.weekly_preset(int(Time.get_unix_time_from_system())).wheel
+	elif mode != "":
+		selected = Content.CHALLENGES[mode].wheel
+	Sfx.play("click")
+	refresh()
+
+
+func _cycle_kit(d: int) -> void:
+	var ks := [""]
+	for k in Content.STARTERS:
+		if main.profile.is_unlocked(k):
+			ks.append(k)
+	kit = ks[(ks.find(kit) + d + ks.size()) % ks.size()]
+	Sfx.play("click")
+	refresh()
 
 
 func _grade(d: int) -> void:
@@ -93,6 +162,8 @@ func _toggle_act() -> void:
 
 ## Browse to the previous/next wheel.
 func _step(d: int) -> void:
+	if mode != "":
+		return
 	var i: int = Wheels.ORDER.find(selected)
 	selected = Wheels.ORDER[(i + d + Wheels.ORDER.size()) % Wheels.ORDER.size()]
 	Sfx.play("click")
@@ -109,8 +180,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.keycode == KEY_RIGHT:
 			_step(1)
 			get_viewport().set_input_as_handled()
-		elif event.keycode in [KEY_ENTER, KEY_KP_ENTER] and not go_btn.disabled:
-			main.start_run(selected, acts, grade)
+		elif event.keycode in [KEY_ENTER, KEY_KP_ENTER] and not go_btn.disabled and not seed_edit.has_focus():
+			_deal()
 			get_viewport().set_input_as_handled()
 
 
@@ -135,7 +206,19 @@ func refresh() -> void:
 	if acts == 3 and prof.act2_wins <= 0:
 		acts = 1
 	act_btn.text = ["ACT I: THE FLOOR", "ACT II: FLOOR ABOVE", "ENDLESS"][acts - 1]
-	var unlocked: bool = prof.is_unlocked(selected)
+	var fixed: bool = mode != ""
+	if not main.profile.is_unlocked(kit):
+		kit = ""
+	mode_btn.text = "MODE: " + ("STANDARD" if mode == "" else ("WEEKLY" if mode == "weekly" else Content.CHALLENGES[mode].name.to_upper()))
+	kit_btn.text = "KIT: " + ("WHEEL'S OWN" if kit == "" else Content.STARTERS[kit].name.to_upper())
+	kit_btn.visible = mode in ["", "no_outside", "gauntlet", "shoestring"] and Content.STARTERS.keys().any(func(k): return prof.is_unlocked(k))
+	seed_edit.visible = mode != "weekly"
+	seed_lbl.visible = seed_edit.visible
+	for b in browse:
+		b.visible = not fixed
+	grade_box.visible = grade_box.visible and not fixed
+	act_btn.visible = act_btn.visible and not fixed
+	var unlocked: bool = prof.is_unlocked(selected) or fixed
 	wheel_view.board = Board.new(selected)
 	wheel_view.modulate = Color.WHITE if unlocked else Color(0.35, 0.35, 0.35)
 	wheel_view.queue_redraw()
@@ -147,9 +230,13 @@ func refresh() -> void:
 	name_lbl.text = d.name
 	style_lbl.text = d.get("style", "")
 	desc_lbl.text = d.desc
-	var kit := []
+	var kit_names := []
 	for k in d.kit:
-		kit.append("%s x%d" % [Content.CHIPS[k.kind].name, k.value])
+		kit_names.append("%s x%d" % [Content.CHIPS[k.kind].name, k.value])
+	if kit != "" and mode != "fence_run" and mode != "weekly":
+		kit_names = [Content.STARTERS[kit].name]
+	elif mode == "fence_run":
+		kit_names = ["Magnet x1", "Permanent x1", "+$%d" % Content.FENCE_RUN_CASH]
 	var edge: float = float(b.zeros.size()) / b.pockets.size() * 100.0
 	if acts == 2:
 		desc_lbl.text = d.desc + "  ACT II: eight nights, ending at the Owner's table."
@@ -160,6 +247,14 @@ func refresh() -> void:
 		for g in range(1, grade + 1):
 			tw.append(Content.GRADES[g].name)
 		desc_lbl.text += "  GRADE %d marker ($%s): %s." % [grade + 1, P.money(int(round(Content.MARKER_ACT1 * (1.0 + Content.MARKER_GRADE_STEP * grade)))), ", ".join(tw)]
+	if mode == "weekly":
+		var w: Dictionary = RunState.weekly_preset(int(Time.get_unix_time_from_system()))
+		var wb: Dictionary = prof.weekly_best
+		desc_lbl.text = "WEEKLY CHALLENGE, week of %s. Same wheel, same seed, same Grade 2 marker for everyone this week." % w.monday
+		if wb.get("id", "") == w.id:
+			desc_lbl.text += "  Your best: %s." % ("PAID IN FULL" if wb.won else "%d night%s" % [wb.nights, "" if wb.nights == 1 else "s"])
+	elif mode != "":
+		desc_lbl.text = "CHALLENGE: %s  %s" % [Content.CHALLENGES[mode].desc, "(Won)" if ("ch_" + mode) in prof.feats else ""]
 	var edge_txt := "%.1f%%" % edge + (" (%.1f%% even-money)" % (edge / 2.0) if "la_partage" in d.rules else "")
 	var zeros := []
 	for z in b.zeros:
@@ -172,7 +267,7 @@ func refresh() -> void:
 		"HOUSE EDGE  " + edge_txt,
 		"PAYMENTS  x%.2f" % d.get("target", 1.0),
 		"STARTING CASH  $%d" % (Content.START_CASH + d.cash),
-		"STARTING KIT  " + (", ".join(kit) if not kit.is_empty() else "none"),
+		"STARTING KIT  " + (", ".join(kit_names) if not kit_names.is_empty() else "none"),
 		"BUILT-IN RULES  " + (", ".join(rules) if not rules.is_empty() else "none"),
 	])
-	go_btn.disabled = not prof.is_unlocked(selected)
+	go_btn.disabled = not unlocked
