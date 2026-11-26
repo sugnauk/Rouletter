@@ -18,6 +18,7 @@ const CYAN := Color("#4cc9f0")
 const WOOD := Color("#6b4426")
 const WOOD_DARK := Color("#3b2414")
 const DANGER := Color("#ff5d5d")
+const LACQUER := Color("#150c10")      ## marquee button face
 const GOOD := Color("#7ee081")
 
 const CHIP_COLORS := {
@@ -107,15 +108,19 @@ static func make_theme() -> Theme:
 	t.default_font_size = FONT
 	t.set_font("normal_font", "RichTextLabel", font())
 	t.set_font("bold_font", "RichTextLabel", font())
-	t.set_stylebox("normal", "Button", box(PANEL_HI, LINE.darkened(0.35)))
-	t.set_stylebox("hover", "Button", box(PANEL_HI.lightened(0.12), GOLD))
-	t.set_stylebox("pressed", "Button", box(PANEL.darkened(0.2), GOLD))
-	t.set_stylebox("disabled", "Button", box(PANEL, PANEL_HI))
+	# Buttons are casino marquees (scenes/ui/marquee_button.gd draws the bulbs and trim on top):
+	# black lacquer with a deep-red sheen on hover, pressing dips into red velvet.
+	t.set_stylebox("normal", "Button", box(LACQUER, LACQUER.lightened(0.18), 1, 4))
+	t.set_stylebox("hover", "Button", box(Color("#2a1116"), GOLD.darkened(0.2), 1, 4))
+	t.set_stylebox("pressed", "Button", box(Color("#4a0f18"), GOLD, 1, 4))
+	t.set_stylebox("disabled", "Button", box(Color("#0e0a0c"), Color("#2a2024"), 1, 4))
 	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
 	t.set_color("font_color", "Button", CREAM)
 	t.set_color("font_hover_color", "Button", GOLD)
-	t.set_color("font_pressed_color", "Button", GOLD)
-	t.set_color("font_disabled_color", "Button", DIM)
+	t.set_color("font_pressed_color", "Button", Color("#ffe9a8"))
+	t.set_color("font_disabled_color", "Button", DIM.darkened(0.3))
+	t.set_color("font_outline_color", "Button", Color("#0a0608"))
+	t.set_constant("outline_size", "Button", 0)
 	t.set_color("font_color", "Label", CREAM)
 	t.set_stylebox("panel", "PanelContainer", box(PANEL, LINE.darkened(0.5)))
 	t.set_stylebox("panel", "Panel", box(PANEL, LINE.darkened(0.5)))
@@ -140,7 +145,7 @@ static func label(parent: Node, text: String, size: int = FONT, col: Color = CRE
 
 
 static func button(parent: Node, text: String, cb: Callable, size: Vector2 = Vector2(0, 0), font: int = FONT) -> Button:
-	var b := Button.new()
+	var b: Button = load("res://scenes/ui/marquee_button.gd").new()
 	b.text = text
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = size

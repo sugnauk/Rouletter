@@ -3,6 +3,20 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.35
+- Casino-marquee look: every button is now a lit sign. They have a black lacquer face, gold trim and a ring of light bulbs.
+  - At rest the bulbs glow warm and twinkle.
+  - On hover they chase round the border.
+  - On a press they all flash.
+  - Big "hero" buttons (NEW RUN, DEAL ME IN) breathe with a slow pulse.
+- A new home screen:
+  - **The sign:** "ROULETTER" is a neon sign in a frame of chasing bulbs. It flickers now and then, like an old tube.
+  - **Markers board:** shows your Markers and a progress bar to the next Pawn Shop unlock. Click it to go straight to the Pawn Shop.
+  - **NEW RUN** is a big pulsing plaque, with CONTINUE beside it.
+  - **The run you left** sits on a ticket stub: wheel, night, where you are, marker left, cash, seed and key chips.
+  - **The wheel** spins under a soft spotlight, with chips tumbling past now and then.
+  - **Everything else** is in a tidy grid of smaller marquees.
+
 ## 0.0.34
 - The game takes its time now. At the new default speed (Normal), the wheel spin, the count, chips flying, banners and screen transitions all play about 1.5x slower.
 - Fast-forward: a > / >> / >>> button next to MENU at the table and in the Cage (or press F) cycles Normal, Fast and Fastest.

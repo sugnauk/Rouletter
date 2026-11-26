@@ -19,7 +19,7 @@ var name_lbl: Label
 var desc_lbl: Label
 var style_lbl: Label
 var stat_lbl: Label
-var go_btn: Button
+var go_btn   ## a pulsing marquee (scenes/ui/marquee_button.gd)
 var act_btn: Button
 var acts := 1
 var grade := 0
@@ -99,7 +99,8 @@ func setup() -> void:
 	stat_lbl = P.label(panel, "", P.FONT_SMALL, P.DIM)
 	stat_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(stat_lbl, Vector2(8, 160), Vector2(264, 100))
-	go_btn = P.button(self, "Deal me in", _deal, Vector2(120, 24))
+	go_btn = P.button(self, "DEAL ME IN", _deal, Vector2(120, 24))
+	go_btn.pulse = true
 	act_btn = P.button(self, "", _toggle_act, Vector2(166, 24))
 	P.place(act_btn, Vector2(334, 322))
 	level_btn = P.button(self, "", func():
