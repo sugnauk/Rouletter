@@ -55,6 +55,10 @@ const GLYPHS := {
 ## Pixel sprites for items that used to be lettered tiles: 12 rows of 12 characters.
 ## Colours: see SPRITE_COLOURS ('.' is transparent).
 const SPRITES := {
+	"even_stevens": ["....kkkk....", "..kkrrkkkk..", ".krrrrkkkkk.", ".krrrrkkkkk.", "krrrrrkkkkkk", "krrrrrkwkkkk", "krrrrwkkkkkk", "krrrrrkkkkkk", ".krrrrkkkkk.", ".krrrrkkkkk.", "..kkrrkkkk..", "....kkkk...."],
+	"box_office": ["............", "yyyyyyyyyyyy", "yggggggggggy", "yg.kk.kk..gy", ".ygkk.kk.gy.", "..ygggggggy.", "..ygggggggy.", ".yg.yyyy.gy.", "yg..yyyy..gy", "yggggggggggy", "yyyyyyyyyyyy", "............"],
+	"coin_purse": ["....bbbb....", "...b....b...", "..bbbbbbbb..", ".bbbbbbbbbb.", ".bbbyyyybbb.", "bbbyykkyybbb", "bbbyykyyybbb", "bbbyykkyybbb", "bbbbyyyybbbb", ".bbbbbbbbbb.", "..bbbbbbbb..", "............"],
+	"streak_rider": ["............", "rr..kk..rr..", ".rr..kk..rr.", "..rr..kk..rr", "...rr..kk..r", "....rr..kk..", "....rr..kk..", "...rr..kk..r", "..rr..kk..rr", ".rr..kk..rr.", "rr..kk..rr..", "............"],
 	"sals_whistle": ["............", "............", ".......dd...", "..ddddddwd..", ".dwwwwwwwd..", "dwwwwwwwwd..", "dwwkkwwwwd..", "dwwkkwwwwd..", ".dwwwwwwd...", "..dddddd....", "...r........", "..r........."],
 	"oros_coin": ["....GGGG....", "..GGyyyyGG..", ".GyyGGGGyyG.", ".GyG....GyG.", "GyG..GG..GyG", "GyG.G..G.GyG", "GyG.G..G.GyG", "GyG..GG..GyG", ".GyG....GyG.", ".GyyGGGGyyG.", "..GGyyyyGG..", "....GGGG...."],
 	"accountants_book": ["............", ".bbbbbbbbbb.", ".bwwwwwwwwkb", ".bwkkkkkkwkb", ".bwwwwwwwwkb", ".bwkkkkwwwkb", ".bwwwwwwwwkb", ".bwkkkkkkwkb", ".bwwwwwwyywb", ".bwwwwwwyywb", ".bbbbbbbbbbb", "............"],

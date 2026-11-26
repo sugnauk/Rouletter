@@ -390,7 +390,8 @@ func _start_table() -> void:
 	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {}) if not boss else {}
 	if not route.is_empty():
 		target = int(ceil(target * route.target))
-	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else route.get("spins", Content.SPINS)
+	var base_spins: int = Content.UPSTAIRS_SPINS if upstairs() else Content.SPINS
+	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else route.get("spins", base_spins)
 	if graded(5) and table_idx >= 1:
 		spins -= 1
 	if boss and felt.has_rule("patron"):
@@ -580,6 +581,10 @@ func can_place_chip(kind: String, key: String) -> bool:
 		return straight and Board.straight_number(key) > 0 and not felt.board.is_red(Board.straight_number(key))
 	if Content.CHIPS.get(kind, {}).get("column_only", false):
 		return key.begins_with("COL") and can_bet_on(key)
+	if Content.CHIPS.get(kind, {}).get("coldoz_only", false):
+		return (key.begins_with("COL") or key.begins_with("DOZ")) and can_bet_on(key)
+	if Content.CHIPS.get(kind, {}).get("box_only", false):
+		return (key.begins_with("COL") or key.begins_with("DOZ") or key in Content.EVEN_KEYS) and can_bet_on(key)
 	if kind == "perm":
 		return can_bet_on(key) or (straight and not felt.boss_is("no_outside"))
 	if Content.CHIPS.get(kind, {}).get("line_only", false):
@@ -953,6 +958,11 @@ func _roll_objective() -> String:
 func _opening_offer(chips_only: bool = false) -> Array:
 	var out := []
 	var dirs: Array = rng.shuffle(Content.DIRECTIONS.keys())
+	if not chips_only:
+		# The run's opening pick always has one reliable option: something for the outside boxes.
+		var safe: String = rng.pick(["outside", "even"])
+		dirs.erase(safe)
+		dirs.push_front(safe)
 	for d in dirs:
 		if out.size() >= 3:
 			break

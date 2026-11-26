@@ -29,9 +29,12 @@ func _process(delta: float) -> void:
 		[2, func(): shot("03_select")],
 		[2.1, func(): main.start_run("european")],
 		[2.3, func():
-			run.place_chip(0, "S30")
-			while not run.inventory.is_empty():
-				run.place_chip(0, "S8")
+			run.place_chip(0, "DOZ1")   # the European kit: Box Office, then a Magnet
+			var g := 0
+			while not run.inventory.is_empty() and g < 10:
+				g += 1
+				if not run.place_chip(0, "S30"):
+					run.inventory.remove_at(0)
 			run.place_bet("S17", 5)
 			run.place_bet("DOZ2", 5)
 			run.place_bet("RED", 3)],
@@ -413,7 +416,30 @@ func _process(delta: float) -> void:
 			var on: Array = main.run.felt.chips_on("S20").filter(func(c): return c.kind == "black_cat")
 			print("DRAG-TO-BUY: ", ("OK placed on 20, cash %d" % main.run.cash) if not on.is_empty() else "FAILED")
 			shot("45_after_drag")],
-		[47.1, func(): get_tree().quit()],
+		[47.2, func():
+			main.run.start_run(11, "european", main.profile.unlocked)
+			main.run.table_offer = []
+			main.show_screen("table")],
+		[48.0, func():
+			_close_dialogue()
+			var ts = main.screens.table
+			ts.refresh()
+			main.run.place_chip(0, "COL2")
+			ts.refresh()
+			ts.felt_view.hover_key = "COL2"
+			ts._on_hover("COL2")],
+		[48.3, func(): shot("46_box_office_card")],
+		[48.4, func():
+			main.hide_card()
+			var r = main.run
+			r.night = 4
+			r.table_idx = 0
+			r._start_table()
+			main.screens.table.refresh()],
+		[48.8, func():
+			_close_dialogue()
+			shot("47_upstairs_balls")],
+		[49.0, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

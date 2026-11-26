@@ -28,16 +28,16 @@ const WHEELS := {
 	"french": {
 		"felt": "#1d3f6e", "rail": "#5a3a1e",
 		"name": "French Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
-		"rules": ["la_partage"], "cash": 0, "kit": [{"kind": "perm", "value": 2}, {"kind": "hedge", "value": 1}], "unlock": 0, "target": 0.85,
+		"rules": ["la_partage"], "cash": 0, "kit": [{"kind": "perm", "value": 2}, {"kind": "even_stevens", "value": 1}], "unlock": 0, "target": 0.85,
 		"style": "SAFETY NET: outside bets that rarely sting",
-		"desc": "Single zero, La Partage built in (even-money bets lose only half on zero). A Permanent x2 and a Hedge for your red/black box. Forgiving.",
+		"desc": "Single zero, La Partage built in (even-money bets lose only half on zero). A Permanent x2 and an Even Stevens for a red/black box. Forgiving.",
 	},
 	"european": {
 		"felt": "#0f5233", "rail": "#7a5a2a",
 		"name": "European Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
-		"rules": [], "cash": 0, "kit": [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}], "unlock": 0,
+		"rules": [], "cash": 0, "kit": [{"kind": "box_office", "value": 1}, {"kind": "magnet", "value": 1}], "unlock": 0,
 		"style": "NUMBERS: a few straight-ups that hit hard",
-		"desc": "The classic single-zero wheel. A Magnet and a Permanent chip: pick your numbers and make them count.",
+		"desc": "The classic single-zero wheel. A Box Office for a column or dozen and a Magnet: start steady, then pick your numbers.",
 	},
 	"american": {
 		"felt": "#1d6b38", "rail": "#6b2a1e",

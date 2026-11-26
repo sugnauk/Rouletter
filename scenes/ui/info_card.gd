@@ -7,6 +7,7 @@ extends Control
 const P := preload("res://scenes/ui/palette.gd")
 const Art := preload("res://scenes/ui/art.gd")
 const Content := preload("res://core/content.gd")
+const Preview := preload("res://core/preview.gd")
 
 const W := 190.0
 const PAD := 6.0
@@ -115,6 +116,10 @@ static func for_chip(c, run = null) -> Dictionary:
 		body += "\n%s: %s" % [Content.FLAWS[c.flaw].name, Content.FLAWS[c.flaw].desc]
 	var d := {"icon": c.kind, "title": spec.name, "sub": "  ".join(facts), "body": body, "col": _rar_col(c.kind),
 		"detail": chip_detail(c.kind)}
+	if run != null:
+		var hc := hit_chance(run.felt, c)
+		if hc != "":
+			d.detail = hc + ("\n" + d.detail if d.detail != "" else "")
 	if run != null and c.id == run.felt.frozen_id:
 		d.foot = "Frozen by the Enforcer: pays nothing this table."
 		d.foot_col = P.DANGER
@@ -124,6 +129,15 @@ static func for_chip(c, run = null) -> Dictionary:
 		facts.append("NEW")
 		d.sub = "  ".join(facts)
 	return d
+
+
+## "Pays on 18 of 37 spins (49%)": how often a chip on the felt scores anything.
+static func hit_chance(felt, c) -> String:
+	var n: int = Preview.chip_pays_on(felt, c.id).size()
+	var total: int = felt.board.pockets.size()
+	if n <= 0 or total <= 0:
+		return ""
+	return "Pays on %d of %d spins (%d%%)." % [n, total, int(round(100.0 * n / total))]
 
 
 ## A chip waiting in the rack ({kind, value, flaw?, mod?, copies?}).

@@ -4,6 +4,7 @@ extends SceneTree
 
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Wheels := preload("res://core/wheels.gd")
 const FeltState := preload("res://core/felt_state.gd")
 const Resolver := preload("res://core/resolver.gd")
@@ -26,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -298,7 +299,7 @@ func new_run(wheel := "european", seed := 42):
 func test_run_table_flow() -> void:
 	var run = new_run()
 	check(run.phase == RunState.Phase.TABLE and run.table_name() == "Floor", "starts at Night 1 Floor")
-	check(run.inventory.size() == 2 and run.inventory[0].kind == "magnet" and run.inventory[1].kind == "perm", "European kit")
+	check(run.inventory.size() == 2 and run.inventory[0].kind == "box_office" and run.inventory[1].kind == "magnet", "European kit")
 	for w in Wheels.ORDER:
 		check(Wheels.get_def(w).get("style", "") != "", "%s has a starter plan" % w)
 	check("satin_gloves" in new_run("no_zero").felt.house_rules, "Cheater's Wheel starts with Satin Gloves")
@@ -308,7 +309,7 @@ func test_run_table_flow() -> void:
 	check(run.take_back("S17") and run.table.stack == Content.START_STACK, "take back")
 	check(not run.can_bet_on("VOI"), "call bets locked by default")
 	check(run.place_bet("SP1_4", 1) and run.take_back("SP1_4"), "splits can be bet on")
-	check(run.place_chip(0, "S30"), "place kit magnet")
+	check(run.place_chip(1, "S30"), "place kit magnet")
 	run.place_bet("S17", 1)
 	run.table.objective = ""
 	var before_cash: int = run.cash
@@ -1529,6 +1530,42 @@ func test_drag_buy() -> void:
 	check(run.buy_onto(3, "") == "bought" and "rent_control" in run.felt.house_rules, "rules drop into the House Rules")
 
 
+func test_box_chips() -> void:
+	# Even Stevens on RED: odds (1) + 2 bonus per level when red wins, nothing on black.
+	near(Resolver.resolve_spin(felt("european", [["even_stevens", "RED", 1]]), 1).take, 3.0, "Even Stevens: 1:1 + 2 on its box")
+	near(Resolver.resolve_spin(felt("european", [["even_stevens", "RED", 2]]), 1).take, 6.0, "...per level")
+	near(Resolver.resolve_spin(felt("european", [["even_stevens", "RED", 1]]), 2).take, 0.0, "...nothing when its box loses")
+	near(Resolver.resolve_spin(felt("european", [["box_office", "DOZ1", 1]]), 5).take, 5.0, "Box Office: 2:1 + 3 on its dozen")
+	near(Resolver.resolve_spin(felt("european", [["box_office", "DOZ1", 1]]), 20).take, 0.0, "...nothing outside it")
+	var cp := Resolver.resolve_spin(felt("european", [["coin_purse", "COL1", 2]]), 1)
+	check(cp.cash == 2 and is_equal_approx(cp.take, 4.0), "Coin Purse: +$1 per level and its odds")
+	var sr := Resolver.resolve_spin(felt("european", [["streak_rider", "ODD", 1]]), 3)
+	check(sr.felt_after.chips[0].value == 2, "Streak Rider grows when its box wins")
+	check(Resolver.resolve_spin(felt("european", [["streak_rider", "ODD", 8]]), 3).felt_after.chips[0].value == 8, "...up to 8")
+	check(Resolver.resolve_spin(felt("european", [["streak_rider", "ODD", 1]]), 4).felt_after.chips[0].value == 1, "...not on a loss")
+	var run = new_run()
+	check(run.can_place_chip("box_office", "COL2") and run.can_place_chip("box_office", "DOZ3"), "Box Office on columns and dozens")
+	check(not run.can_place_chip("box_office", "RED") and not run.can_place_chip("box_office", "S5"), "...not elsewhere")
+	check(run.can_place_chip("coin_purse", "HIGH") and run.can_place_chip("coin_purse", "COL1") and not run.can_place_chip("coin_purse", "S1"), "Coin Purse on any outside box")
+	check(Content.place_hint("box_office").contains("dozen") and Content.place_hint("coin_purse").contains("outside box"), "box place hints")
+	# The run's opening pick always has a reliable option.
+	for seed in range(40):
+		var r = new_run("european", 1000 + seed)
+		var offer: Array = r._opening_offer()
+		check(offer.any(func(o): return o.dir in ["outside", "even"]), "opening pick has a box option (seed %d)" % seed)
+	# Upstairs tables run longer.
+	var up = new_run()
+	up.night = Content.NIGHTS
+	up.table_idx = 0
+	up._start_table()
+	check(up.table.spins_left == Content.UPSTAIRS_SPINS, "upstairs tables have %d balls" % Content.UPSTAIRS_SPINS)
+	check(run.table.spins_left == Content.SPINS, "downstairs tables have %d" % Content.SPINS)
+	# Hit chance on the card.
+	var hf = felt("european", [["perm", "RED", 1], ["perm", "S7", 1]])
+	check(InfoCard.hit_chance(hf, hf.chips[0]) == "Pays on 18 of 37 spins (49%).", "hit chance: red")
+	check(InfoCard.hit_chance(hf, hf.chips[1]) == "Pays on 1 of 37 spins (3%).", "hit chance: one number")
+
+
 func test_provisional_placement() -> void:
 	var run = new_run()
 	run.inventory = [{"kind": "perm", "value": 1}]
@@ -1626,6 +1663,7 @@ func test_shop() -> void:
 	check(run.reroll() and run.shop.reroll == Content.REROLL_BASE + 1 and run.shop.stock != stock_before, "reroll")
 	var ss: int = run.stack_size
 	check(run.buy_stack() and run.stack_size == ss + Content.STACK_UPGRADE, "bigger stack")
+	run.inventory.push_front({"kind": "perm", "value": 1})
 	check(run.place_chip(0, "S30"), "place a chip from the shop")
 	var placed_id: int = run.felt.perm_chips()[0].id
 	var cash: int = run.cash

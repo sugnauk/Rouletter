@@ -105,6 +105,10 @@ static func rep_key(felt, kind: String) -> String:
 		return "CO1" if B.has_bet("CO1") else "SP1_2"
 	if spec.get("even_only", false):
 		return "RED"
+	if spec.get("box_only", false):
+		return "RED"
+	if spec.get("coldoz_only", false):
+		return "COL1"
 	if spec.get("column_only", false):
 		return "COL1"
 	if spec.get("black_only", false):

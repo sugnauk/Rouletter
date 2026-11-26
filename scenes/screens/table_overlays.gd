@@ -30,7 +30,7 @@ func first_time_tips(run) -> void:
 		return
 	var td: Dictionary = run.table
 	for pair in [["free_chip", not run.table_offer.is_empty()], ["job", td.get("objective", "") != ""],
-			["condition", td.get("condition", "") != ""]]:
+			["condition", td.get("condition", "") != ""], ["odds", run.night == 0 and run.table_offer.is_empty()]]:
 		if pair[1] and Story.TIPS[pair[0]].id not in t.main.profile.seen_beats:
 			t.main.tip(pair[0], true)
 			return

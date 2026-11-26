@@ -10,9 +10,10 @@ const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
 const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
 const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
 ## Take target of each night's first table (nights 5-8 are Act II only).
-const NIGHT_BASE := [9, 32, 105, 240, 330, 450, 600, 780]
+const NIGHT_BASE := [9, 32, 105, 240, 380, 520, 690, 895]
 const TABLE_MULT := [1.0, 1.4, 1.95]      ## Floor / High Roller / Enforcer
 const SPINS := 6
+const UPSTAIRS_SPINS := 7               ## Act II tables (the floor above) and endless: room to hunt numbers
 const START_STACK := 25                 ## betting chips handed out at each table
 const START_CASH := 4
 const CLEAR_CASH := [3, 4, 6]            ## base cash for clearing each table type
@@ -209,6 +210,20 @@ const CHIPS := {
 	"crown": {"name": "Column Crown", "desc": "Its column hits: the spin's Take x1.25.", "more": "Each chip stacked multiplies again; other levels add +0.25.",
 		"price": 7, "unlock": 2, "column_only": true,
 		"note": "Turns one of the long 2:1 boxes into a multiplier."},
+	# Box chips: sit on the outside boxes, hit about half the time (or a third), pay small. The
+	# reliable start of a build; they can't keep up with later payments alone.
+	"even_stevens": {"name": "Even Stevens", "desc": "Its box wins: +2 Take.", "per": "level",
+		"price": 4, "unlock": 0, "even_only": true, "trigger": {"on": "hit", "take": 2.0},
+		"note": "A sure-ish thing: the even-money boxes are the closest roulette gets to a coin flip."},
+	"box_office": {"name": "Box Office", "desc": "Its column or dozen wins: +3 Take.", "per": "level",
+		"price": 5, "unlock": 0, "coldoz_only": true, "trigger": {"on": "hit", "take": 3.0},
+		"note": "Sells tickets to a third of the wheel: the 2:1 columns and dozens only a roulette felt has."},
+	"coin_purse": {"name": "Coin Purse", "desc": "Its box wins: +$1.", "per": "level",
+		"price": 4, "unlock": 0, "box_only": true, "trigger": {"on": "hit", "cash": 1},
+		"note": "Small change from the outside boxes, every time they come in."},
+	"streak_rider": {"name": "Streak Rider", "desc": "Its box wins: grows a level (up to 8).", "more": "Up to 8 levels per chip stacked.",
+		"price": 5, "unlock": 0, "even_only": true, "trigger": {"on": "hit", "grow": 1, "cap": 8},
+		"note": "Rides a colour or a parity streak, the run gamblers swear by at the wheel."},
 	"odd_fellow": {"name": "Odd Fellow", "desc": "Any odd number hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "odd", "take": 2.0},
 		"note": "Plays the parity boxes from a single square."},
@@ -360,6 +375,7 @@ const TAGS := {
 	"crown": ["outside", "multiplier"], "lamp": ["cash", "numbers"], "silk": ["outside"], "sweet_spot": ["numbers", "inside"],
 	"last_call": ["multiplier"], "comped": ["cash"], "insurance": ["even", "outside"], "high_society": ["outside"],
 	"black_tie": ["numbers"],
+	"even_stevens": ["even", "box"], "box_office": ["outside", "box"], "coin_purse": ["outside", "even", "cash", "box"], "streak_rider": ["even", "box"],
 	"street_light": ["numbers"], "red_herring": ["numbers"], "jar": ["numbers"], "hedge": ["even"],
 	"wheel_spoke": ["wheel", "neighbours"], "echo": ["numbers", "multiplier"], "ace": ["numbers", "multiplier"],
 	"tip_jar": ["cash"], "green_thumb": ["zero"], "signpost": ["inside", "cash"],
@@ -373,7 +389,7 @@ const TAGS := {
 	"gold_trim": ["outside", "cash"], "fat_box": ["outside"], "repeat_box": ["outside", "multiplier"], "lucky_colour": ["even"],
 }
 const TAG_NAMES := {"numbers": "single numbers", "inside": "inside bets", "even": "even-money bets", "outside": "outside bets",
-	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers"}
+	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers", "box": "box chips"}
 ## How each Enforcer rule meets your purchases: tags that help or are useless against it.
 const COUNTERS := {
 	"no_outside": {"good": ["numbers", "inside"], "bad": ["outside", "even"]},
@@ -458,6 +474,7 @@ const LOU_PAYOUT := 9
 
 ## The Almanac's categories: [title, source table name, ids]. Every item appears exactly once.
 const ALMANAC := [
+	["BOX CHIPS", "CHIPS", ["even_stevens", "box_office", "coin_purse", "streak_rider"]],
 	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "red_herring", "street_light", "wheel_spoke", "hedge", "croupier", "collector", "ledger"]],
 	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "seedling", "echo"]],
 	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "ace", "crown", "bridge"]],
@@ -719,6 +736,10 @@ static func place_hint(kind: String) -> String:
 			return "Goes on a black number."
 		if spec.get("column_only", false):
 			return "Goes on a column bet."
+		if spec.get("coldoz_only", false):
+			return "Goes on a column or a dozen."
+		if spec.get("box_only", false):
+			return "Goes on an outside box: a column, dozen, red, black, odd, even, high or low."
 		if spec.get("line_only", false):
 			return "Goes on a line: a split, street, corner or six-line."
 		if spec.get("any_bet", false):

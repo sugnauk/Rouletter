@@ -515,7 +515,8 @@ func describe(k: String) -> String:
 	var b: Dictionary = B.bet(k)
 	var payout: float = b.payout
 	var ptxt := str(int(payout)) if is_equal_approx(payout, round(payout)) else "%.2f" % payout
-	var s := "%s  pays %s:1" % [B.label(Board.straight_number(k)) if Board.is_straight(k) else _outside_name(k), ptxt]
+	var s := "%s  pays %s:1, hits %d in %d" % [B.label(Board.straight_number(k)) if Board.is_straight(k) else _outside_name(k), ptxt,
+		b.numbers.size(), B.pockets.size()]
 	var up := ""
 	if Board.is_straight(k):
 		up = run.felt.square_upgrades.get(Board.straight_number(k), "")

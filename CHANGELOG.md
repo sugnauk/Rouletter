@@ -3,6 +3,22 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.43
+- **Start steady, hunt numbers later.** A single number hits 1 spin in 37, so a lone number chip often went whole tables without scoring. The run now grows from safe bets into big ones on its own, without any gating by night:
+  - **Four new box chips** sit on the outside boxes. They hit about half the time (or a third) but pay small:
+    - **Even Stevens:** its box wins, +2 Take.
+    - **Box Office:** its column or dozen wins, +3 Take.
+    - **Coin Purse:** its box wins, +$1.
+    - **Streak Rider:** its box wins, it grows a level (up to 8).
+  - Box chips stack and level like any chip, but they can't keep up with later payments on their own. Number chips, stacking, respins and multipliers are where the big Take is.
+  - **The opening pick** always includes one option for the outside boxes.
+  - **Kits:** the European kit is now Box Office + Magnet, and the French kit trades its Hedge for Even Stevens.
+  - **Upstairs tables (Act II and endless) run 7 balls,** so there's room to chase numbers and combos. Their payments are 15% bigger to match.
+- **See the odds:**
+  - every chip's info card says how often it pays ("Pays on 18 of 37 spins (49%)");
+  - hovering a spot shows "hits 18 in 37";
+  - Dolores explains the odds at your first table.
+
 ## 0.0.42
 - **Drag to buy, Balatro-style.** Drag an item off the Cage counter:
   - **A chip onto the felt:** bought and placed in one move. It stays free to move until the spin.
