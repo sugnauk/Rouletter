@@ -148,9 +148,10 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 			ci.draw_arc(c, 5 * s, -PI, 0, 10, P.GOLD, 2.0 * s, false)
 			R.call(5, 5, 2, 6, P.GOLD)
 		"reroll":
-			R.call(1, 1, 10, 10, P.CREAM)
-			for p in [[3, 3], [7, 3], [5, 5], [3, 7], [7, 7]]:
-				R.call(p[0], p[1], 2, 2, P.BLACK)
+			# Refresh symbol: an open circular arrow, arrowhead at the top right.
+			ci.draw_arc(c, 4 * s, -PI * 0.1, PI * 1.5, 16, P.CREAM, 2.0 * s, false)
+			var e := c + Vector2(0, -4) * s
+			ci.draw_colored_polygon(PackedVector2Array([e + Vector2(0, -3) * s, e + Vector2(0, 3) * s, e + Vector2(3.5, 0) * s]), P.CREAM)
 		"stack":
 			for i in range(4):
 				R.call(2, 9 - i * 2, 8, 2, [P.CREAM, P.RED, P.CREAM, P.RED][i])

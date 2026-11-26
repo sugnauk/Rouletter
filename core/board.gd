@@ -1,12 +1,14 @@
 extends RefCounted
 ## Felt geometry for one wheel: pockets, the 3xN grid, every bet and adjacency.
 ## Payouts use one fair-minus-zeros formula: payout = numbers / numbers_covered - 1
-## (36 numbers -> 35/17/11/8/2/1; 12 numbers -> 11/5/3/2/2/1).
+## (36 numbers -> 35/17/11/8/5/2/1; 12 numbers -> 11/5/3/2/1/1).
 ## Grid: number n sits at grid column (n-1)/3 (a "street") and grid row (n-1)%3,
 ## row 0 being the 1,4,7.. row (drawn at the bottom).
 
 const Wheels := preload("res://core/wheels.gd")
 
+## Inside bets that sit on the lines of the felt (clickable between the number squares).
+const LINE_TYPES := ["split", "street", "corner", "line"]
 const OUTSIDE_TYPES := ["column", "dozen", "red", "black", "odd", "even", "low", "high", "sector"]
 
 var wheel_id: String
@@ -49,6 +51,7 @@ func _build_bets() -> void:
 		var b := c * 3 + 1
 		_add("ST%d" % b, "street", [b, b + 1, b + 2])
 		if c < cols - 1:
+			_add("LN%d" % b, "line", [b, b + 1, b + 2, b + 3, b + 4, b + 5])
 			for r in range(2):
 				_add("CO%d" % (b + r), "corner", [b + r, b + r + 1, b + r + 3, b + r + 4])
 	for r in range(3):
@@ -92,6 +95,10 @@ func has_bet(key: String) -> bool:
 
 func all_bet_keys() -> Array:
 	return bets.keys()
+
+
+func is_line_bet(key: String) -> bool:
+	return bets[key].type in LINE_TYPES
 
 
 func is_outside(key: String) -> bool:

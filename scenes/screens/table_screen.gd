@@ -31,7 +31,7 @@ var spin_btn: Button
 var status_lbl: Label
 var denom_box: HBoxContainer
 var rack_grid: GridContainer
-var rules_flow: HFlowContainer
+var rules_flow: VBoxContainer
 var boss_panel: Panel
 var boss_lbl: Label
 var log_box: RichTextLabel
@@ -112,9 +112,8 @@ func setup() -> void:
 	P.place(rack_grid, Vector2(RIGHT_X, 80))
 	add_child(rack_grid)
 	P.place(P.label(self, "HOUSE RULES", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 146))
-	rules_flow = HFlowContainer.new()
-	rules_flow.add_theme_constant_override("h_separation", 3)
-	rules_flow.add_theme_constant_override("v_separation", 3)
+	rules_flow = VBoxContainer.new()
+	rules_flow.add_theme_constant_override("separation", 2)
 	P.place(rules_flow, Vector2(RIGHT_X, 156), Vector2(RIGHT_W, 0))
 	add_child(rules_flow)
 	boss_panel = Panel.new()
@@ -229,10 +228,21 @@ func _refresh_tokens() -> void:
 	for c in rules_flow.get_children():
 		c.queue_free()
 	for r in run.felt.wheel_rules + run.felt.house_rules:
-		var tok = Token.new(r, Vector2(20, 20))
-		tok.hover_text = "%s%s: %s" % [Content.HOUSE_RULES[r].name, " (wheel)" if r in run.felt.wheel_rules else "", Content.HOUSE_RULES[r].desc]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		var tok = Token.new(r, Vector2(16, 16))
+		var info: Dictionary = Content.HOUSE_RULES[r]
+		tok.hover_text = "%s%s: %s" % [info.name, " (wheel)" if r in run.felt.wheel_rules else "", info.desc]
 		tok.hover_target = _status
-		rules_flow.add_child(tok)
+		row.add_child(tok)
+		var lbl := P.label(row, info.name, P.FONT_SMALL, P.CREAM)
+		lbl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.mouse_filter = Control.MOUSE_FILTER_PASS
+		lbl.mouse_entered.connect(func(): _status(tok.hover_text))
+		lbl.mouse_exited.connect(func(): _status(""))
+		rules_flow.add_child(row)
 
 
 func _select_item(i: int) -> void:

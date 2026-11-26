@@ -76,7 +76,7 @@ func test_wheels_shape() -> void:
 
 func test_payout_formula() -> void:
 	var e = Board.new("european")
-	var want := {"S17": 35.0, "SP1_4": 17.0, "ST1": 11.0, "CO1": 8.0, "COL1": 2.0, "DOZ2": 2.0, "RED": 1.0, "TIE": 2.0, "ORP": 3.5}
+	var want := {"S17": 35.0, "SP1_4": 17.0, "ST1": 11.0, "CO1": 8.0, "LN1": 5.0, "COL1": 2.0, "DOZ2": 2.0, "RED": 1.0, "TIE": 2.0, "ORP": 3.5}
 	for k in want:
 		near(e.bet(k).payout, want[k], "european payout %s" % k)
 	var m = Board.new("mini")
@@ -301,7 +301,7 @@ func test_run_table_flow() -> void:
 	check(run.place_bet("S17", 2) and run.felt.chips_on("S17")[0].value == 5, "bets merge")
 	check(run.take_back("S17") and run.table.stack == Content.START_STACK, "take back")
 	check(not run.can_bet_on("VOI"), "call bets locked by default")
-	check(not run.place_bet("SP1_4", 1), "splits not exposed")
+	check(run.place_bet("SP1_4", 1) and run.take_back("SP1_4"), "splits can be bet on")
 	check(run.place_chip(0, "S30"), "place kit magnet")
 	run.place_bet("S17", 1)
 	var before_cash: int = run.cash

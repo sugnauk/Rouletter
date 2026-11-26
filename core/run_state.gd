@@ -121,8 +121,6 @@ func can_bet_on(key: String) -> bool:
 	var b: Dictionary = felt.board.bet(key)
 	if b.type == "sector" and not has_feature("call_bets"):
 		return false
-	if b.type in ["split", "street", "corner"]:
-		return false  # not exposed in this slice's UI
 	if felt.boss_rule == "no_outside" and felt.board.is_outside(key):
 		return false
 	return true
