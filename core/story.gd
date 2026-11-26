@@ -137,7 +137,7 @@ const TUTORIAL := {
 		{"speaker": "Dolores", "text": "First time at a wheel, sugar? Listen close, I only say it once. Well. Twice, in the Journal."},
 		{"speaker": "Dolores", "text": "Click a square to bet chips from your stack. Splits and corners sit on the lines between squares."},
 		{"speaker": "Dolores", "text": "Winning bets add to your Take. Losing bets come off it. Reach the payment before your spins run out."},
-		{"speaker": "Dolores", "text": "Your bets go back down every spin by themselves. Undo or Clear to change them. Right-click, or hold, to take one back."},
+		{"speaker": "Dolores", "text": "Your bets go back down every spin by themselves. Undo or Clear to change them. Right-click to take one back. On a touch screen, hold a bet for more options."},
 		{"speaker": "Dolores", "text": "In a hurry? Turn on Fast spins in the MENU. The big moments still get their due."}]},
 	"shop": {"id": "tut_shop", "title": "How to Play: The Cage", "lines": [
 		{"speaker": "Dolores", "text": "Between tables you visit the Cage. Every window takes a different kind of money."},
@@ -152,6 +152,18 @@ const TIPS := {
 		{"speaker": "Dolores", "text": "A blue frame means rare, gold means legendary. You won't see those every night, sugar."}]},
 	"spare": {"id": "tip_spare", "lines": [
 		{"speaker": "Dolores", "text": "You scored past the payment. That extra is your spare Take: the Dealer takes it as payment, when he's working."}]},
+	"free_chip": {"id": "tip_free_chip", "lines": [
+		{"speaker": "Dolores", "text": "Every table, the house slips you a chip. Pick one of the three: each points your build a different way. Hover to see what it does."}]},
+	"job": {"id": "tip_job", "lines": [
+		{"speaker": "Dolores", "text": "See the side job in the corner? It's optional. Pull it off before you clear and you pocket a little extra."}]},
+	"condition": {"id": "tip_condition", "lines": [
+		{"speaker": "Dolores", "text": "Some tables have a twist tonight. It's written in the corner panel: play around it and it can even help you."}]},
+	"route": {"id": "tip_route", "lines": [
+		{"speaker": "Dolores", "text": "You get to choose your High Roller table now. The Back Room is short and easy, the Long Table is long and tight. Or take the usual."}]},
+	"event": {"id": "tip_event", "lines": [
+		{"speaker": "Dolores", "text": "People talk to you in the Cage now. Offers come and go: take what helps, pass on the rest."}]},
+	"refine": {"id": "tip_refine", "lines": [
+		{"speaker": "Dolores", "text": "One of your number chips has some levels on it. The Cashier can REFINE it ($6), giving it a second act. TRADE swaps a chip for a related one."}]},
 	"level": {"id": "tip_level", "lines": [
 		{"speaker": "Dolores", "text": "You've already got one of those on the felt. Put this one right on top of it and it levels up. You lose nothing: a stack does everything both chips would do apart."}]},
 }

@@ -16,6 +16,7 @@ const WheelView := preload("res://scenes/ui/wheel_view.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
 const TableCount := preload("res://scenes/screens/table_count.gd")
 const Preview := preload("res://core/preview.gd")
+const Story := preload("res://core/story.gd")
 
 const LEFT_W := 180
 const MID_X := 188
@@ -66,6 +67,7 @@ var zoom_bg: ColorRect            ## dims the table while the felt is zoomed for
 var zoomed := false
 var offer_panel: Panel = null   ## the free pick-1-of-3 chip at the start of each table
 var offer_key := ""
+var bet_menu: Control = null     ## touch: the long-press edit menu
 var pinned: Dictionary = {}      ## bet keys that survive Clear (Alt-click to pin)
 const ZOOM := 1.8
 var count                        ## the spin count-up (table_count.gd)
@@ -105,6 +107,7 @@ func setup() -> void:
 	felt_view = FeltView.new()
 	P.place(felt_view, Vector2(MID_X, 32))
 	felt_view.bet_clicked.connect(_on_bet_clicked)
+	felt_view.bet_held.connect(_on_bet_held)
 	felt_view.bet_hovered.connect(_on_hover)
 	add_child(felt_view)
 	status_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
@@ -209,7 +212,7 @@ func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
 
 func _hint() -> String:
 	if DisplayServer.is_touchscreen_available():
-		return "Tap: bet %d   Hold: take back" % bet_size
+		return "Tap: bet %d   Hold: edit (take back, -chip, pin, clear area)" % bet_size
 	return "Click: bet %d  Right: take back  Shift: -%d  Ctrl: clear area  Alt: pin" % [bet_size, bet_size]
 
 
@@ -279,6 +282,18 @@ func _on_hover(k: String) -> void:
 				txt += "   |   if %s hits: +%d Take%s" % [B.label(Board.straight_number(k)), int(f.take), ("  +$%d" % f.cash) if f.cash > 0 else ""]
 	_status(txt)
 	felt_view.queue_redraw()
+
+
+## Dolores explains each new system the first time it turns up (one at a time).
+func _first_time_tips(run) -> void:
+	if main.dialogue.is_open() or spinning:
+		return
+	var t: Dictionary = run.table
+	for pair in [["free_chip", not run.table_offer.is_empty()], ["job", t.get("objective", "") != ""],
+			["condition", t.get("condition", "") != ""]]:
+		if pair[1] and Story.TIPS[pair[0]].id not in main.profile.seen_beats:
+			main.tip(pair[0], true)
+			return
 
 
 ## The free special chip waiting at the start of every table: three to choose from, over the
@@ -459,6 +474,7 @@ func refresh() -> void:
 	_refresh_tokens()
 	_mark_clearing()
 	_refresh_offer(run)
+	_first_time_tips(run)
 	if t.boss:
 		var e: Dictionary = Content.ENFORCERS[t.enforcer]
 		boss_panel.visible = true
@@ -741,6 +757,94 @@ func _unzoom() -> void:
 	felt_view.position = Vector2(MID_X, 32)
 
 
+func _edit_take_back(key: String) -> void:
+	if main.run.take_back(key):
+		bet_history = bet_history.filter(func(h): return h.key != key)
+		_chips_home(key)
+		Sfx.play("refund")
+
+
+func _edit_minus(key: String) -> void:
+	if main.run.unbet(key, bet_size) > 0:
+		bet_history = bet_history.filter(func(h): return h.key != key)
+		_chips_home(key)
+		Sfx.play("refund")
+
+
+func _edit_clear_area(key: String) -> void:
+	var run = main.run
+	var region: Array = run.felt.board.bet(key).numbers
+	var n := 0
+	for c in run.felt.chips.duplicate():
+		if c.is_bet() and not pinned.has(c.bet) and run.felt.board.bet(c.bet).numbers.all(func(x): return x in region):
+			_chips_home(c.bet)
+			n += run.take_back(c.bet) as int
+	if n > 0:
+		Sfx.play("clear_all")
+		_status("Cleared %d bet%s inside %s." % [n, "" if n == 1 else "s", felt_view.describe(key).split("  ")[0]])
+
+
+func _edit_pin(key: String) -> void:
+	if main.run.felt.chips_on(key).any(func(c): return c.is_bet()):
+		if pinned.has(key):
+			pinned.erase(key)
+		else:
+			pinned[key] = true
+		felt_view.pinned = pinned
+		felt_view.queue_redraw()
+		Sfx.play("click")
+		_status("Pinned: Clear keeps this bet." if pinned.has(key) else "Unpinned.")
+
+
+## Touch: a long press on a square opens its edits (the mouse uses right-click / Shift / Ctrl / Alt).
+func _on_bet_held(key: String) -> void:
+	var run = main.run
+	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
+		return
+	_close_bet_menu()
+	var has_bet: bool = run.felt.chips_on(key).any(func(c): return c.is_bet())
+	var outside: bool = not Board.is_straight(key)
+	if not has_bet and not outside:
+		return
+	bet_menu = Control.new()
+	bet_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bet_menu.mouse_filter = Control.MOUSE_FILTER_STOP
+	bet_menu.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed:
+			_close_bet_menu())
+	add_child(bet_menu)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	var items := []
+	if has_bet:
+		items.append(["Take back", func(): _edit_take_back(key)])
+		items.append(["-%d chip%s" % [bet_size, "" if bet_size == 1 else "s"], func(): _edit_minus(key)])
+		items.append(["Unpin" if pinned.has(key) else "Pin", func(): _edit_pin(key)])
+	if outside:
+		items.append(["Clear inside", func(): _edit_clear_area(key)])
+	var bg := Panel.new()
+	bg.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.GOLD, 1))
+	var at: Vector2 = felt_view.position + felt_view.key_center(key)
+	var sz := Vector2(84, items.size() * 20 + 6)
+	at = Vector2(clampf(at.x - sz.x / 2.0, 4, 636 - sz.x), clampf(at.y + 10, 4, 356 - sz.y))
+	P.place(bg, at, sz)
+	bet_menu.add_child(bg)
+	P.place(box, Vector2(3, 3))
+	bg.add_child(box)
+	for it in items:
+		var cb: Callable = it[1]
+		P.button(box, it[0], func():
+			cb.call()
+			_close_bet_menu(), Vector2(78, 18), P.FONT_SMALL)
+	Sfx.play("click")
+
+
+func _close_bet_menu() -> void:
+	if bet_menu != null:
+		bet_menu.queue_free()
+		bet_menu = null
+
+
 func _on_bet_clicked(key: String, button: int) -> void:
 	var run = main.run
 	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
@@ -750,39 +854,18 @@ func _on_bet_clicked(key: String, button: int) -> void:
 		return
 	# Quick layout edits: Shift-click takes back one chip size, Ctrl-click an outside box (or a
 	# street/line) clears every bet inside that region, Alt-click pins a bet so Clear keeps it.
+	# On touch screens a long press opens the same edits as a menu (_on_bet_held).
 	if button == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SHIFT) and selected_item < 0:
-		if run.unbet(key, bet_size) > 0:
-			bet_history = bet_history.filter(func(h): return h.key != key)
-			_chips_home(key)
-			Sfx.play("refund")
+		_edit_minus(key)
 		return
 	if button == MOUSE_BUTTON_LEFT and (Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)) and selected_item < 0:
-		var region: Array = run.felt.board.bet(key).numbers
-		var n := 0
-		for c in run.felt.chips.duplicate():
-			if c.is_bet() and not pinned.has(c.bet) and run.felt.board.bet(c.bet).numbers.all(func(x): return x in region):
-				_chips_home(c.bet)
-				n += run.take_back(c.bet) as int
-		if n > 0:
-			Sfx.play("clear_all")
-			_status("Cleared %d bet%s inside %s." % [n, "" if n == 1 else "s", felt_view.describe(key).split("  ")[0]])
+		_edit_clear_area(key)
 		return
 	if button == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_ALT) and selected_item < 0:
-		if run.felt.chips_on(key).any(func(c): return c.is_bet()):
-			if pinned.has(key):
-				pinned.erase(key)
-			else:
-				pinned[key] = true
-			felt_view.pinned = pinned
-			felt_view.queue_redraw()
-			Sfx.play("click")
-			_status("Pinned: Clear keeps this bet." if pinned.has(key) else "Unpinned.")
+		_edit_pin(key)
 		return
 	if button == MOUSE_BUTTON_RIGHT:
-		if run.take_back(key):
-			bet_history = bet_history.filter(func(h): return h.key != key)
-			_chips_home(key)
-			Sfx.play("refund")
+		_edit_take_back(key)
 		return
 	if button != MOUSE_BUTTON_LEFT:
 		return

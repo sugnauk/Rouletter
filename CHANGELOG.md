@@ -3,6 +3,17 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.27
+- Gentler first runs. Until you've cleared a night, the extra systems arrive one night at a time:
+  - night 1 is just roulette, your kit and the free chip;
+  - side jobs start on night 2;
+  - table conditions and the route pick start on night 3;
+  - Cage events start on night 4.
+  Veterans get everything from the start.
+- Dolores explains each system the first time it shows up: the free chip, side jobs, table conditions, the route pick, Cage events, and Refine/Trade.
+- Touch screens: hold a bet for a menu with Take back, -1 chip, Pin/Unpin and Clear inside. These match right-click, Shift, Alt and Ctrl with a mouse.
+- Faster previews: the hover previews and the gold "could clear" rings are cached until the felt changes, so they don't re-run dozens of spin calculations on every hover (helps phones and the web build).
+
 ## 0.0.26
 - A free special chip at every table: before the first spin, pick one of three, each from a different build direction. It's never a plain Permanent. Hover to see what it does; picking it puts it in your rack to place. This replaces the one-off pick after the first table.
 - More to buy: the Cashier now stocks 3 chips. Plain Permanents are much rarer in the Cage (about 1 slot in 7, for levelling), so the counter is mostly special chips.

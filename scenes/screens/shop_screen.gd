@@ -10,6 +10,7 @@ const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 const FeltView := preload("res://scenes/ui/felt_view.gd")
 const Preview := preload("res://core/preview.gd")
+const Story := preload("res://core/story.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
 const Portraits := preload("res://scenes/ui/portraits.gd")
 
@@ -279,6 +280,17 @@ func refresh() -> void:
 	status_lbl.text = _hint()
 	cage_view.queue_redraw()
 	_refresh_choice(run)
+	_first_time_tips(run)
+
+
+func _first_time_tips(run) -> void:
+	if main.dialogue.is_open():
+		return
+	var refinable: bool = "cashier" in run.shop.get("vendors", []) and run.felt.perm_chips().any(func(c): return Board.is_straight(c.bet) and c.value >= Content.REFINE_LEVEL)
+	for pair in [["route", not run.shop.get("routes", []).is_empty()], ["event", run.shop.get("event", "") != ""], ["refine", refinable]]:
+		if pair[1] and Story.TIPS[pair[0]].id not in main.profile.seen_beats:
+			main.tip(pair[0], true)
+			return
 
 
 ## The pick-one panels over the Cage: the opening build pick, and the early-clear bonus.

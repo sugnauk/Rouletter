@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -913,6 +913,10 @@ func test_preview() -> void:
 	var before: float = Resolver.resolve_spin(f, 17).take
 	Preview.pays_on(f, "odd_fellow", "S10")
 	near(Resolver.resolve_spin(f, 17).take, before, "previews never mutate the felt")
+	var sig := Preview.signature(f)
+	check(Preview.clearing_pockets(f, 20.0) == [17] and Preview.signature(f) == sig, "cached previews give the same answer")
+	f.add_chip("bet", "S5", 1)
+	check(Preview.signature(f) != sig and 5 in Preview.clearing_pockets(f, 20.0), "changing the felt refreshes the cache")
 
 
 func test_pinned_clear() -> void:
@@ -1244,6 +1248,24 @@ func test_free_chips() -> void:
 				total += 1
 				perms += 1 if it.id == "perm" else 0
 	check(float(perms) / total < 0.3, "plain Permanents are rare in the Cage (%d of %d)" % [perms, total])
+
+
+func test_onboarding() -> void:
+	var run = RunState.new()
+	run.start_run(21, "european", Profile.default_unlocks(), 1, 0, {"new_player": true})
+	check(run.new_player and run.table.objective == "" and run.table.condition == "", "a new player's first night is plain")
+	check(not run.feature_on("objective") and not run.feature_on("route") and not run.feature_on("event"), "no extra systems on night 1")
+	run.night = 1
+	check(run.feature_on("objective") and not run.feature_on("condition"), "side jobs arrive on night 2")
+	run.night = 2
+	check(run.feature_on("condition") and run.feature_on("route") and not run.feature_on("event"), "conditions and routes on night 3")
+	run.night = 3
+	check(run.feature_on("event"), "Cage events on night 4")
+	var vet = RunState.new()
+	vet.start_run(21, "european", Profile.default_unlocks())
+	check(vet.feature_on("event") and vet.table.objective != "", "veterans get everything from the start")
+	for k in ["free_chip", "job", "condition", "route", "event", "refine"]:
+		check(Story.TIPS.has(k), "Dolores explains %s" % k)
 
 
 func test_new_rules() -> void:

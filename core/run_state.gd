@@ -60,6 +60,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	run_seed = seed_in
 	challenge = opts.get("challenge", "")
 	starter = opts.get("starter", "")
+	new_player = opts.get("new_player", false)
 	weekly = opts.get("weekly", "")
 	if challenge != "":
 		acts_in = 1
@@ -724,10 +725,10 @@ func _open_shop(info: Dictionary = {}) -> void:
 	shop.next_condition = _roll_condition() if not table_is_boss(table_idx) else ""
 	shop.next_objective = _roll_objective()
 	# Before the High Roller table: pick a route (from night 2, or always for veterans).
-	if table_idx == 1 and (night >= 1 or not new_player) and not table_is_boss(1):
+	if table_idx == 1 and feature_on("route") and not table_is_boss(1):
 		shop.routes = Content.ROUTES.keys()
 	# Before the Enforcer: sometimes someone in the Cage has an offer.
-	if table_idx == 2 and rng.chance(Content.EVENT_CHANCE):
+	if table_idx == 2 and feature_on("event") and rng.chance(Content.EVENT_CHANCE):
 		shop.event = rng.pick(Content.EVENTS.keys())
 	# Cleared with balls to spare: choose a bonus.
 	if info.get("bonus_pick", false):
@@ -739,12 +740,21 @@ func _open_shop(info: Dictionary = {}) -> void:
 		]
 
 
+## New players meet the extra systems one night at a time: side jobs from night 2, table
+## conditions and the route pick from night 3, Cage events from night 4. Veterans get them all.
+const ONBOARD_NIGHT := {"objective": 1, "condition": 2, "route": 2, "event": 3}
+
+
+func feature_on(f: String) -> bool:
+	return not new_player or night >= ONBOARD_NIGHT.get(f, 0)
+
+
 func _roll_condition() -> String:
-	return rng.pick(Content.CONDITIONS.keys()) if night >= 1 and not table_is_boss(table_idx) else ""
+	return rng.pick(Content.CONDITIONS.keys()) if night >= 1 and feature_on("condition") and not table_is_boss(table_idx) else ""
 
 
 func _roll_objective() -> String:
-	return "" if new_player and night == 0 else rng.pick(Content.OBJECTIVES.keys())
+	return rng.pick(Content.OBJECTIVES.keys()) if feature_on("objective") else ""
 
 
 ## What the next table holds, for the Cage's preview card.

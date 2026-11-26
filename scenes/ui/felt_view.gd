@@ -4,6 +4,7 @@ extends Control
 
 signal bet_clicked(key: String, button: int)
 signal bet_hovered(key: String)
+signal bet_held(key: String)        ## touch: a long press on a square
 
 const P := preload("res://scenes/ui/palette.gd")
 const Board := preload("res://core/board.gd")
@@ -34,7 +35,7 @@ var marks := false               ## colour-blind aid: a diamond on every red squ
 
 const ZONE := 8.0               ## width of the clickable strip on a felt line (mouse)
 const ZONE_TOUCH := 12.0        ## ...and on touch screens, where fingers need more room
-const HOLD_TIME := 0.45         ## touch: holding a square this long takes the bet back
+const HOLD_TIME := 0.45         ## touch: holding a square this long opens its edit menu
 
 var zone := ZONE
 var press_key := ""             ## touch: square under the finger, pending tap vs hold
@@ -138,7 +139,7 @@ func _process(delta: float) -> void:
 	if press_key != "":
 		press_t += delta
 		if press_t >= HOLD_TIME:
-			bet_clicked.emit(press_key, MOUSE_BUTTON_RIGHT)
+			bet_held.emit(press_key)
 			press_key = ""
 	var dirty := false
 	for d in [flashes, pops, nears]:
@@ -164,7 +165,7 @@ func _gui_input(event: InputEvent) -> void:
 			bet_hovered.emit(k)
 			queue_redraw()
 	elif event is InputEventMouseButton and DisplayServer.is_touchscreen_available() and event.button_index == MOUSE_BUTTON_LEFT:
-		# Touch: a tap bets, a long hold takes the bet back (there's no right button).
+		# Touch: a tap bets, a long hold opens the bet's edit menu (there's no right button or Shift).
 		var k := key_at(event.position)
 		if event.pressed:
 			press_key = k

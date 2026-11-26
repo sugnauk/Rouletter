@@ -241,8 +241,9 @@ func start_run(wheel: String, acts: int = 1, grade: int = 0, opts: Dictionary = 
 	if seed_v == 0:
 		seed_v = (int(Time.get_unix_time_from_system()) ^ randi()) % 1000000000
 	var g: int = grade if opts.get("weekly", "") != "" else mini(grade, profile.max_grade())
+	opts = opts.duplicate()
+	opts.new_player = profile.best_night == 0 and profile.wins == 0
 	run.start_run(seed_v, wheel, profile.unlocked, acts, g, opts)
-	run.new_player = profile.best_night == 0 and profile.wins == 0
 	run_feats = []
 	last_layout = {}
 	Sfx.play("click")

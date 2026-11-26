@@ -202,6 +202,15 @@ func _process(delta: float) -> void:
 			main.screens.table.refresh()],
 		[28.9, func(): shot("23_table_job")],
 		[29.0, func():
+			for k in preload("res://core/story.gd").TIPS:
+				main.profile.seen_beats.append(preload("res://core/story.gd").TIPS[k].id)
+			_close_dialogue()
+			main.run.table_offer = []
+			main.screens.table.refresh()
+			main.screens.table._on_bet_held("RED")],
+		[29.2, func(): shot("23m_touch_menu")],
+		[29.25, func(): main.screens.table._close_bet_menu()],
+		[29.3, func():
 			var r = main.run
 			var guard := 0
 			while r.phase == 0 and guard < 20:
@@ -212,33 +221,33 @@ func _process(delta: float) -> void:
 			r.shop.bonus = []
 			r.shop.event = "lou_bet"
 			main.route()],
-		[30.4, func():
+		[30.7, func():
 			_close_dialogue()
 			main.screens.shop.refresh()],
-		[30.6, func(): shot("24_shop_event")],
-		[30.7, func():
+		[30.9, func(): shot("24_shop_event")],
+		[31, func():
 			main.run.shop.event = ""
 			main.run.shop.routes = Content.ROUTES.keys()
 			main.screens.shop.refresh()],
-		[30.9, func(): shot("25_shop_routes")],
-		[31.0, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
-		[31.3, func(): shot("26_portrait_duchess")],
-		[31.5, func():
+		[31.2, func(): shot("25_shop_routes")],
+		[31.3, func(): main.say([{"speaker": "The Duchess", "text": "Darling, nobody needs that many chips in one place."}])],
+		[31.6, func(): shot("26_portrait_duchess")],
+		[31.8, func():
 			main.dialogue.visible = false
 			main.show_screen("select")
 			main.screens.select.mode = "weekly"
 			main.screens.select._cycle_mode(0)],
-		[31.8, func(): shot("27_select_weekly")],
-		[31.9, func():
+		[32.1, func(): shot("27_select_weekly")],
+		[32.2, func():
 			main.screens.select.mode = "gauntlet"
 			main.screens.select._cycle_mode(0)],
-		[32.1, func(): shot("28_select_challenge")],
-		[32.2, func():
+		[32.4, func(): shot("28_select_challenge")],
+		[32.5, func():
 			main.run.run_seed = 424242
 			main.save_run()
 			main.show_screen("title")],
-		[32.5, func(): shot("29_title_continue")],
-		[32.7, func(): get_tree().quit()],
+		[32.8, func(): shot("29_title_continue")],
+		[33, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
