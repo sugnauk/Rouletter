@@ -57,6 +57,7 @@ var spin_score := 0.0
 var spin_score_vis := false
 var score_pop := 0.0
 var hits := 0                    ## scoring events this spin (the combo counter)
+var shown_cash := -1.0           ## HUD cash, counted up toward run.cash
 var chance := 0.0
 var take_per_spin := 0.0
 
@@ -199,6 +200,20 @@ func _process(delta: float) -> void:
 		return
 	meter_pulse = maxf(0.0, meter_pulse - delta * 2.5)
 	score_pop = maxf(0.0, score_pop - delta * 5.0)
+	var cash: int = main.run.cash
+	if shown_cash < 0.0:
+		shown_cash = cash
+	elif not is_equal_approx(shown_cash, cash):
+		var next := move_toward(shown_cash, cash, maxf(4.0, absf(cash - shown_cash) * 3.0) * delta)
+		if cash > shown_cash and int(next) != int(shown_cash):
+			Sfx.play("cash", 1.4)  # a coin tick for every dollar counted up
+		shown_cash = next
+	# The SPIN button breathes while it's ready and bets are down.
+	if not spin_btn.disabled and _has_bets():
+		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
+		spin_btn.modulate = Color(1, 1, 1).lerp(Color(1.25, 1.18, 0.9), g)
+	else:
+		spin_btn.modulate = Color.WHITE
 	hud.queue_redraw()
 	if spinning:
 		score_view.queue_redraw()
@@ -274,6 +289,7 @@ func _refresh_tokens() -> void:
 	for i in range(inv.size()):
 		var item: Dictionary = inv[i]
 		var tok = Token.new(item.kind, Vector2(25, 25))
+		tok.rarity = Content.rarity_of(item.kind)
 		tok.badge = "x%d" % item.value if item.value > 1 else ""
 		if item.get("flaw", "") != "":
 			tok.badge = Content.FLAWS[item.flaw].short
@@ -350,7 +366,7 @@ func _draw_hud(c: Control) -> void:
 			c.draw_circle(p, 3.5, P.DIM.darkened(0.4), false, 1.0, false)
 	# Cash.
 	Art.icon(c, "cash", Vector2(RIGHT_X + 52, 12), 1)
-	Art.text(c, font, Vector2(RIGHT_X + 62, 16), "$%d" % run.cash, 8, P.GOLD)
+	Art.text(c, font, Vector2(RIGHT_X + 62, 16), "$%d" % int(round(shown_cash if shown_cash >= 0.0 else run.cash)), 8, P.CREAM if shown_cash >= 0.0 and int(shown_cash) != run.cash else P.GOLD)
 
 
 func _draw_gauges(c: Control) -> void:

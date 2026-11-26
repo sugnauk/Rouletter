@@ -130,6 +130,8 @@ func float_text(key: String, text: String, col: Color = P.GOLD) -> void:
 
 
 func _process(delta: float) -> void:
+	if run != null and run.felt.perm_chips().any(func(c): return Content.rarity_of(c.kind) == "legendary"):
+		queue_redraw()
 	if press_key != "":
 		press_t += delta
 		if press_t >= HOLD_TIME:
@@ -318,6 +320,11 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		var e: Dictionary = entries[i]
 		var p := (first + Vector2(i * spacing, 0)).floor()
 		Art.chip(self, p, rad * scale, e.col, e.kind, 0, e.frozen)
+		# Shine, and a slow gold halo on legendary chips.
+		draw_rect(Rect2(p + Vector2(-rad * 0.5, -rad * 0.6), Vector2(2, 1)), Color(1, 1, 1, 0.55))
+		if e.kind != "bet" and Content.rarity_of(e.kind) == "legendary":
+			var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 200.0)
+			draw_arc(p, rad + 1.5, 0, TAU, 16, Color(P.GOLD, 0.35 + 0.45 * g), 1.0, false)
 		var v: int = e.value
 		if v > 1 or e.kind == "bet":
 			var txt := str(v) if v < 100 else "99+"

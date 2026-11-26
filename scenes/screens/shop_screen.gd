@@ -334,6 +334,7 @@ func _refresh_rack() -> void:
 	for i in range(inv.size()):
 		var item: Dictionary = inv[i]
 		var tok = Token.new(item.kind, Vector2(25, 25))
+		tok.rarity = Content.rarity_of(item.kind)
 		tok.badge = "x%d" % item.value if item.value > 1 else ""
 		if item.get("flaw", "") != "":
 			tok.badge = Content.FLAWS[item.flaw].short
