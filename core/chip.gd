@@ -8,6 +8,7 @@ var kind: String = "bet"
 var bet: String = "S0"
 var value: int = 1
 var flaw: String = ""      ## Fence chips: "cracked" | "hot" | "sticky" (see Content.FLAWS)
+var copies: int = 1        ## how many chips were stacked into this one: each one keeps its full effect
 var mod: String = ""       ## a Refine path: "focused" | "steady" (see Content.REFINES)
 
 
@@ -22,6 +23,7 @@ func copy():
 	var c = get_script().new(id, kind, bet, value)
 	c.flaw = flaw
 	c.mod = mod
+	c.copies = copies
 	return c
 
 

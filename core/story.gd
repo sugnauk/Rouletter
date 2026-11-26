@@ -153,7 +153,7 @@ const TIPS := {
 	"spare": {"id": "tip_spare", "lines": [
 		{"speaker": "Dolores", "text": "You scored past the payment. That extra is your spare Take: the Dealer takes it as payment, when he's working."}]},
 	"level": {"id": "tip_level", "lines": [
-		{"speaker": "Dolores", "text": "You've already got one of those on the felt. Put this one right on top of it and it levels up instead."}]},
+		{"speaker": "Dolores", "text": "You've already got one of those on the felt. Put this one right on top of it and it levels up. You lose nothing: a stack does everything both chips would do apart."}]},
 }
 
 ## The first time a vendor's window opens in the Cage.

@@ -527,9 +527,12 @@ func place_chip(index: int, key: String) -> bool:
 		# Stacking a chip on its twin levels it up instead of adding a second chip.
 		if not c.is_bet() and c.kind == item.kind and c.flaw == item.get("flaw", ""):
 			c.value += item.value
+			c.copies += int(item.get("copies", 1))
 			changed.emit()
 			return true
-	felt.add_chip(item.kind, key, item.value, item.get("flaw", "")).mod = item.get("mod", "")
+	var nc = felt.add_chip(item.kind, key, item.value, item.get("flaw", ""))
+	nc.mod = item.get("mod", "")
+	nc.copies = int(item.get("copies", 1))
 	changed.emit()
 	return true
 
@@ -936,7 +939,7 @@ func convert_chip(chip_id: int) -> String:
 		return ""
 	var nk: String = _pick_rare(pool)
 	cash -= Content.CONVERT_PRICE
-	felt.add_chip(nk, c.bet, c.value, c.flaw)
+	felt.add_chip(nk, c.bet, c.value, c.flaw).copies = c.copies
 	changed.emit()
 	return nk
 
@@ -1275,7 +1278,7 @@ func sell_chip(chip_id: int) -> bool:
 	var c = felt.find(chip_id)
 	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky":
 		return false
-	cash += int(Content.CHIPS[c.kind].price * Content.SELL_SHARE * (Content.FENCE_SHARE if c.flaw != "" else 1.0))
+	cash += int(Content.CHIPS[c.kind].price * c.copies * Content.SELL_SHARE * (Content.FENCE_SHARE if c.flaw != "" else 1.0))
 	felt.remove(chip_id)
 	changed.emit()
 	return true
@@ -1292,6 +1295,8 @@ func pick_up(chip_id: int) -> bool:
 		inv.flaw = c.flaw
 	if c.mod != "":
 		inv.mod = c.mod
+	if c.copies > 1:
+		inv.copies = c.copies
 	inventory.append(inv)
 	felt.remove(chip_id)
 	changed.emit()

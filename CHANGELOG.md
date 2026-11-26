@@ -3,6 +3,14 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.25
+- Stacking a chip on its twin is never worse than owning the two apart. Each chip in a stack keeps its full effect:
+  - Multipliers multiply per stacked chip: two Kingmakers stacked are x1.5 x1.5 = x2.25 (was x2.0). The same goes for Ace of Spades and Column Crown. Levels gained other ways (Echo, Ledger, growth) still add +0.5 / +0.25 each.
+  - Respin gives a spin per stacked chip. Echo and Ledger give a level per stacked chip. Wildcard Zero and Collector pay per stacked chip.
+  - Growth chips (Compounding, Snowball, Green Thumb, Seedling) grow once per stacked chip. Seedling's cap is 5 per chip. Jackpot Jar empties back to one level per chip.
+  - Selling a stack refunds every chip in it. Moving or trading a stack keeps it whole.
+- Hovering a square shows how many chips are stacked there. Dolores' tip and the item descriptions explain stacking.
+
 ## 0.0.24
 - Balance: Mini wheel payments x1.05 -> x1.2. With its Bridge starter it was winning far more often than the other wheels (balance bot: 62% -> 45%).
 

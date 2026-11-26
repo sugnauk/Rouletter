@@ -26,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1161,6 +1161,50 @@ func test_long_term() -> void:
 	k2.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"starter": "collector_kit"})
 	check(k2.inventory.size() == 3, "Collector's Kit")
 	check(Profile.catalogue().any(func(x): return x.category == "starter"), "starters are sold at the Pawn Shop")
+
+
+## Stacking a chip on its twin must never be worse than owning the two chips apart.
+func test_stacking_twins() -> void:
+	var run = new_run()
+	run.inventory = [{"kind": "kingmaker", "value": 1}, {"kind": "kingmaker", "value": 1}]
+	check(run.place_chip(0, "S17") and run.place_chip(0, "S17"), "stack two Kingmakers")
+	var k = run.felt.chips_on("S17")[0]
+	check(k.value == 2 and k.copies == 2, "level 2 from 2 chips")
+	var f = felt("european", [["bet", "S17", 1], ["kingmaker", "S17", 2]])
+	f.chips[1].copies = 2
+	var apart = felt("european", [["bet", "S17", 1], ["kingmaker", "S17", 1], ["kingmaker", "S17", 1]])
+	near(Resolver.resolve_spin(f, 17).take, Resolver.resolve_spin(apart, 17).take, "stacked Kingmakers multiply like two apart (x2.25)")
+	var grown = felt("european", [["bet", "S17", 1], ["kingmaker", "S17", 2]])
+	near(Resolver.resolve_spin(grown, 17).take, (35.0 + 70.0) * 2.0, "a level grown (not stacked) still adds +0.5")
+	# Fixed effects count every stacked chip.
+	var r = felt("european", [["respin", "S5", 2]])
+	r.chips[0].copies = 2
+	check(Resolver.resolve_spin(r, 5).respins == 2, "stacked Respins give a spin each")
+	var cp = felt("european", [["compounding", "S5", 2]])
+	cp.chips[0].copies = 2
+	check(Resolver.resolve_spin(cp, 9).felt_after.chips[0].value == 4, "stacked Compounding grows +2 a spin")
+	var e = felt("european", [["echo", "S5", 2], ["perm", "S9", 1]])
+	e.chips[0].copies = 2
+	check(Resolver.resolve_spin(e, 5).felt_after.chips_on("S9")[0].value == 3, "stacked Echo gives +2 levels")
+	var wz = felt("european", [["wildcard_zero", "S0", 2]])
+	wz.chips[0].copies = 2
+	var wz1 = felt("european", [["wildcard_zero", "S0", 1]])
+	near(Resolver.resolve_spin(wz, 0).take, 2.0 * Resolver.resolve_spin(wz1, 0).take, "stacked Wildcard Zeros pay twice")
+	var sd = felt("european", [["seedling", "S1", 5]])
+	sd.chips[0].copies = 2
+	check(Resolver.resolve_spin(sd, 20).felt_after.chips[0].value == 7, "stacked Seedlings grow +2, up to 10")
+	# Selling a stack refunds every chip in it; moving keeps the count.
+	run.leave_shop() if run.phase == RunState.Phase.SHOP else null
+	run.place_bet("S17", 1)
+	run.spin(17)
+	var kc = run.felt.chips_on("S17").filter(func(c): return not c.is_bet())[0]
+	run.cash = 10
+	run.pick_up(kc.id)
+	check(run.inventory.back().get("copies", 1) == 2, "moving a stack keeps its chips")
+	run.place_chip(run.inventory.size() - 1, "S20")
+	var kc2 = run.felt.chips_on("S20")[0]
+	var c0: int = run.cash
+	check(kc2.copies == 2 and run.sell_chip(kc2.id) and run.cash == c0 + int(Content.CHIPS.kingmaker.price * 2 * Content.SELL_SHARE), "selling a stack refunds both chips")
 
 
 func test_new_rules() -> void:

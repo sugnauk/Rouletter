@@ -43,7 +43,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	var wildcards := 0
 	for c in w.chips:
 		if c.kind == "wildcard_zero":
-			wildcards += 1
+			wildcards += c.copies
 
 	var take := 0.0
 	var lost := 0
@@ -153,27 +153,27 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				res.log.chips.append("Bridge: +%d for %d numbers" % [int(nb), B.bet(c.bet).numbers.size()])
 				_event(res, "bonus", c.bet, nb, "bridge")
 			"kingmaker":
-				kings.append(c.value)
+				kings.append([c.value, c.copies])
 			"crown":
-				crowns.append(c.value)
+				crowns.append([c.value, c.copies])
 			"penny":
 				res.cash += Content.PENNY_CASH * c.value
 				res.log.chips.append("Lucky Penny: +$%d" % (Content.PENNY_CASH * c.value))
 				_event(res, "cash", c.bet, Content.PENNY_CASH * c.value, "penny")
 			"snowball":
-				_value(res, c, 2)
+				_value(res, c, 2 * c.copies)
 				res.log.chips.append("Snowball on %s grows to %d" % [c.bet, c.value])
 			"jar":
-				if c.value > 1:
+				if c.value > c.copies:
 					res.log.chips.append("Jackpot Jar on %s pays out and empties" % c.bet)
-					_value(res, c, 1 - c.value)
+					_value(res, c, c.copies - c.value)
 			"echo":
 				for oc in w.perm_chips():
 					if oc.id != c.id:
-						_value(res, oc, 1)
-				res.log.chips.append("Echo: every other permanent chip gains a level")
+						_value(res, oc, c.copies)
+				res.log.chips.append("Echo: every other permanent chip gains %d level%s" % [c.copies, "" if c.copies == 1 else "s"])
 			"ace":
-				aces.append(c.value)
+				aces.append([c.value, c.copies])
 			"signpost":
 				res.cash += Content.SIGNPOST_CASH * c.value
 				res.log.chips.append("Signpost: +$%d" % (Content.SIGNPOST_CASH * c.value))
@@ -187,13 +187,13 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				for m in B.neighbours(pocket):
 					for pc in w.chips_on(Board.straight_key(m)):
 						if not pc.is_bet():
-							_value(res, pc, 1)
+							_value(res, pc, c.copies)
 							res.log.chips.append("Ledger: chip on %s grows to %d" % [B.label(m), pc.value])
 			"respin":
-				res.respins += 1
-				res.log.chips.append("Respin: +1 spin")
+				res.respins += c.copies
+				res.log.chips.append("Respin: +%d spin%s" % [c.copies, "" if c.copies == 1 else "s"])
 			"collector":
-				var bonus := _collector_bonus(w, c)
+				var bonus: int = _collector_bonus(w, c) * c.copies
 				if bonus > 0:
 					take += bonus
 					res.log.chips.append("Collector: +%d for crowding" % bonus)
@@ -203,7 +203,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		res.log.chips.append("Wildcard Zero: +%d" % int(Content.WILDCARD_BONUS * wildcards))
 		for c in w.chips:
 			if c.kind == "wildcard_zero":
-				_event(res, "bonus", c.bet, Content.WILDCARD_BONUS, "wildcard")
+				_event(res, "bonus", c.bet, Content.WILDCARD_BONUS * c.copies, "wildcard")
 	for c in w.perm_chips():
 		if c.id == w.frozen_id:
 			continue
@@ -238,7 +238,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 					_value(res, c, 1)
 			"green_thumb":
 				if zero_hit:
-					_value(res, c, 1)
+					_value(res, c, c.copies)
 					res.log.chips.append("Green Thumb grows to %d" % c.value)
 			"tip_jar":
 				var tips: int = mini(Content.TIP_JAR_CAP, lost_chips) * c.value
@@ -266,8 +266,9 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			if tc > 0:
 				res.cash += tc
 				_event(res, "cash", c.bet, tc, Content.CHIPS[c.kind].name.to_lower())
-			if trig.has("grow") and c.value < trig.get("cap", 99):
-				_value(res, c, int(trig.grow))
+			var cap: int = int(trig.get("cap", 99)) * c.copies
+			if trig.has("grow") and c.value < cap:
+				_value(res, c, mini(int(trig.grow) * c.copies, cap - c.value))
 		if c.kind == "black_cat" and pocket > 0 and not B.is_red(pocket):
 			var bc: float = Content.BLACK_CAT_BONUS * c.value * (0.5 if c.flaw == "cracked" else 1.0)
 			take += bc
@@ -308,7 +309,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			res.log.chips.append("Mint: +$%d" % c.value)
 			_event(res, "cash", c.bet, c.value, "mint")
 		elif c.kind == "compounding":
-			_value(res, c, 1)
+			_value(res, c, c.copies)
 			res.log.chips.append("Compounding on %s grows to %d" % [c.bet, c.value])
 
 	# Bridge rules: one way of betting feeds another.
@@ -376,13 +377,13 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		_mult(res, 1.0 + Content.SIGNATURE_BONUS, "Signature")
 	for av in aces:
 		if take > 0.0:
-			var am: float = 2.0 + 0.5 * (av - 1)
+			var am: float = _stack_mult(2.0, 0.5, av)
 			take *= am
 			res.log.chips.append("Ace of Spades x%.1f" % am)
 			_mult(res, am, "Ace of Spades")
 	for cv in crowns:
 		if take > 0.0:
-			var cm: float = Content.CROWN_MULT + 0.25 * (cv - 1)
+			var cm: float = _stack_mult(Content.CROWN_MULT, 0.25, cv)
 			take *= cm
 			res.log.chips.append("Column Crown x%.2f" % cm)
 			_mult(res, cm, "Column Crown")
@@ -400,7 +401,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		_mult(res, 2.0, "Last Call")
 	for kv in kings:
 		if take > 0.0:
-			var km: float = Content.KINGMAKER_MULT + Content.KING_STEP * (kv - 1)
+			var km: float = _stack_mult(Content.KINGMAKER_MULT, Content.KING_STEP, kv)
 			take *= km
 			res.log.chips.append("Kingmaker x%.1f" % km)
 			_mult(res, km, "Kingmaker")
@@ -599,6 +600,14 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 			amount *= 2.0
 			res.log.rules.append("Thirteen's neighbour: x2")
 	return amount
+
+
+## A multiplier chip's factor. Each stacked chip multiplies in full (two Kingmakers stacked are
+## x1.5 x1.5, the same as two apart); levels gained any other way add `step` each on top.
+## vc = [value, copies].
+static func _stack_mult(base: float, step: float, vc: Array) -> float:
+	var copies: int = maxi(1, vc[1])
+	return pow(base, copies) + step * maxi(0, vc[0] - copies)
 
 
 static func _collector_bonus(w, chip) -> int:

@@ -448,7 +448,8 @@ func describe(k: String) -> String:
 	if up != "":
 		s += "  |  " + Content.UPGRADES[up].name
 	for c in run.felt.chips_on(k):
-		s += "  |  %s%s x%d" % ["" if c.flaw == "" else Content.FLAWS[c.flaw].name + " ", "Bet" if c.is_bet() else Content.CHIPS[c.kind].name, c.value]
+		s += "  |  %s%s x%d%s" % ["" if c.flaw == "" else Content.FLAWS[c.flaw].name + " ", "Bet" if c.is_bet() else Content.CHIPS[c.kind].name, c.value,
+			(" (%d stacked)" % c.copies) if c.copies > 1 else ""]
 	if not Board.is_straight(k) and not B.is_line_bet(k) and not run.can_bet_on(k):
 		s += "  (closed)"
 	return s
