@@ -3,6 +3,10 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.40
+- The Mini wheel's felt now fills the same space as every other wheel, at the table and in the Cage. Its four columns of numbers are wider squares instead of a small felt with empty space around it.
+- On a busy Cage counter, price tags are shortened to fit the narrower tokens (e.g. the Loan Shark's "+15%").
+
 ## 0.0.39
 - **No more accidental buys.** Clicking an item in the Cage now selects it: it lights up, and the panel shows what it does, how it fits your build, and a BUY button with its price. Click it again (or BUY) to buy it. Right-click or long-press still holds an item through a reroll.
 - **See what your chips do.** Point at (or tap) any of these and a card pops up beside it:

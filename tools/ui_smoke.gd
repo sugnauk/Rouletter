@@ -320,7 +320,26 @@ func _process(delta: float) -> void:
 			_close_dialogue()
 			main.screens.shop._pick(0)],
 		[41.4, func(): shot("36_cage_pick")],
-		[41.6, func(): get_tree().quit()],
+		[41.6, func():
+			main.hide_card()
+			main.run.start_run(9, "mini", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.place_bet("S5", 3)
+			main.run.place_bet("SP1_2", 2)
+			main.run.place_bet("DOZ1", 1)
+			main.show_screen("table")],
+		[42, func(): shot("37_mini_felt")],
+		[42.1, func():
+			var r = main.run
+			r.inventory = []
+			r.table.take = r.table.target
+			r.spin(5)
+			r.shop.bonus = []
+			r.shop.routes = []
+			r.shop.event = ""
+			main.show_screen("shop")],
+		[42.5, func(): shot("38_mini_cage")],
+		[42.7, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

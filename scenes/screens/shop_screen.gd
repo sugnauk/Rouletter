@@ -524,6 +524,8 @@ func _build_windows(run) -> void:
 			var item: Dictionary = run.shop.stock[i]
 			var tok = Token.new(item.get("icon", item.id), TOK)
 			tok.price = "SOLD" if item.sold else run.price_text(item)
+			if TOK.x < 44.0:   # narrow tokens on a busy counter: shorten the tag so it fits
+				tok.price = tok.price.replace(" DUE", "").replace(" CHIPS", " CH").replace(" TAKE", " TK")
 			if item.type in ["chip", "upgrade", "rule"]:
 				tok.rarity = Content.rarity_of(item.id)
 			if item.get("flaw", "") != "":

@@ -61,7 +61,7 @@ func layout() -> void:
 	rects.clear()
 	line_rects.clear()
 	var B = run.felt.board
-	cell_w = minf(40.0, floor(GRID_W / B.cols))
+	cell_w = floor(GRID_W / B.cols)   # small boards (the Mini wheel's 4 columns) widen to fill the same space
 	var grid_w: float = cell_w * B.cols
 	var nz: int = B.zeros.size()
 	var zh: float = ROW_H * 3.0 / nz
