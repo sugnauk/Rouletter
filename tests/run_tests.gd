@@ -12,6 +12,7 @@ const RunState := preload("res://core/run_state.gd")
 const Profile := preload("res://core/profile.gd")
 const Story := preload("res://core/story.gd")
 const Feats := preload("res://core/feats.gd")
+const Preview := preload("res://core/preview.gd")
 
 var passed := 0
 var failed := 0
@@ -25,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -296,7 +297,10 @@ func new_run(wheel := "european", seed := 42):
 func test_run_table_flow() -> void:
 	var run = new_run()
 	check(run.phase == RunState.Phase.TABLE and run.table_name() == "Floor", "starts at Night 1 Floor")
-	check(run.inventory.size() == 1 and run.inventory[0].kind == "magnet", "European kit")
+	check(run.inventory.size() == 2 and run.inventory[0].kind == "magnet" and run.inventory[1].kind == "perm", "European kit")
+	for w in Wheels.ORDER:
+		check(Wheels.get_def(w).get("style", "") != "", "%s has a starter plan" % w)
+	check("satin_gloves" in new_run("no_zero").felt.house_rules, "Cheater's Wheel starts with Satin Gloves")
 	check(run.table.target == Content.NIGHT_BASE[0], "first target")
 	check(run.place_bet("S17", 3) and run.table.stack == Content.START_STACK - 3, "bet from stack")
 	check(run.place_bet("S17", 2) and run.felt.chips_on("S17")[0].value == 5, "bets merge")
@@ -305,11 +309,12 @@ func test_run_table_flow() -> void:
 	check(run.place_bet("SP1_4", 1) and run.take_back("SP1_4"), "splits can be bet on")
 	check(run.place_chip(0, "S30"), "place kit magnet")
 	run.place_bet("S17", 1)
+	run.table.objective = ""
 	var before_cash: int = run.cash
 	run.spin(17)
 	check(run.table.stack == Content.START_STACK - 1 + 1 and run.table.take == 35.0, "win returns stake and scores")
 	check(run.phase == RunState.Phase.SHOP, "target 30 cleared in one hit -> shop")
-	check(run.cash == before_cash + Content.CLEAR_CASH[0] + 5 + mini(before_cash / 5, 5), "clear reward with comps")
+	check(run.cash == before_cash + Content.CLEAR_CASH[0] + mini(before_cash / 5, 5), "clear reward with comps (balls-left cash is in the bonus pick)")
 	check(run.felt.bet_chips().is_empty() and run.felt.perm_chips().size() == 1, "bets cleared, perm stays")
 
 
@@ -590,6 +595,16 @@ func test_feats() -> void:
 	check("paid_in_full" in e and "hard_way" in e and not ("euro_win" in e), "end feats")
 	check(Feats.check("end", {"won": false, "run": run}, []).is_empty(), "losing earns no end feats")
 	check(run.best_spin == res.take, "the run remembers its best spin")
+	var st := Feats.check("clear", {"info": {"spins_left": 0, "spins_used": 6, "boss": true, "enforcer": "oro"}, "run": run}, [])
+	check("last_ball_enforcer" in st and not ("one_spin_table" in st), "paid the Enforcer on the last ball")
+	check("one_spin_table" in Feats.check("clear", {"info": {"spins_left": 5, "spins_used": 1, "boss": false, "enforcer": ""}, "run": run}, []), "one and done")
+	var cb := Feats.check("spin", {"res": res, "run": run, "staked": 1, "target": 20, "before": 4.0, "spins_before": 1, "cleared": true}, [])
+	check("comeback" in cb, "the comeback")
+	var r2 = new_run()
+	r2.place_bet("S5", 1)
+	check(Feats.check("end", {"won": true, "run": r2}, []).has("no_outside_win"), "Inside Man when no outside bets")
+	r2.place_bet("RED", 1)
+	check(not Feats.check("end", {"won": true, "run": r2}, []).has("no_outside_win"), "...broken by an outside bet")
 
 
 func test_rarity_and_levels() -> void:
@@ -882,6 +897,272 @@ func test_trigger_chips() -> void:
 	check(Content.HOUSE_RULES.size() >= 25, "25 House Rules (%d)" % Content.HOUSE_RULES.size())
 
 
+func test_preview() -> void:
+	var f = felt("european", [["bet", "S17", 1]])
+	var fa := Preview.fires_at(f, 17)
+	check("S17" in fa.keys and fa.take > 30.0, "fires_at: the straight scores on its pocket")
+	check(Preview.fires_at(f, 5).keys.is_empty(), "fires_at: a miss lights nothing")
+	var odd := Preview.pays_on(f, "odd_fellow", "S10")
+	check(odd.size() == 19 and odd.all(func(p): return p % 2 == 1 or p == 10), "pays_on: Odd Fellow pays on the 18 odd pockets and its own square (%s)" % str(odd))
+	check(Preview.absolute_trigger("odd_fellow") and not Preview.absolute_trigger("bet"), "absolute triggers")
+	check(Preview.clearing_pockets(f, 20.0) == [17], "clearing_pockets: only 17 pays 20")
+	check(Preview.clearing_pockets(f, 0.0).is_empty(), "nothing to clear once paid")
+	check(Preview.ev_gain_chip(f, "odd_fellow", "S10") > 0.5, "ev gain of a trigger chip is positive")
+	check(Preview.rep_key(f, "bet") == "S1", "rep key defaults to a straight")
+	var before: float = Resolver.resolve_spin(f, 17).take
+	Preview.pays_on(f, "odd_fellow", "S10")
+	near(Resolver.resolve_spin(f, 17).take, before, "previews never mutate the felt")
+
+
+func test_pinned_clear() -> void:
+	var run = new_run()
+	run.place_bet("S17", 3)
+	run.place_bet("RED", 2)
+	check(run.clear_bets(["S17"]) and run.felt.value_on("S17") == 3 and run.felt.value_on("RED") == 0, "Clear keeps pinned bets")
+	run.last_bets = {"S17": 3, "RED": 2}
+	var h := Preview.cage_hints(run, {"type": "chip", "id": "odd_fellow"})
+	check(h.pockets.size() >= 18 and h.lines.size() == 1, "Cage hint for an absolute trigger lights its pockets %s %s" % [str(h), str(run.felt.chips.map(func(c): return [c.kind, c.bet]))])
+	var hr := Preview.cage_hints(run, {"type": "rule", "id": "red_streak"})
+	check(hr.lines.size() == 1, "Cage hint for a rule uses the last layout: %s" % str(hr.lines))
+	var hm := Preview.cage_hints(run, {"type": "chip", "id": "magnet"})
+	check(hm.lines.size() <= 1, "Cage hint for a placed chip picks a best bet")
+
+
+func test_cage_decisions() -> void:
+	# Opening pick: after the first table, three free items from different directions.
+	var run = new_run()
+	run.place_bet("S17", 1)
+	run.spin(17)
+	check(run.phase == RunState.Phase.SHOP and run.shop.offer.size() == 3, "opening pick offers three items")
+	var dirs := {}
+	for o in run.shop.offer:
+		dirs[o.dir] = true
+	check(dirs.size() == 3, "...each from a different build direction")
+	var inv: int = run.inventory.size()
+	var first: Dictionary = run.shop.offer[0]
+	check(run.take_offer(0) and run.shop.offer.is_empty(), "taking one closes the offer")
+	check(run.inventory.size() == inv + 1 or first.id in run.felt.house_rules, "...and grants it")
+	# Early clear: cleared on the first ball with spins to spare.
+	check(run.shop.bonus.size() == 3, "early clear offers a bonus choice")
+	var c0: int = run.cash
+	check(run.take_bonus(0) and run.cash == c0 + run.table.spins_left and run.shop.bonus.is_empty(), "cash bonus pays")
+	# Reserve + reroll.
+	run.cash = 50
+	var keep: Dictionary = run.shop.stock[0]
+	check(run.reserve(0), "reserve an item")
+	check(run.reroll(), "reroll")
+	check(run.shop.stock.has(keep) and run.shop.stock[run.shop.reserved] == keep, "the reserved item survives the reroll")
+	run.shop.free_rerolls = 1
+	var cr: int = run.cash
+	check(run.reroll() and run.cash == cr and run.shop.free_rerolls == 0, "free rerolls cost nothing")
+	# Trade-in at the Cashier.
+	run.leave_shop()
+	run.place_chip(0, "S5")  # the Magnet
+	run.place_bet("S17", 1)
+	run.spin(17)
+	var mag = run.felt.perm_chips().filter(func(c): return c.kind == "magnet")
+	if not mag.is_empty():
+		run.cash = 10
+		var nk: String = run.convert_chip(mag[0].id)
+		check(nk != "" and nk != "magnet" and run.cash == 10 - Content.CONVERT_PRICE, "trade-in swaps the chip for $3")
+		check(run.felt.chips_on("S5").any(func(c): return c.kind == nk), "...on the same square")
+	# No bonus on a slow clear.
+	var r2 = new_run()
+	r2.table.spins_left = 1
+	r2.place_bet("S17", 1)
+	r2.spin(17)
+	check(r2.shop.bonus.is_empty(), "no bonus for a last-ball clear")
+
+
+func test_bridges() -> void:
+	# Outside Connection: DOZ1 wins on 5; perm chips on 3 (lv2) and 20 (outside the dozen).
+	var f = felt("european", [["bet", "DOZ1", 1], ["perm", "S3", 2], ["perm", "S20", 1]])
+	var base: float = Resolver.resolve_spin(f, 5).take
+	f.house_rules.append("outside_connection")
+	near(Resolver.resolve_spin(f, 5).take, base + 2.0, "Outside Connection: +1 per level of number chips in the dozen")
+	# Colour Coded: RED wins on 1; perm chips on 3 (red, lv2) and 20 (black).
+	var g = felt("european", [["bet", "RED", 1], ["perm", "S3", 2], ["perm", "S20", 1]])
+	var gb: float = Resolver.resolve_spin(g, 1).take
+	g.house_rules.append("colour_coded")
+	near(Resolver.resolve_spin(g, 1).take, gb + 2.0, "Colour Coded: +1 per level on red numbers")
+	# Inside Track: a split wins on 1, the perm chip on 1 grows.
+	var h = felt("european", [["bet", "SP1_2", 1], ["perm", "S1", 1]])
+	h.house_rules.append("inside_track")
+	var r := Resolver.resolve_spin(h, 1)
+	check(r.felt_after.chips_on("S1").any(func(c): return not c.is_bet() and c.value == 2), "Inside Track grows the chip on the winning number")
+	# Rainy Day: a blank spin pays $2.
+	var d = felt("european", [["bet", "S17", 1]])
+	d.house_rules.append("rainy_day")
+	check(Resolver.resolve_spin(d, 5).cash == 2 and Resolver.resolve_spin(d, 17).cash == 0, "Rainy Day pays on a blank spin only")
+
+
+func test_refine() -> void:
+	var f = felt("european", [["perm", "S17", 2]])
+	var base: float = Resolver.resolve_spin(f, 17).take
+	f.chips[0].mod = "focused"
+	near(Resolver.resolve_spin(f, 17).take, base * 2.0, "Focused doubles its own number")
+	f.chips[0].mod = "steady"
+	near(Resolver.resolve_spin(f, 5).take, 2.0, "Steady pays +1 per level on a miss")
+	check(FeltState.from_dict(f.to_dict()).chips[0].mod == "steady", "refines survive a save")
+	var run = new_run()
+	run.place_bet("S17", 1)
+	run.spin(17)
+	run.shop.vendors = ["cashier", "pit_boss"]
+	var c = run.felt.add_chip("perm", "S8", 1)
+	check(not run.can_refine(c.id), "level 1 chips can't be refined")
+	c.value = 2
+	run.cash = 10
+	check(run.refine(c.id, "focused") and c.mod == "focused" and run.cash == 10 - Content.REFINE_PRICE, "refine sets the path for $6")
+	check(not run.refine(c.id, "steady"), "one path per chip")
+	run.cash = 10
+	check(run.pick_up(c.id) and run.inventory.back().get("mod", "") == "focused", "moving a chip keeps its refine")
+
+
+func test_table_variety() -> void:
+	# Eight Act I Enforcers, four per run, all different.
+	var act1 := Content.ENFORCERS.keys().filter(func(k): return Content.ENFORCERS[k].get("act", 1) == 1)
+	check(act1.size() == 8, "eight Act I Enforcers (%d)" % act1.size())
+	var run = new_run()
+	var first4: Array = run.enforcer_order.slice(0, 4)
+	check(first4.all(func(k): return k in act1), "a run meets four Act I Enforcers")
+	for e in Content.ENFORCERS:
+		check(Content.COUNTERS.has(Content.ENFORCERS[e].rule) or Content.ENFORCERS[e].rule == "owner", "%s has counter hints" % e)
+	# The Duchess: piles of 5+ pay half.
+	var f = felt("european", [["bet", "RED", 6]])
+	var full: float = Resolver.resolve_spin(f, 1).take
+	f.boss_rule = "crowd"
+	near(Resolver.resolve_spin(f, 1).take, full * 0.5, "The Duchess halves big piles")
+	# Spread Out: covering all three dozens scores +25%.
+	var g = felt("european", [["bet", "DOZ1", 2], ["bet", "DOZ2", 1], ["bet", "DOZ3", 1]])
+	near(Resolver.resolve_spin(g, 5).take, 2.0, "three dozens: 4 won, 2 lost")
+	g.condition = "regions"
+	near(Resolver.resolve_spin(g, 5).take, 3.0, "Spread Out multiplies the winnings")
+	# Tight Felt: at most 6 spots.
+	run.table.condition = "scarce"
+	run.felt.condition = "scarce"
+	for k in ["S1", "S2", "S3", "S4", "S5", "S6"]:
+		run.place_bet(k, 1)
+	check(not run.place_bet("S7", 1) and run.place_bet("S6", 1), "Tight Felt blocks a 7th spot but not stacking")
+	check(run.bet_block_reason("S7") != "", "...and says why")
+	# Countess Ilsa: no encores.
+	var r2 = new_run()
+	r2.felt.boss_rule = "no_repeat"
+	r2.place_bet("S17", 1)
+	r2.spin(5)
+	check(not r2.place_bet("S17", 1) and r2.place_bet("S18", 1), "Ilsa blocks last spin's spots")
+	# Miss Tempo: a blank spin costs 10% of the Take built.
+	var r3 = new_run()
+	r3.table.take = 20.0
+	r3.felt.boss_rule = "tempo"
+	r3.place_bet("S17", 1)
+	r3.spin(5)
+	near(r3.table.take, 18.0, "Miss Tempo cuts a blank spin")
+	# The Timekeeper: the payment grows 5% a spin.
+	var r4 = new_run()
+	r4.felt.boss_rule = "clock"
+	var t0: int = r4.table.target
+	r4.place_bet("S17", 1)
+	r4.spin(5)
+	check(r4.table.target == t0 + int(ceil(t0 * 0.05)), "the Timekeeper grows the payment")
+	# Objectives.
+	var r5 = new_run()
+	r5.table.objective = "outside_only"
+	r5.place_bet("RED", 5)
+	r5.spin(1)
+	check(r5.objective_met(), "Clean Hands: outside bets only")
+	r5.place_bet("S17", 1)
+	r5.spin(5)
+	check(not r5.objective_met() and r5.objective_text().ends_with("(blown)"), "...blown by an inside bet")
+	var r6 = new_run()
+	r6.table.objective = "straight"
+	r6.place_bet("S17", 1)
+	var c6: int = r6.cash
+	r6.spin(17)
+	check(r6.last_result.size() > 0 and r6.phase == RunState.Phase.SHOP, "cleared")
+	# Routes.
+	check(r6.shop.get("routes", []).size() == 2, "a route choice before the High Roller")
+	check(r6.pick_route("back_room") and r6.shop.routes.is_empty(), "pick a route")
+	r6.take_offer(0) if not r6.shop.offer.is_empty() else null
+	r6.inventory = []
+	r6.leave_shop()
+	check(r6.table.spins_left <= 5 and r6.table.route == "back_room", "the Back Room is a short table")
+	# Events.
+	var r7 = new_run()
+	r7.place_bet("S17", 1)
+	r7.spin(17)
+	r7.shop.event = "lou_bet"
+	r7.cash = 10
+	r7.answer_event(0)
+	check(r7.cash == 7 and r7.shop.lou_bet and r7.shop.event == "", "Lou's side bet costs $3")
+	r7.shop.event = "fence_hot"
+	r7.answer_event(0)
+	check(r7.inventory.back().get("flaw", "") == "hot", "the Fence's free chip is hot")
+	r7.shop.event = "dolores_tip"
+	r7.answer_event(0)
+	check("extra_spin" in r7.favours, "Dolores' extra ball")
+
+
+func test_long_term() -> void:
+	# Seeds: the same seed deals the same run.
+	var a = RunState.new()
+	a.start_run(777, "european", Profile.default_unlocks())
+	var b = RunState.new()
+	b.start_run(777, "european", Profile.default_unlocks())
+	check(a.run_seed == 777 and a.enforcer_order == b.enforcer_order and a.table.objective == b.table.objective, "same seed, same run")
+	check(RunState.parse_seed("12345") == 12345 and RunState.parse_seed("lucky") == RunState.parse_seed("lucky") and RunState.parse_seed("") == 0, "seed parsing")
+	# Weekly preset: stable within a week, changes week to week.
+	var w1: Dictionary = RunState.weekly_preset(1795000000)
+	var w2: Dictionary = RunState.weekly_preset(1795000000 + 3600)
+	var w3: Dictionary = RunState.weekly_preset(1795000000 + 7 * 86400)
+	check(w1.id == w2.id and w1.seed == w2.seed and w1.id != w3.id, "weekly preset is per week")
+	check(w1.wheel in Wheels.ORDER, "weekly wheel is real")
+	# Saves keep the new fields; old saves without them still load.
+	var c = RunState.new()
+	c.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"challenge": "shoestring", "weekly": "W1"})
+	var d: Dictionary = c.to_dict()
+	var e = RunState.new()
+	check(e.from_dict(d) and e.challenge == "shoestring" and e.weekly == "W1" and e.run_seed == 5, "challenge and seed survive a save")
+	d.erase("challenge")
+	check(RunState.new().from_dict(d), "old saves without the new fields load")
+	# Challenges.
+	check(c.stack_size == Content.SHOESTRING_STACK, "Shoestring stack")
+	c.place_bet("S17", 1)
+	c.spin(17)
+	check(not "pit_boss" in c.shop.vendors and not "loan_shark" in c.shop.vendors, "Shoestring: no Pit Boss or Loan Shark")
+	var n = RunState.new()
+	n.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"challenge": "no_outside"})
+	check(not n.place_bet("RED", 1) and n.place_bet("S1", 1), "No Outside Bets closes the boxes")
+	var f = RunState.new()
+	f.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"challenge": "fence_run"})
+	check(f.inventory.size() == 2 and f.cash == Content.START_CASH + Content.FENCE_RUN_CASH, "Fence's Run kit")
+	f.place_bet("S17", 1)
+	f.spin(17)
+	check(f.shop.vendors == ["fence"], "Fence's Run: only the Fence")
+	var g = RunState.new()
+	g.start_run(5, "french", Profile.default_unlocks(), 1, 0, {"challenge": "gauntlet"})
+	check(g.table.boss and g.table.enforcer != "", "Gauntlet: the first table is an Enforcer")
+	g.place_bet("S17", 1)
+	g.table.take = g.table.target
+	g.spin(17)
+	check(g.phase == RunState.Phase.SHOP and g.table_idx == 1 and g.night == 0, "Gauntlet: an Enforcer table doesn't end the night early")
+	g.inventory = []
+	g.shop.offer = []
+	g.leave_shop()
+	check(g.table.boss and g.table.enforcer != g.beaten[0], "Gauntlet: the second table is a different Enforcer")
+	check(Feats.check("end", {"won": true, "run": g}, []).has("ch_gauntlet"), "challenge Feat")
+	var tour := Feats.check("end", {"won": true, "run": g, "wheels_won": ["european", "american", "mini", "triple_zero", "sunrise", "no_zero"]}, [])
+	check(tour.has("grand_tour"), "Grand Tour once every wheel is won")
+	check(not Feats.check("end", {"won": true, "run": g, "wheels_won": []}, []).has("grand_tour"), "...not before")
+	# Starter kits.
+	var k = RunState.new()
+	k.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"starter": "banker_kit"})
+	check(k.inventory.is_empty() and k.cash == Content.START_CASH + 8, "Banker's Kit")
+	var k2 = RunState.new()
+	k2.start_run(5, "european", Profile.default_unlocks(), 1, 0, {"starter": "collector_kit"})
+	check(k2.inventory.size() == 3, "Collector's Kit")
+	check(Profile.catalogue().any(func(x): return x.category == "starter"), "starters are sold at the Pawn Shop")
+
+
 func test_new_rules() -> void:
 	var zt = felt("european", [["bet", "RED", 4]])
 	zt.house_rules.append("zero_tolerance")
@@ -1031,7 +1312,7 @@ func test_profile() -> void:
 	for i in range(20):
 		run._restock()
 		for item in run.shop.stock:
-			check(item.type == "loan" or item.id in Profile.default_unlocks() or item.id == "perm", "shop only stocks unlocked content (%s)" % item.id)
+			check(item.type in ["loan", "favour", "voucher"] or item.id in Profile.default_unlocks() or item.id == "perm", "shop only stocks unlocked content (%s)" % item.id)
 		check(not ("fence" in run.shop.vendors), "the Fence needs unlocking")
 
 
@@ -1047,11 +1328,13 @@ func test_music_synth() -> void:
 			loud = maxi(loud, absi(w.data.decode_s16(i)))
 		check(loud > 3000, "%s is audible" % track)
 		print("  music %s synthesised in %d ms" % [track, Time.get_ticks_msec() - t0])
+		var tw = Music.synth(track + "_tension")
+		check(tw.data.size() == w.data.size() and tw.loop_mode == AudioStreamWAV.LOOP_FORWARD, "%s tension layer matches the loop length" % track)
 
 
 func test_sfx_synth() -> void:
 	var Sfx := preload("res://scenes/ui/sfx.gd")
-	for cue in ["click", "chip_place", "chip_remove", "spin", "ball_drop", "win", "big_win", "mult", "lose", "cash", "buy", "clear", "bust", "jackpot", "feat", "near", "unlock"]:
+	for cue in ["click", "chip_place", "chip_remove", "spin", "ball_drop", "win", "big_win", "mult", "lose", "cash", "buy", "clear", "bust", "jackpot", "feat", "near", "unlock", "sting", "stack", "refund", "clear_all", "undo"]:
 		var w = Sfx.synth(cue)
 		var loud := 0
 		if w != null:

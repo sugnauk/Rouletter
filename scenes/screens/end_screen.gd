@@ -32,6 +32,13 @@ func refresh() -> void:
 	title_lbl.text = ("THE OWNER FALLS" if main.run.acts == 2 else "PAID IN FULL") if won else "THE HOUSE COLLECTS"
 	title_lbl.add_theme_color_override("font_color", P.GOLD if won else P.DANGER)
 	msg_lbl.text = main.run.message
+	# A clean read of a missed payment: how far short, and what was on the felt.
+	var ll: Dictionary = main.last_layout
+	if not won and not ll.is_empty():
+		var bets := []
+		for b in ll.layout:
+			bets.append("%s x%d" % [_bet_label(b[0]), b[1]])
+		msg_lbl.text += "  Short by %d Take (%d of %d).  Your layout: %s." % [ll.short, ll.take, ll.target, ", ".join(bets) if not bets.is_empty() else "no bets"]
 	stats_lbl.text = "\n".join(["Wheel", "Nights cleared", "Total Take", "Best spin", "Marker paid", "Left unpaid", "Enforcers beaten", "Markers earned", "Feats", "Next unlock"])
 	values_lbl.text = "\n".join([
 		main.run.felt.board.def.name,
@@ -45,6 +52,12 @@ func refresh() -> void:
 		_names(s.get("feats", []), func(f): return Feats.FEATS[f].name),
 		_next_unlock(),
 	])
+
+
+func _bet_label(key: String) -> String:
+	if key.begins_with("S") and not key.begins_with("SP") and not key.begins_with("ST"):
+		return main.run.felt.board.label(int(key.substr(1)))
+	return key
 
 
 func _names(ids: Array, name_of: Callable) -> String:

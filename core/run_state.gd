@@ -43,6 +43,11 @@ var vouchers: Array = []         ## run-wide perks from the Dealer
 var best_spin: float = 0.0       ## run summary: the biggest single spin
 var beaten: Array = []           ## run summary: Enforcers beaten this run
 var new_player := false
+var used_outside := false        ## any outside bet placed this run (the "no outside bets" Feat)
+var run_seed: int = 0           ## the run's seed (shareable: the same seed deals the same run)
+var challenge: String = ""       ## a named challenge (Content.CHALLENGES), or ""
+var starter: String = ""         ## an alternative starting kit (Content.STARTERS), or "" for the wheel's
+var weekly: String = ""          ## the weekly challenge's id ("W2917"), or ""
 var grade: int = 0               ## marker grade (difficulty), see Content.GRADES          ## first runs: vendors open up one at a time (see _vendor_open)
 var total_take: float = 0.0
 var nights_cleared: int = 0
@@ -50,7 +55,14 @@ var message: String = ""
 var last_result: Dictionary = {}
 
 
-func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1, grade_in: int = 0) -> void:
+func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [], acts_in: int = 1, grade_in: int = 0, opts: Dictionary = {}) -> void:
+	run_seed = seed_in
+	challenge = opts.get("challenge", "")
+	starter = opts.get("starter", "")
+	weekly = opts.get("weekly", "")
+	if challenge != "":
+		acts_in = 1
+		grade_in = 0
 	acts = acts_in
 	grade = clampi(grade_in, 0, Content.GRADES.size() - 1)
 	rng = GameRng.new(seed_in)
@@ -60,9 +72,28 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	var def: Dictionary = Wheels.get_def(wheel)
 	cash = Content.START_CASH + def.cash
 	inventory = []
-	for k in def.kit:
-		inventory.append(k.duplicate())
+	var st: Dictionary = Content.STARTERS.get(starter, {})
+	if st.is_empty():
+		for k in def.kit:
+			inventory.append(k.duplicate())
+	else:
+		cash += st.cash
+		for k in st.get("kit", []):
+			inventory.append(k.duplicate())
+		var commons := []
+		for k in Content.CHIPS:
+			if (k in unlocked or k == "perm") and Content.rarity_of(k) == "common" and not Content.CHIPS[k].get("zero_only", false):
+				commons.append(k)
+		for i in range(st.get("random", 0)):
+			inventory.append({"kind": rng.pick(commons), "value": 1})
+	if challenge == "fence_run":
+		inventory = [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}]
+		cash += Content.FENCE_RUN_CASH
+	for r in def.get("house", []):
+		felt.house_rules.append(r)
 	stack_size = Content.START_STACK - (5 if graded(1) else 0)
+	if challenge == "shoestring":
+		stack_size = Content.SHOESTRING_STACK
 	stack_buys = 0
 	stack_owed = 0
 	loan_pct = 0.0
@@ -71,6 +102,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	vouchers = []
 	best_spin = 0.0
 	beaten = []
+	used_outside = false
 	night = 0
 	table_idx = 0
 	total_take = 0.0
@@ -87,16 +119,40 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 			act2.append(k)
 		else:
 			act1.append(k)
-	enforcer_order = rng.shuffle(act1) + rng.shuffle(act2) + finale
+	enforcer_order = rng.shuffle(act1).slice(0, 4) + rng.shuffle(act2) + finale
+	if challenge == "gauntlet":
+		enforcer_order = rng.shuffle(act1) + rng.shuffle(act1)
 	shop = {}
 	_start_table()
 
 
 # --- Run saves ------------------------------------------------------------------------------
 
+## The weekly challenge for the week containing `unix` (UTC): the same wheel, seed and grade
+## for everyone, worked out from the date alone (no server).
+static func weekly_preset(unix: int) -> Dictionary:
+	var week: int = int(floor((unix / 86400.0 + 3.0) / 7.0))   # Monday-based weeks since 1970
+	var monday: int = (week * 7 - 3) * 86400
+	var wheels: Array = Wheels.ORDER
+	return {"id": "W%d" % week, "seed": week * 7919 + 104729, "wheel": wheels[week % wheels.size()],
+		"grade": 1, "monday": Time.get_date_string_from_unix_time(monday)}
+
+
+## A seed typed by a player: digits are used as-is, anything else is hashed.
+static func parse_seed(text: String) -> int:
+	var t := text.strip_edges()
+	if t == "":
+		return 0
+	if t.is_valid_int():
+		return absi(t.to_int())
+	return absi(t.hash())
+
+
+## Saved too, but optional, so saves from before they existed still load.
+const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": ""}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
-	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade"]
+	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade", "used_outside"]
 
 
 ## Everything needed to pick the run up again later (only meaningful mid-run).
@@ -105,6 +161,8 @@ func to_dict() -> Dictionary:
 	for k in SAVE_FIELDS:
 		var v = get(k)
 		d[k] = v.duplicate(true) if (v is Dictionary or v is Array) else v
+	for k in OPTIONAL_FIELDS:
+		d[k] = get(k)
 	return d
 
 
@@ -117,6 +175,8 @@ func from_dict(d: Dictionary) -> bool:
 	for k in SAVE_FIELDS:
 		var v = d[k]
 		set(k, v.duplicate(true) if (v is Dictionary or v is Array) else v)
+	for k in OPTIONAL_FIELDS:
+		set(k, d.get(k, OPTIONAL_FIELDS[k]))
 	rng.set_state(d.rng)
 	felt = FeltState.from_dict(d.felt)
 	last_result = {}
@@ -232,14 +292,25 @@ func night_enforcer() -> String:
 	return enforcer_order[night % enforcer_order.size()]
 
 
+## Is table `idx` of this night an Enforcer table? (Every table is, in the Gauntlet.)
+func table_is_boss(idx: int) -> bool:
+	return idx == 2 or challenge == "gauntlet"
+
+
+func table_enforcer(idx: int) -> String:
+	if challenge == "gauntlet":
+		return enforcer_order[(night * 3 + idx) % enforcer_order.size()]
+	return night_enforcer()
+
+
 func _start_table() -> void:
 	var target: int = current_target()
 	var loan := loan_pct
 	if loan > 0.0:
 		target = int(ceil(target * (1.0 + loan)))
 	loan_pct = 0.0
-	var boss := table_idx == 2
-	var enforcer: String = night_enforcer() if boss else ""
+	var boss := table_is_boss(table_idx)
+	var enforcer: String = table_enforcer(table_idx) if boss else ""
 	felt.clear_bets()
 	felt.boss_rule = Content.ENFORCERS[enforcer].rule if boss else ""
 	felt.frozen_id = -1
@@ -253,7 +324,10 @@ func _start_table() -> void:
 	felt.red_streak = 0
 	felt.hit_streak = 0
 	felt.last_pocket = -99
-	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else Content.SPINS
+	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {}) if not boss else {}
+	if not route.is_empty():
+		target = int(ceil(target * route.target))
+	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else route.get("spins", Content.SPINS)
 	if graded(5) and table_idx >= 1:
 		spins -= 1
 	if boss and felt.has_rule("patron"):
@@ -262,7 +336,18 @@ func _start_table() -> void:
 		spins += 1
 	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
 		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan,
-		"favours": favours.duplicate()}
+		"favours": favours.duplicate(), "base_target": target, "route": shop.get("route", ""),
+		"lou_bet": shop.get("lou_bet", false), "condition": "", "objective": "", "obj_ok": true, "obj_hits": 0, "obj_spins": 0,
+		"prev_keys": []}
+	# Table conditions (ordinary tables from night 2) and a side objective (every table).
+	var cond: String = route.get("condition", "")
+	if cond == "" and not boss:
+		cond = shop.get("next_condition", _roll_condition())
+	table.condition = cond
+	felt.condition = cond
+	if cond == "short_stack":
+		table.stack = maxi(Content.MIN_STACK, table.stack - 4)
+	table.objective = shop.get("next_objective", _roll_objective())
 	for f in favours:
 		match f:
 			"extra_spin":
@@ -302,17 +387,40 @@ func can_bet_on(key: String) -> bool:
 	var b: Dictionary = felt.board.bet(key)
 	if b.type == "sector" and not has_feature("call_bets"):
 		return false
-	if felt.boss_is("no_outside") and felt.board.is_outside(key):
+	if (felt.boss_is("no_outside") or challenge == "no_outside") and felt.board.is_outside(key):
 		return false
 	if felt.boss_is("no_inside") and felt.board.is_line_bet(key):
 		return false
+	if phase == Phase.TABLE and not table.is_empty():
+		if felt.boss_is("no_repeat") and key in table.get("prev_keys", []):
+			return false
+		if felt.condition == "scarce" and not felt.chips_on(key).any(func(c): return c.is_bet()):
+			var spots := {}
+			for c in felt.chips:
+				if c.is_bet():
+					spots[c.bet] = true
+			if spots.size() >= Content.SCARCE_SPOTS:
+				return false
 	return true
+
+
+## Why a spot can't take a bet right now ("" if it can), for the status line.
+func bet_block_reason(key: String) -> String:
+	if can_bet_on(key):
+		return ""
+	if felt.boss_is("no_repeat") and key in table.get("prev_keys", []):
+		return "Countess Ilsa: no encores. You bet there last spin."
+	if felt.condition == "scarce":
+		return "Tight Felt: %d spots at most." % Content.SCARCE_SPOTS
+	return ""
 
 
 func place_bet(key: String, amount: int) -> bool:
 	if phase != Phase.TABLE or is_called_spin() or amount <= 0 or table.stack < amount or not can_bet_on(key):
 		return false
 	table.stack -= amount
+	if felt.board.is_outside(key):
+		used_outside = true
 	for c in felt.chips_on(key):
 		if c.is_bet():
 			c.value += amount
@@ -340,12 +448,12 @@ func unbet(key: String, amount: int) -> int:
 
 
 ## Pick up every betting chip on the felt (permanent chips stay put).
-func clear_bets() -> bool:
+func clear_bets(keep: Array = []) -> bool:
 	if phase != Phase.TABLE or is_called_spin():
 		return false
 	var got := false
 	for c in felt.chips.duplicate():
-		if c.is_bet():
+		if c.is_bet() and not c.bet in keep:
 			table.stack += c.value
 			felt.remove(c.id)
 			got = true
@@ -421,7 +529,7 @@ func place_chip(index: int, key: String) -> bool:
 			c.value += item.value
 			changed.emit()
 			return true
-	felt.add_chip(item.kind, key, item.value, item.get("flaw", ""))
+	felt.add_chip(item.kind, key, item.value, item.get("flaw", "")).mod = item.get("mod", "")
 	changed.emit()
 	return true
 
@@ -442,11 +550,35 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
 	felt.final_spin = table.spins_left <= 1
 	felt.spin_no = table.spins_used + 1
+	var keys := {}
+	for c in felt.chips:
+		if c.is_bet():
+			keys[c.bet] = true
 	var res := Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
 	if res.zero_tax:
 		table.take *= 1.0 - Content.ZERO_TAX
+	if felt.boss_is("tempo") and res.take <= 0.0 and table.take > 0.0:
+		var cut: float = floor(table.take * Content.TEMPO_CUT)
+		table.take -= cut
+		res.log.rules.append("Miss Tempo: a missed beat costs %d Take" % int(cut))
+		res.tempo_cut = cut
 	table.take += res.take
+	# Side objective bookkeeping.
+	if not keys.is_empty():
+		table.obj_spins = table.get("obj_spins", 0) + 1
+		match table.get("objective", ""):
+			"outside_only":
+				if keys.keys().any(func(k): return not felt.board.is_outside(k)):
+					table.obj_ok = false
+			"few":
+				if keys.size() > 3:
+					table.obj_ok = false
+	if res.take > 0.0:
+		table.obj_hits = table.get("obj_hits", 0) + 1
+	if res.events.any(func(e): return e.kind == "win" and e.label == "straight"):
+		table.obj_straight = true
+	table.prev_keys = keys.keys()
 	best_spin = maxf(best_spin, res.take)
 	table.stack += res.stack
 	if felt.boss_is("drain") and table.stack > 0:
@@ -457,6 +589,10 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 	table.spins_used += 1
 	table.spins_left += res.respins - 1
 	last_result = res
+	if felt.boss_is("clock") and table.take < table.target:
+		var grow := int(ceil(table.get("base_target", table.target) * Content.CLOCK_STEP))
+		table.target += grow
+		res.log.rules.append("The Timekeeper: the payment grows by %d" % grow)
 	if table.take >= table.target:
 		_clear_table()
 	elif table.spins_left <= 0:
@@ -470,23 +606,42 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 func _clear_table() -> void:
 	var t: float = table.take
 	var comps := mini(cash / Content.COMPS_PER, Content.COMPS_MAX)
-	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
+	# Cleared with balls to spare: the balls-left cash becomes one option of a bonus pick.
+	var pick: bool = table.spins_left >= Content.EARLY_CLEAR_SPINS and not graded(4)
+	var reward: int = Content.CLEAR_CASH[table_idx] + (0 if graded(4) or pick else table.spins_left * Content.CASH_PER_SPIN_LEFT) + comps
 	if "comp_card" in vouchers:
 		reward += Content.COMP_CARD_CASH
 	if felt.has_rule("comped"):
 		reward += Content.COMPED_CASH
 	if felt.has_rule("compound_interest"):
 		reward += cash / 10
+	var extras := []   # [label, cash]: conditions, routes, objectives and side bets
+	match table.get("condition", ""):
+		"early":
+			if table.spins_used <= 3:
+				extras.append(["EARLY BIRD", 2])
+		"short_stack":
+			extras.append(["THIN STACK", 2])
+	var route: Dictionary = Content.ROUTES.get(table.get("route", ""), {})
+	if not route.is_empty() and not table.boss:
+		extras.append([route.name.to_upper(), route.cash])
+	if objective_met():
+		extras.append([Content.OBJECTIVES[table.objective].name.to_upper(), Content.OBJECTIVES[table.objective].cash])
+	if table.get("lou_bet", false) and table.spins_left >= 2:
+		extras.append(["LOU'S SIDE BET", Content.LOU_PAYOUT])
+	for x in extras:
+		reward += x[1]
 	cash += reward
 	overflow += maxi(0, int(t - table.target))
 	total_take += t
 	felt.clear_bets()
 	felt.frozen_id = -1
 	var info := {"night": night, "table": table_idx, "take": t, "target": table.target,
-		"reward": reward, "spins_left": table.spins_left, "comps": comps, "boss": table.boss,
+		"reward": reward, "spins_left": table.spins_left, "spins_used": table.spins_used, "comps": comps, "boss": table.boss, "bonus_pick": pick, "extras": extras,
 		"enforcer": table.enforcer}
 	if table.boss:
 		beaten.append(table.enforcer)
+	if table_idx == 2:
 		nights_cleared += 1
 		if night >= nights_total() - 1:
 			phase = Phase.VICTORY
@@ -499,8 +654,37 @@ func _clear_table() -> void:
 	else:
 		table_idx += 1
 	message = "Paid! +$%d (%d base, %d spins left, %d comps)." % [reward, Content.CLEAR_CASH[info.table], info.spins_left, comps]
-	_open_shop()
+	_open_shop(info)
 	table_cleared.emit(info)
+
+
+## Has this table's side objective been done (checked at the clear)?
+func objective_met() -> bool:
+	match table.get("objective", ""):
+		"outside_only", "few":
+			return table.obj_ok and table.get("obj_spins", 0) > 0
+		"straight":
+			return table.get("obj_straight", false)
+		"three_hits":
+			return table.get("obj_hits", 0) >= 3
+	return false
+
+
+## Progress text for the HUD.
+func objective_text() -> String:
+	var o: String = table.get("objective", "")
+	if o == "":
+		return ""
+	var d: Dictionary = Content.OBJECTIVES[o]
+	var state := ""
+	match o:
+		"outside_only", "few":
+			state = "" if table.obj_ok else "  (blown)"
+		"straight":
+			state = "  DONE" if table.get("obj_straight", false) else ""
+		"three_hits":
+			state = "  %d/3" % mini(3, table.get("obj_hits", 0))
+	return "%s: %s +$%d%s" % [d.name, d.desc, d.cash, state]
 
 
 ## Walk away mid-run: counts as a loss (Markers for nights already cleared are kept).
@@ -522,10 +706,239 @@ func _lose(why: String) -> void:
 
 # --- Shop ---------------------------------------------------------------------------------
 
-func _open_shop() -> void:
+func _open_shop(info: Dictionary = {}) -> void:
 	phase = Phase.SHOP
-	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors()}
+	shop = {"stock": [], "reroll": 4 if graded(7) else Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors(),
+		"reserved": -1, "free_rerolls": 0, "offer": [], "bonus": []}
 	_restock()
+	# Roll the next table's twist and side job now, so the Cage can show them.
+	shop.next_condition = _roll_condition() if not table_is_boss(table_idx) else ""
+	shop.next_objective = _roll_objective()
+	# Before the High Roller table: pick a route (from night 2, or always for veterans).
+	if table_idx == 1 and (night >= 1 or not new_player) and not table_is_boss(1):
+		shop.routes = Content.ROUTES.keys()
+	# Before the Enforcer: sometimes someone in the Cage has an offer.
+	if table_idx == 2 and rng.chance(Content.EVENT_CHANCE):
+		shop.event = rng.pick(Content.EVENTS.keys())
+	# After the very first table: a free pick from three different build directions.
+	if night == 0 and table_idx == 1:
+		shop.offer = _opening_offer()
+	# Cleared with balls to spare: choose a bonus.
+	if info.get("bonus_pick", false):
+		var fav: String = rng.pick(Content.FAVOURS.keys())
+		shop.bonus = [
+			{"type": "cash", "amount": info.spins_left * Content.CASH_PER_SPIN_LEFT},
+			{"type": "favour", "id": fav},
+			{"type": "reroll", "amount": 1},
+		]
+
+
+func _roll_condition() -> String:
+	return rng.pick(Content.CONDITIONS.keys()) if night >= 1 and not table_is_boss(table_idx) else ""
+
+
+func _roll_objective() -> String:
+	return "" if new_player and night == 0 else rng.pick(Content.OBJECTIVES.keys())
+
+
+## What the next table holds, for the Cage's preview card.
+func next_table_lines() -> Array:
+	var out := []
+	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {})
+	var cond: String = route.get("condition", shop.get("next_condition", ""))
+	if table_is_boss(table_idx):
+		var e: Dictionary = Content.ENFORCERS[table_enforcer(table_idx)]
+		out.append("%s: %s" % [e.name, e.desc])
+	var bits := []
+	if not route.is_empty():
+		bits.append(route.name)
+	if cond != "":
+		bits.append(Content.CONDITIONS[cond].name)
+	var o: String = shop.get("next_objective", "")
+	if o != "":
+		bits.append("Job: %s +$%d" % [Content.OBJECTIVES[o].name, Content.OBJECTIVES[o].cash])
+	if not bits.is_empty():
+		out.append("  ·  ".join(bits))
+	return out
+
+
+## The full text behind next_table_lines(), for the Cage's description panel.
+func next_table_detail() -> String:
+	var out := []
+	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {})
+	var cond: String = route.get("condition", shop.get("next_condition", ""))
+	if table_is_boss(table_idx):
+		var e: Dictionary = Content.ENFORCERS[table_enforcer(table_idx)]
+		out.append("%s: %s" % [e.name, e.desc])
+	if not route.is_empty():
+		out.append("%s: %s" % [route.name, route.desc])
+	if cond != "":
+		out.append("%s: %s" % [Content.CONDITIONS[cond].name, Content.CONDITIONS[cond].desc])
+	var o: String = shop.get("next_objective", "")
+	if o != "":
+		out.append("Side job, %s: %s +$%d" % [Content.OBJECTIVES[o].name, Content.OBJECTIVES[o].desc, Content.OBJECTIVES[o].cash])
+	return "\n".join(out)
+
+
+## Three free items, each pointing the build a different way.
+func _opening_offer() -> Array:
+	var out := []
+	var dirs: Array = rng.shuffle(Content.DIRECTIONS.keys())
+	for d in dirs:
+		if out.size() >= 3:
+			break
+		var pool := []
+		for k in Content.CHIPS:
+			if (k in unlocked or k == "perm") and d in Content.tags_of(k):
+				pool.append(k)
+		for k in Content.HOUSE_RULES:
+			if k in unlocked and d in Content.tags_of(k) and not felt.has_rule(k):
+				pool.append(k)
+		pool = pool.filter(func(k): return not out.any(func(o): return o.id == k))
+		if pool.is_empty():
+			continue
+		var id: String = _pick_rare(pool)
+		out.append({"type": "chip" if Content.CHIPS.has(id) else "rule", "id": id, "dir": d, "price": 0,
+			"vendor": "gift", "currency": "cash", "sold": false})
+	return out
+
+
+func take_offer(i: int) -> bool:
+	if phase != Phase.SHOP or i < 0 or i >= shop.get("offer", []).size():
+		return false
+	var item: Dictionary = shop.offer[i]
+	if item.type == "rule":
+		if felt.house_rules.size() >= relic_slots():
+			return false
+		felt.house_rules.append(item.id)
+	else:
+		inventory.append({"kind": item.id, "value": 1})
+	shop.offer = []
+	changed.emit()
+	return true
+
+
+func skip_offer() -> void:
+	if shop.has("offer"):
+		shop.offer = []
+		changed.emit()
+
+
+func pick_route(id: String) -> bool:
+	if phase != Phase.SHOP or (id != "" and not id in shop.get("routes", [])):
+		return false
+	shop.route = id
+	shop.routes = []
+	changed.emit()
+	return true
+
+
+## Answer a between-table event (option 0 or 1).
+func answer_event(opt: int) -> String:
+	var ev: String = shop.get("event", "")
+	if phase != Phase.SHOP or ev == "":
+		return ""
+	var out := ""
+	match [ev, opt]:
+		["dolores_tip", 0]:
+			favours.append("extra_spin")
+			out = "+1 ball at the next table."
+		["dolores_tip", 1]:
+			cash += 2
+			out = "+$2."
+		["lou_bet", 0]:
+			if cash < Content.LOU_STAKE:
+				return ""
+			cash -= Content.LOU_STAKE
+			shop.lou_bet = true
+			out = "Lou holds your $%d. Clear with 2 balls left for $%d." % [Content.LOU_STAKE, Content.LOU_PAYOUT]
+		["fence_hot", 0]:
+			var pool := ["perm"]
+			for k in Content.CHIPS:
+				if k in unlocked:
+					pool.append(k)
+			var k: String = _pick_rare(pool)
+			inventory.append({"kind": k, "value": 1, "flaw": "hot"})
+			out = "A hot %s chip, on the house." % Content.CHIPS[k].name
+	shop.event = ""
+	changed.emit()
+	return out
+
+
+func take_bonus(i: int) -> bool:
+	if phase != Phase.SHOP or i < 0 or i >= shop.get("bonus", []).size():
+		return false
+	var b: Dictionary = shop.bonus[i]
+	match b.type:
+		"cash":
+			cash += b.amount
+		"favour":
+			favours.append(b.id)
+		"reroll":
+			shop.free_rerolls = shop.get("free_rerolls", 0) + b.amount
+	shop.bonus = []
+	changed.emit()
+	return true
+
+
+func bonus_text(b: Dictionary) -> String:
+	match b.type:
+		"cash":
+			return "+$%d cash" % b.amount
+		"favour":
+			return "%s (free): %s" % [Content.FAVOURS[b.id].name, Content.FAVOURS[b.id].desc]
+		"reroll":
+			return "%d free rerolls this visit" % b.amount
+	return ""
+
+
+## Hold one stock item through rerolls (one at a time; reserve it again to let it go).
+func reserve(i: int) -> bool:
+	if phase != Phase.SHOP or i < 0 or i >= shop.stock.size() or shop.stock[i].sold or shop.stock[i].type == "loan":
+		return false
+	shop.reserved = -1 if shop.get("reserved", -1) == i else i
+	changed.emit()
+	return true
+
+
+## Refine a levelled number chip down one of two paths (Content.REFINES), at the Cashier.
+func can_refine(chip_id: int) -> bool:
+	var c = felt.find(chip_id)
+	return phase == Phase.SHOP and c != null and not c.is_bet() and c.mod == "" and Board.is_straight(c.bet) \
+		and c.value >= Content.REFINE_LEVEL and "cashier" in shop.get("vendors", [])
+
+
+func refine(chip_id: int, path: String) -> bool:
+	if not can_refine(chip_id) or not Content.REFINES.has(path) or cash < Content.REFINE_PRICE:
+		return false
+	cash -= Content.REFINE_PRICE
+	felt.find(chip_id).mod = path
+	changed.emit()
+	return true
+
+
+## Cashier trade-in: swap a placed chip for a different one from the same build family,
+## keeping its level and square. Returns the new kind ("" if none fits).
+func convert_chip(chip_id: int) -> String:
+	var c = felt.find(chip_id)
+	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky" or cash < Content.CONVERT_PRICE:
+		return ""
+	if not "cashier" in shop.get("vendors", []):
+		return ""
+	var tags := Content.tags_of(c.kind)
+	var pool := []
+	felt.remove(chip_id)
+	for k in Content.CHIPS:
+		if k != c.kind and (k in unlocked or k == "perm") and Content.tags_of(k).any(func(t): return t in tags) and can_place_chip(k, c.bet):
+			pool.append(k)
+	if pool.is_empty():
+		felt.chips.append(c)
+		return ""
+	var nk: String = _pick_rare(pool)
+	cash -= Content.CONVERT_PRICE
+	felt.add_chip(nk, c.bet, c.value, c.flaw)
+	changed.emit()
+	return nk
 
 
 ## Who is working the Cage this visit: the Cashier, plus others drawn from the unlocked pool.
@@ -544,9 +957,13 @@ func _vendor_open(v: String) -> bool:
 
 
 func _pick_vendors() -> Array:
+	if challenge == "fence_run":
+		return ["fence"]
 	var vendors := [Content.ALWAYS_VENDOR]
 	var pool := []
 	for v in Content.VENDORS:
+		if challenge == "shoestring" and v in ["pit_boss", "loan_shark"]:
+			continue
 		if v != Content.ALWAYS_VENDOR and (Content.VENDORS[v].unlock == 0 or v in unlocked) and _vendor_open(v):
 			pool.append(v)
 	pool = rng.shuffle(pool)
@@ -560,8 +977,17 @@ func _restock() -> void:
 		shop.vendors = _pick_vendors()
 	var vendors: Array = shop.vendors
 	var stock := []
+	var r: int = shop.get("reserved", -1)
+	var kept = shop.stock[r] if r >= 0 and r < shop.get("stock", []).size() and not shop.stock[r].sold else null
+	shop.reserved = -1
 	for v in vendors:
-		stock.append_array(_vendor_stock(v))
+		var vs := _vendor_stock(v)
+		if kept != null and kept.vendor == v:
+			# The reserved item keeps its place at the front of its window, replacing one new one.
+			vs.pop_back()
+			vs.push_front(kept)
+			shop.reserved = stock.size()
+		stock.append_array(vs)
 	shop.vendors = vendors
 	shop.stock = stock
 
@@ -697,8 +1123,8 @@ func item_hints(item: Dictionary) -> Array:
 	if not friends.is_empty():
 		out.append("Works with your " + ", ".join(friends.slice(0, 3)) + ".")
 	# The next Enforcer (the third table of this night, once we're past the first two).
-	if table_idx == 2:
-		var e: Dictionary = Content.ENFORCERS[night_enforcer()]
+	if table_is_boss(table_idx):
+		var e: Dictionary = Content.ENFORCERS[table_enforcer(table_idx)]
 		var rules: Array = Content.OWNER_RULES if e.rule == "owner" else [e.rule]
 		for r in rules:
 			var c: Dictionary = Content.COUNTERS.get(r, {})
@@ -818,10 +1244,14 @@ func apply_upgrade(target: String) -> bool:
 
 
 func reroll() -> bool:
-	if phase != Phase.SHOP or cash < shop.reroll or shop.pending_upgrade != "":
+	var free: bool = shop.get("free_rerolls", 0) > 0
+	if phase != Phase.SHOP or (cash < shop.reroll and not free) or shop.pending_upgrade != "":
 		return false
-	cash -= shop.reroll
-	shop.reroll += 1
+	if free:
+		shop.free_rerolls -= 1
+	else:
+		cash -= shop.reroll
+		shop.reroll += 1
 	_restock()
 	changed.emit()
 	return true
@@ -860,6 +1290,8 @@ func pick_up(chip_id: int) -> bool:
 	var inv := {"kind": c.kind, "value": c.value}
 	if c.flaw != "":
 		inv.flaw = c.flaw
+	if c.mod != "":
+		inv.mod = c.mod
 	inventory.append(inv)
 	felt.remove(chip_id)
 	changed.emit()

@@ -64,6 +64,9 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		if c.is_bet():
 			if covers and not dead:
 				var amt := _score(w, c, b, pocket, res)
+				if w.boss_is("crowd") and c.value >= Content.CROWD_PILE:
+					amt *= 0.5
+					res.log.rules.append("The Duchess: the %d-chip pile on %s pays half" % [c.value, c.bet])
 				take += amt
 				_event(res, "win", c.bet, amt, "straight" if b.type == "straight" else b.type)
 				res.stack += c.value
@@ -107,6 +110,9 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			_event(res, "push", c.bet, 0.0, "frozen" if c.id == w.frozen_id else "off the books")
 			continue
 		var pamt := _score(w, c, b, pocket, res)
+		if c.mod == "focused" and b.type == "straight" and not mirrored:
+			pamt *= 2.0
+			res.log.chips.append("Focused chip on %s scores double" % c.bet)
 		take += pamt
 		_event(res, "win", c.bet, pamt, "mirror" if mirrored else ("straight" if b.type == "straight" else b.type))
 		if mirrored:
@@ -203,6 +209,10 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			continue
 		var crack: float = 0.5 if c.flaw == "cracked" else 1.0
 		var own: int = Board.straight_number(c.bet) if Board.is_straight(c.bet) else -99
+		if c.mod == "steady" and own != pocket:
+			var st: float = Content.STEADY_BONUS * c.value * crack
+			take += st
+			_bonus(res, c, st, "steady")
 		var covered: bool = pocket in B.bet(c.bet).numbers
 		match c.kind:
 			"street_light":
@@ -301,6 +311,49 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			_value(res, c, 1)
 			res.log.chips.append("Compounding on %s grows to %d" % [c.bet, c.value])
 
+	# Bridge rules: one way of betting feeds another.
+	var won_keys := []
+	for e in res.events:
+		if e.kind == "win" and e.key != "":
+			won_keys.append(e.key)
+	if w.has_rule("outside_connection") or w.has_rule("colour_coded"):
+		for k in won_keys:
+			var rule := ""
+			if w.has_rule("outside_connection") and (B.bet(k).type in ["dozen", "column"]):
+				rule = "outside connection"
+			elif w.has_rule("colour_coded") and (k == "RED" or k == "BLACK"):
+				rule = "colour coded"
+			if rule == "":
+				continue
+			var nums: Array = B.bet(k).numbers
+			var lv := 0
+			for c in w.perm_chips():
+				if Board.is_straight(c.bet) and Board.straight_number(c.bet) in nums:
+					lv += c.value
+			if lv > 0:
+				take += lv
+				res.log.rules.append("%s: +%d from number chips in %s" % [rule.capitalize(), lv, k])
+				_event(res, "bonus", k, lv, rule)
+	if w.has_rule("inside_track") and won_keys.any(func(k): return B.is_line_bet(k)):
+		for c in w.chips_on(pkey):
+			if not c.is_bet() and c.value < Content.INSIDE_TRACK_CAP:
+				_value(res, c, 1)
+				res.log.rules.append("Inside Track: %s chip grows to %d" % [c.kind, c.value])
+				break
+
+	# Table condition "Spread Out": bets covering all three dozens score +25%.
+	if w.condition == "regions" and take > 0.0:
+		var doz := {}
+		for c in felt.chips:
+			if c.is_bet():
+				for n in B.bet(c.bet).numbers:
+					if n > 0:
+						doz[B.dozen_of(n)] = true
+		if doz.size() >= 3:
+			take *= Content.REGIONS_MULT
+			res.log.rules.append("Spread Out: x%s" % _fmt(Content.REGIONS_MULT))
+			_mult(res, Content.REGIONS_MULT, "Spread Out")
+
 	# House Rules multiply the spin.
 	if w.has_rule("red_streak"):
 		if pocket > 0 and B.is_red(pocket):
@@ -373,6 +426,10 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	if w.has_rule("bankroll"):
 		res.stack += 1
 		res.log.rules.append("Bankroll: +1 chip to your stack")
+	if w.has_rule("rainy_day") and take - lost <= 0.0:
+		res.cash += Content.RAINY_DAY_CASH
+		res.log.rules.append("Rainy Day Fund: +$%d" % Content.RAINY_DAY_CASH)
+		_event(res, "cash", "", Content.RAINY_DAY_CASH, "rainy day")
 	if w.has_rule("big_spender") and take - lost >= 50.0:
 		res.cash += 3
 		res.log.rules.append("Big Spender: +$3")

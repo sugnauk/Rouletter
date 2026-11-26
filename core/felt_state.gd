@@ -13,6 +13,7 @@ var bet_upgrades: Dictionary = {}      ## outside bet key -> upgrade id
 var house_rules: Array = []            ## relics bought in the shop
 var wheel_rules: Array = []            ## rules built into the wheel (French: la_partage)
 var boss_rule: String = ""             ## current Enforcer twist
+var condition: String = ""             ## current table condition (Content.CONDITIONS)
 var frozen_id: int = -1                ## chip frozen by the "frozen" Enforcer
 var red_streak: int = 0
 var hit_streak: int = 0                ## scoring spins in a row (Momentum)
@@ -36,6 +37,7 @@ func copy():
 	f.house_rules = house_rules.duplicate()
 	f.wheel_rules = wheel_rules.duplicate()
 	f.boss_rule = boss_rule
+	f.condition = condition
 	f.frozen_id = frozen_id
 	f.red_streak = red_streak
 	f.hit_streak = hit_streak
@@ -50,10 +52,10 @@ func copy():
 func to_dict() -> Dictionary:
 	var cs := []
 	for c in chips:
-		cs.append({"id": c.id, "kind": c.kind, "bet": c.bet, "value": c.value, "flaw": c.flaw})
+		cs.append({"id": c.id, "kind": c.kind, "bet": c.bet, "value": c.value, "flaw": c.flaw, "mod": c.mod})
 	return {"wheel": board.wheel_id, "chips": cs, "square_upgrades": square_upgrades.duplicate(),
 		"bet_upgrades": bet_upgrades.duplicate(), "house_rules": house_rules.duplicate(),
-		"wheel_rules": wheel_rules.duplicate(), "boss_rule": boss_rule, "frozen_id": frozen_id,
+		"wheel_rules": wheel_rules.duplicate(), "boss_rule": boss_rule, "condition": condition, "frozen_id": frozen_id,
 		"red_streak": red_streak, "hit_streak": hit_streak, "last_pocket": last_pocket, "next_id": next_id}
 
 
@@ -62,12 +64,14 @@ static func from_dict(d: Dictionary):
 	for c in d.chips:
 		var chip = Chip.new(c.id, c.kind, c.bet, c.value)
 		chip.flaw = c.flaw
+		chip.mod = c.get("mod", "")
 		f.chips.append(chip)
 	f.square_upgrades = d.square_upgrades.duplicate()
 	f.bet_upgrades = d.bet_upgrades.duplicate()
 	f.house_rules = d.house_rules.duplicate()
 	f.wheel_rules = d.wheel_rules.duplicate()
 	f.boss_rule = d.boss_rule
+	f.condition = d.get("condition", "")
 	f.frozen_id = d.frozen_id
 	f.red_streak = d.red_streak
 	f.hit_streak = d.hit_streak

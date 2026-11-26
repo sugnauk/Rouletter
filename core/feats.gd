@@ -9,6 +9,7 @@ extends RefCounted
 
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
+const Wheels := preload("res://core/wheels.gd")
 
 const FEATS := {
 	"straight_up": {"name": "Straight Up", "desc": "Hit a straight-up number.", "reward": 1, "on": "spin"},
@@ -27,12 +28,25 @@ const FEATS := {
 	"beat_oro": {"name": "Off the Green", "desc": "Beat Madame Oro.", "reward": 1, "on": "clear", "enforcer": "oro"},
 	"beat_vic": {"name": "Thawed", "desc": "Beat Vic \"The Rake\".", "reward": 1, "on": "clear", "enforcer": "vic"},
 	"beat_sal": {"name": "Uncalled For", "desc": "Beat Big Sal.", "reward": 1, "on": "clear", "enforcer": "sal"},
+	"last_ball_enforcer": {"name": "Paid in the Nick of Time", "desc": "Pay an Enforcer with your very last ball.", "reward": 2, "on": "clear"},
+	"one_spin_table": {"name": "One and Done", "desc": "Clear a table on its first spin.", "reward": 2, "on": "clear"},
+	"comeback": {"name": "The Comeback", "desc": "With one ball left and under half the payment, clear the table anyway.", "reward": 2, "on": "spin"},
+	"level_five": {"name": "Seasoned", "desc": "Raise a permanent chip to level 5.", "reward": 1, "on": "clear"},
+	"no_outside_win": {"name": "Inside Man", "desc": "Win a run without ever betting on an outside box.", "reward": 3, "on": "end"},
 	"paid_in_full": {"name": "Paid in Full", "desc": "Win a run: pay a whole marker.", "reward": 3, "on": "end"},
 	"french_win": {"name": "Très Bien", "desc": "Win a run on the French wheel.", "reward": 1, "on": "end", "wheel": "french"},
 	"euro_win": {"name": "Continental", "desc": "Win a run on the European wheel.", "reward": 1, "on": "end", "wheel": "european"},
 	"graded": {"name": "Paper Climber", "desc": "Win a run on a Grade 3 marker or higher.", "reward": 2, "on": "end"},
 	"vance_paper": {"name": "Vance's Own", "desc": "Win a run on the Grade 9 marker.", "reward": 5, "on": "end"},
 	"hard_way": {"name": "The Hard Way", "desc": "Win a run on the American, Triple Zero or Cheater's wheel.", "reward": 2, "on": "end"},
+	"mini_win": {"name": "Small Wonder", "desc": "Win a run on the Mini wheel.", "reward": 2, "on": "end", "wheel": "mini"},
+	"sunrise_win": {"name": "Dawn Patrol", "desc": "Win a run on the Sunrise wheel.", "reward": 2, "on": "end", "wheel": "sunrise"},
+	"grand_tour": {"name": "Grand Tour", "desc": "Win a run on every wheel.", "reward": 5, "on": "end"},
+	"ch_no_outside": {"name": "Nothing on the Outside", "desc": "Win the No Outside Bets challenge.", "reward": 3, "on": "end", "challenge": "no_outside"},
+	"ch_fence_run": {"name": "Fell Off a Truck", "desc": "Win The Fence's Run challenge.", "reward": 3, "on": "end", "challenge": "fence_run"},
+	"ch_gauntlet": {"name": "Ran the Gauntlet", "desc": "Win the Enforcer Gauntlet challenge.", "reward": 4, "on": "end", "challenge": "gauntlet"},
+	"ch_shoestring": {"name": "On a Shoestring", "desc": "Win the Shoestring challenge.", "reward": 3, "on": "end", "challenge": "shoestring"},
+	"weekly_win": {"name": "Weekly Winner", "desc": "Win a weekly challenge run.", "reward": 2, "on": "end"},
 }
 
 const LINE_TYPES := ["split", "corner", "street", "line"]
@@ -77,6 +91,16 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 			return run.felt.perm_chips().size() >= 8
 		"spare_change":
 			return run.overflow >= 50
+		"last_ball_enforcer":
+			return ctx.info.boss and ctx.info.spins_left == 0
+		"one_spin_table":
+			return ctx.info.get("spins_used", 99) == 1
+		"comeback":
+			return ctx.get("spins_before", 9) == 1 and ctx.get("before", 0.0) < ctx.target * 0.5 and ctx.get("cleared", false)
+		"level_five":
+			return run.felt.perm_chips().any(func(c): return c.value >= 5)
+		"no_outside_win":
+			return ctx.won and not run.used_outside
 		"paid_in_full":
 			return ctx.won
 		"graded":
@@ -85,6 +109,13 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 			return ctx.won and run.grade >= 8
 		"hard_way":
 			return ctx.won and run.wheel_id in ["american", "triple_zero", "no_zero"]
+	if f.has("challenge"):
+		return ctx.won and run.challenge == f.challenge
+	if id == "grand_tour":
+		var won: Array = ctx.get("wheels_won", [])
+		return ctx.won and Wheels.ORDER.all(func(w): return w in won or w == run.wheel_id)
+	if id == "weekly_win":
+		return ctx.won and run.weekly != ""
 	if f.has("enforcer"):
 		return ctx.info.boss and ctx.info.enforcer == f.enforcer
 	if f.has("wheel"):

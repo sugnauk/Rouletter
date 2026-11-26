@@ -34,7 +34,7 @@ window/size/window_height_override=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=0
-window/stretch/scale_mode="integer"
+window/stretch/scale_mode="fractional"
 
 [gui]
 
@@ -48,6 +48,8 @@ theme/default_font_subpixel_positioning=0
 
 [rendering]
 
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.0784314, 0.0509804, 0.0588235, 1)
 textures/canvas_textures/default_texture_filter=0

@@ -16,6 +16,9 @@ var dim := false
 var rarity := "common"       ## "rare" (cyan frame) / "legendary" (shimmering gold frame)
 var level := 0               ## > 1: a "LV n" tag on the token
 var hover_target: Callable
+var hover_exit: Callable      ## optional: called when the pointer leaves
+var long_pressed: Callable    ## optional: a touch held for half a second (instead of a press)
+var _hold := -1.0
 
 
 func _init(id: String = "", sz: Vector2 = Vector2(24, 24)) -> void:
@@ -28,7 +31,12 @@ func _init(id: String = "", sz: Vector2 = Vector2(24, 24)) -> void:
 		if hover_target.is_valid():
 			hover_target.call(hover_text)
 		queue_redraw())
-	mouse_exited.connect(queue_redraw)
+	button_down.connect(func(): _hold = 0.0 if long_pressed.is_valid() else -1.0)
+	button_up.connect(func(): _hold = -1.0)
+	mouse_exited.connect(func():
+		if hover_exit.is_valid():
+			hover_exit.call()
+		queue_redraw())
 
 
 func _draw() -> void:
@@ -74,6 +82,12 @@ func _draw() -> void:
 		draw_rect(r.grow(-1), Color(0, 0, 0, 0.45))
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if _hold >= 0.0:
+		_hold += delta
+		if _hold >= 0.5:
+			_hold = -1.0
+			if long_pressed.is_valid():
+				long_pressed.call()
 	if rarity == "legendary" and is_visible_in_tree():
 		queue_redraw()

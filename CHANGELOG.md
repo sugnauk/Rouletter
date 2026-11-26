@@ -3,6 +3,119 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.24
+- Balance: Mini wheel payments x1.05 -> x1.2. With its Bridge starter it was winning far more often than the other wheels (balance bot: 62% -> 45%).
+
+## 0.0.23
+- Art pass: the 31 items that showed two-letter tiles now have real pixel icons (a die, a sailboat, an owl, a piggy bank, a clover, a pocket watch and more). So do the four bridge rules.
+- New Feats:
+  - Small Wonder: win on the Mini wheel.
+  - Dawn Patrol: win on the Sunrise wheel.
+  - Grand Tour: win a run on every wheel.
+- Design doc updated with everything from 0.0.15 on.
+
+## 0.0.22
+- Run modes on the wheel screen (the MODE button):
+  - Weekly challenge: the same wheel, seed and Grade 2 marker for everyone this week, worked out from the date (no server needed). Your best weekly run is remembered. Winning it earns the Weekly Winner Feat.
+  - Four named challenges, each with its own Feat:
+    - No Outside Bets: the boxes are closed all run.
+    - The Fence's Run: only the Fence works the Cage. You start with a Magnet, a Permanent and +$10.
+    - Enforcer Gauntlet: every table is an Enforcer.
+    - Shoestring: a 12-chip stack, and no Pit Boss or Loan Shark.
+- Seeds: every run has one, shown in the pause menu and the run history. Type a seed (a number or any word) on the wheel screen to replay or share a run.
+- Starting kits: buy alternative kits at the Pawn Shop and pick one with the KIT button.
+  - Banker's Kit: no chips, +$8.
+  - Collector's Kit: three random common chips.
+  - High Roller's Kit: a Kingmaker.
+- Continue Run now shows the saved run: wheel, night, where you are, marker left, mode or grade, your key chips, cash and seed.
+- The pause menu lists your marker grade's modifiers.
+- The "Short Stack" table condition is now "Thin Stack", so it isn't confused with the Grade 2 marker.
+
+## 0.0.21
+- Four new Act I Enforcers. Each run now meets four of the eight, so no two runs face the same lineup:
+  - The Duchess: any bet of 5+ chips on one spot pays half. Spread out.
+  - Miss Tempo: every spin that scores nothing costs 10% of the Take you've built.
+  - The Timekeeper: the payment grows 5% every spin.
+  - Countess Ilsa: no encores. You can't bet on a spot you bet on last spin.
+- Table conditions: from night 2, ordinary tables can roll a twist.
+  - Spread Out: spins covering all three dozens score +25%.
+  - Tight Felt: 6 bet spots at most.
+  - Early Bird: clear by the 3rd ball for +$2.
+  - Thin Stack: 4 fewer chips, but +$2 when you clear.
+- Side jobs: every table has an optional objective that pays on the clear: Clean Hands, Bullseye, Hat Trick or Light Touch. Progress shows in the table's side panel.
+- Pick your table: before each night's High Roller, choose one:
+  - The Back Room: 4 balls, payment x0.8.
+  - The Long Table: 8 balls, payment x1.2, Tight Felt.
+  - The usual table.
+- Between tables: before the Enforcer, someone in the Cage may have an offer. Dolores' tip, Lucky Lou's side bet, or a free (hot) chip from the Fence.
+- The Cage now previews the next table: its Enforcer, route, condition and side job. Hover it for the details.
+- The clear tally lists every condition, route, side job and side bet that paid.
+
+## 0.0.20
+- Every wheel now starts you on a different plan, named on the select screen:
+  - French: Safety Net. A Permanent x2 and a Hedge.
+  - European: Numbers. A Magnet and a Permanent.
+  - American: Zero Chips. A Sentinel, and +$4.
+  - Mini: Inside Bets. A Bridge.
+  - Triple Zero: Zero Economy. Wildcard Zero and a Spare Key.
+  - Sunrise: Multipliers. A Kingmaker, with Momentum built in.
+  - Cheater's: Even Money. Starts with Satin Gloves.
+- On the house: after your first table, pick one free chip or House Rule from three different build directions (or pass).
+- Paid with 3+ balls to spare? Instead of the balls-left cash being paid automatically, pick a bonus: that cash, a free Dealer favour, or a free reroll.
+- Hold an item through a reroll: right-click (or long-press) it in the Cage. It's marked HOLD and stays when you reroll.
+- New Cashier services:
+  - TRADE $3: swap a placed chip for a related one. It keeps its square and level.
+  - REFINE $6: give a number chip at level 2+ a second act. Focused scores double on its own number. Steady pays +1 Take per level on every miss. A small diamond on the chip marks its path.
+- Four bridge House Rules, each linking two ways of betting:
+  - Outside Connection: winning dozens and columns pay +1 per level of your number chips inside them.
+  - Inside Track: winning inside bets level up the chip on the winning number.
+  - Colour Coded: red or black wins pay +1 per level of your number chips of that colour.
+  - Rainy Day Fund: a spin that scores nothing pays +$2.
+- Each Cage window now says what it's for: the Cashier deepens your build, the Pit Boss sells rules, the Loan Shark patches the next table, the Fence sells cheap gambles, and the Dealer invests in the run.
+
+## 0.0.19
+- See your build on the felt:
+  - Hover a square to light every bet and chip that would score if it hits, with the Take it would add.
+  - Holding a chip from your rack, hover the felt to see every pocket it would pay on from there.
+  - Hovering a chip in your rack lights the pockets it pays on, for chips that don't care where they sit.
+- The payment is the star of the HUD: "TAKE 3 / 8   NEED 5". Before you spin, any bet that would pay the rest of the table on one hit gets a pulsing gold ring.
+- Quicker layout edits:
+  - Shift-click takes back one chip of your bet size.
+  - Ctrl-click a dozen, column, red/black or other outside box to clear every bet inside it.
+  - Alt-click pins a bet (a small red pin), so Clear leaves it on the felt.
+- The Cage reads your build. Hovering an item shows what it adds to your felt and last layout, e.g. "With your last layout: +1.4 Take a spin". A trigger chip lights the pockets it pays on, and a placed chip names your best bet to put it on.
+
+## 0.0.18
+- Feats that tell a story, announced the moment they happen:
+  - Paid in the Nick of Time: pay an Enforcer with your last ball.
+  - One and Done: clear a table on its first spin.
+  - The Comeback: clear on the last ball from under half the payment.
+  - Seasoned: a chip reaches level 5.
+  - Inside Man: win a run without ever betting on an outside box.
+
+## 0.0.17
+- No more black borders: the game now scales smoothly to any window or phone screen instead of in whole steps, with pixel snapping to keep the art crisp.
+- New wheel select screen: one wheel at a time, shown big, with < and > buttons (or the arrow keys) to browse. Dots show where you are, locked wheels say what they cost, and the panel lists pockets, zeros, house edge, payments, starting cash, kit and built-in rules. Enter deals you in.
+- Title screen: the lifetime "paid to Vance" stat is gone (each run's marker is its own).
+
+## 0.0.16
+- Distinct sounds for each felt action:
+  - placing a bet, and stacking a chip on its twin (with a "LEVEL UP!" pop)
+  - taking a bet back, Undo, and clearing the felt
+- Chips now fly visibly between your stack and the felt when you bet, take back, undo or clear.
+- The music follows the table. A tension layer (a heartbeat and a ticking clock, in time with the band) fades in on the last two balls and when the payment is within reach. It drops away when the table is paid.
+
+## 0.0.15
+- Spins now play out in three beats:
+  - The pocket is revealed and lights up.
+  - Each winning bet and triggered chip lights up in turn.
+  - The Take counts into the payment.
+- Exceptional spins get their own beat and a new musical sting: a final-ball clear ("ON THE LAST BALL!", a dealer line and a gold log entry), a one-spin jackpot, a personal-best spin, or a 5+ hit combo. Ordinary spins stay brisk.
+- Spin receipt: a one-line summary under the score (bets, chips, multipliers, losses, cash = total). Click the panel for the full calculation.
+- Missed a payment? The end screen now says how far short you were and lists the layout you had down.
+- Fast spins (Options and the pause menu): a short wheel spin and a brisk count, remembered between runs.
+- Code: the count moved to `scenes/screens/table_count.gd`.
+
 ## 0.0.14
 - **50 chips.** 22 new ones, sorted in the Almanac as Pattern, Watch, Growth and Cash chips:
   - Pattern: Odd Fellow, Even Keel, Low Roller, Penthouse, Prime Time, Square Deal, Teen Idol, Fibonacci, Nickel, Seventh Heaven, Last Digit.

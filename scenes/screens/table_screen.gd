@@ -14,6 +14,8 @@ const RunState := preload("res://core/run_state.gd")
 const FeltView := preload("res://scenes/ui/felt_view.gd")
 const WheelView := preload("res://scenes/ui/wheel_view.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
+const TableCount := preload("res://scenes/screens/table_count.gd")
+const Preview := preload("res://core/preview.gd")
 
 const LEFT_W := 180
 const MID_X := 188
@@ -38,6 +40,8 @@ var rack_grid: GridContainer
 var rules_flow: VBoxContainer
 var boss_panel: Panel
 var boss_lbl: Label
+var job_panel: Panel
+var job_lbl: Label
 var boss_face: Control
 var boss_who := ""
 var boss_name: Label
@@ -60,12 +64,21 @@ var hits := 0                    ## scoring events this spin (the combo counter)
 var shown_cash := -1.0           ## HUD cash, counted up toward run.cash
 var zoom_bg: ColorRect            ## dims the table while the felt is zoomed for touch betting
 var zoomed := false
+var pinned: Dictionary = {}      ## bet keys that survive Clear (Alt-click to pin)
 const ZOOM := 1.8
+var count                        ## the spin count-up (table_count.gd)
+var receipt := ""                ## one-line "where the Take came from" under the score
 var chance := 0.0
 var take_per_spin := 0.0
 
 
+## Fast spins (Options): a short wheel spin and a brisk count.
+func fast() -> bool:
+	return main.profile.settings.get("fast_spins", false)
+
+
 func setup() -> void:
+	count = TableCount.new(self)
 	hud = _canvas(Vector2(0, 0), Vector2(640, 24), _draw_hud)
 
 	wheel_view = WheelView.new()
@@ -90,13 +103,18 @@ func setup() -> void:
 	felt_view = FeltView.new()
 	P.place(felt_view, Vector2(MID_X, 32))
 	felt_view.bet_clicked.connect(_on_bet_clicked)
-	felt_view.bet_hovered.connect(func(k): _status(felt_view.describe(k) if k != "" else _hint()))
+	felt_view.bet_hovered.connect(_on_hover)
 	add_child(felt_view)
 	status_lbl = P.label(self, "", P.FONT_SMALL, P.DIM)
 	status_lbl.clip_text = true
 	P.place(status_lbl, Vector2(MID_X, 150), Vector2(330, 10))
 	history_view = _canvas(Vector2(MID_X, 162), Vector2(330, 18), _draw_history)
 	score_view = _canvas(Vector2(MID_X, 184), Vector2(330, 170), _draw_score)
+	# Clicking the score panel opens the full calculation (the spin log).
+	score_view.mouse_filter = Control.MOUSE_FILTER_STOP
+	score_view.gui_input.connect(func(e):
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and receipt != "":
+			log_box.visible = true)
 	log_box = RichTextLabel.new()
 	log_box.bbcode_enabled = true
 	log_box.scroll_following = true
@@ -152,6 +170,15 @@ func setup() -> void:
 	boss_lbl = P.label(boss_panel, "", P.FONT_SMALL, P.CREAM)
 	boss_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(boss_lbl, Vector2(5, 38), Vector2(RIGHT_W - 10, 62))
+	# Ordinary tables: the condition and side job, in the same spot.
+	job_panel = Panel.new()
+	job_panel.add_theme_stylebox_override("panel", P.box(Color("#10201a"), P.LINE, 1))
+	P.place(job_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
+	add_child(job_panel)
+	job_lbl = P.label(job_panel, "", P.FONT_SMALL, P.CREAM)
+	job_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	job_lbl.add_theme_constant_override("line_spacing", -2)
+	P.place(job_lbl, Vector2(5, 4), Vector2(RIGHT_W - 10, 96))
 	# Tap-to-zoom felt (touch screens, or the Options toggle): a dim layer under a big felt.
 	zoom_bg = ColorRect.new()
 	zoom_bg.color = Color(0.02, 0.01, 0.02, 0.82)
@@ -181,7 +208,7 @@ func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
 func _hint() -> String:
 	if DisplayServer.is_touchscreen_available():
 		return "Tap: bet %d   Hold: take back" % bet_size
-	return "Click: bet %d   Right-click: take back   Z: undo   C: clear" % bet_size
+	return "Click: bet %d  Right: take back  Shift: -%d  Ctrl: clear area  Alt: pin" % [bet_size, bet_size]
 
 
 func _has_bets() -> bool:
@@ -197,7 +224,8 @@ func _on_undo() -> void:
 		return
 	var last: Dictionary = bet_history.pop_back()
 	if run.unbet(last.key, last.amount) > 0:
-		Sfx.play("chip_remove")
+		_chips_home(last.key)
+		Sfx.play("undo")
 	refresh()
 
 
@@ -206,9 +234,78 @@ func _on_clear() -> void:
 	if spinning or main.dialogue.is_open():
 		return
 	bet_history.clear()
-	if run.clear_bets():
-		Sfx.play("chip_remove")
+	var keys: Array = run.felt.chips.filter(func(c): return c.is_bet() and not pinned.has(c.bet)).map(func(c): return c.bet)
+	if run.clear_bets(pinned.keys()):
+		for k in keys:
+			_chips_home(k)
+		Sfx.play("clear_all")
 		refresh()
+
+
+## Hover previews on the felt:
+##  - placing a rack chip: cyan on every pocket it would pay on from this square
+##  - a number: gold on every bet and chip that would score if it hit, and the Take it would make
+##  - a square with your permanent chips: cyan on the pockets those chips pay on
+func _on_hover(k: String) -> void:
+	felt_view.preview = {}
+	if k == "" or spinning:
+		_status(felt_view.describe(k) if k != "" else _hint())
+		felt_view.queue_redraw()
+		return
+	var run = main.run
+	var B = run.felt.board
+	var txt: String = felt_view.describe(k)
+	if selected_item >= 0 and selected_item < run.inventory.size():
+		var item: Dictionary = run.inventory[selected_item]
+		if run.can_place_chip(item.kind, k):
+			var ps := Preview.pays_on(run.felt, item.kind, k, item.value, item.get("flaw", ""))
+			for p in ps:
+				felt_view.preview[Board.straight_key(p)] = P.CYAN
+			txt = "%s here pays on %d of %d pockets" % [Content.CHIPS[item.kind].name, ps.size(), B.pockets.size()]
+		else:
+			txt = "%s can't go here" % Content.CHIPS[item.kind].name
+	else:
+		for c in run.felt.chips_on(k):
+			if not c.is_bet():
+				for p in Preview.chip_pays_on(run.felt, c.id):
+					felt_view.preview[Board.straight_key(p)] = P.CYAN
+		if Board.is_straight(k):
+			var f := Preview.fires_at(run.felt, Board.straight_number(k))
+			for fk in f.keys:
+				felt_view.preview[fk] = P.GOLD
+			if f.take > 0.0 or f.cash > 0:
+				txt += "   |   if %s hits: +%d Take%s" % [B.label(Board.straight_number(k)), int(f.take), ("  +$%d" % f.cash) if f.cash > 0 else ""]
+	_status(txt)
+	felt_view.queue_redraw()
+
+
+## Gold rings on the bets that could pay the rest of the table in one hit.
+func _mark_clearing() -> void:
+	var run = main.run
+	felt_view.ring_keys = {}
+	for k in pinned.keys():
+		if not run.felt.chips_on(k).any(func(c): return c.is_bet()):
+			pinned.erase(k)
+	felt_view.pinned = pinned
+	if spinning or run.phase != RunState.Phase.TABLE or run.table.is_empty():
+		return
+	var need: float = run.table.target - run.table.take
+	var ps := Preview.clearing_pockets(run.felt, need)
+	if ps.is_empty():
+		return
+	var B = run.felt.board
+	for c in run.felt.chips:
+		if B.bet(c.bet).numbers.any(func(n): return n in ps):
+			felt_view.ring_keys[c.bet] = true
+
+
+## Where the betting stack sits (the chip towers in the left column), for chips flying to/from it.
+const STACK_AT := Vector2(110, 330)
+
+
+## Chips going back from a square to the stack.
+func _chips_home(key: String) -> void:
+	main.fx.fly(main.fx.local(felt_view.key_global(key)), STACK_AT, P.CREAM, 2)
 
 
 func _status(s: String) -> void:
@@ -228,6 +325,20 @@ func _process(delta: float) -> void:
 		if cash > shown_cash and int(next) != int(shown_cash):
 			Sfx.play("cash", 1.4)  # a coin tick for every dollar counted up
 		shown_cash = next
+	# Music tension: rises on the last two balls and when the payment is within reach.
+	var tb: Dictionary = main.run.table
+	if main.run.phase == RunState.Phase.TABLE and not tb.is_empty():
+		var need: float = tb.target - tb.take
+		var lvl := 0.0
+		if tb.spins_left <= 1:
+			lvl = 1.0
+		elif tb.spins_left == 2:
+			lvl = 0.6
+		if need > 0.0 and need <= tb.target * 0.3:
+			lvl = maxf(lvl, 0.5)
+		Sfx.set_tension(lvl)
+	else:
+		Sfx.set_tension(0.0)
 	# The SPIN button breathes while it's ready and bets are down.
 	if not spin_btn.disabled and _has_bets():
 		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 260.0)
@@ -274,10 +385,15 @@ func refresh() -> void:
 	undo_btn.disabled = spinning or run.phase != RunState.Phase.TABLE or bet_history.is_empty()
 	spin_btn.text = "CALLED SPIN" if run.is_called_spin() else ("PLACE CHIPS" if run.has_unplaced_chips() else "SPIN")
 	_refresh_tokens()
+	_mark_clearing()
 	if t.boss:
 		var e: Dictionary = Content.ENFORCERS[t.enforcer]
 		boss_panel.visible = true
+		job_panel.visible = false
 		boss_lbl.text = e.desc
+		if t.get("objective", "") != "":
+			var o: Dictionary = Content.OBJECTIVES[t.objective]
+			boss_lbl.text += "\nJOB: %s +$%d%s" % [o.name, o.cash, " (done)" if run.objective_met() else ""]
 		boss_who = e.name
 		boss_face.queue_redraw()
 		boss_name.text = "ENFORCER\n" + e.name.to_upper()
@@ -287,6 +403,24 @@ func refresh() -> void:
 			main.say([{"speaker": e.name, "text": e.intro}])
 	else:
 		boss_panel.visible = false
+		var lines := []
+		if t.get("route", "") != "":
+			lines.append(Content.ROUTES[t.route].name.to_upper())
+		if t.get("condition", "") != "":
+			var c: Dictionary = Content.CONDITIONS[t.condition]
+			lines.append("%s\n%s" % [c.name.to_upper(), c.desc])
+		if t.get("objective", "") != "":
+			var o: Dictionary = Content.OBJECTIVES[t.objective]
+			var st := ""
+			if run.objective_met():
+				st = " DONE"
+			elif t.objective in ["outside_only", "few"] and not t.obj_ok:
+				st = " BLOWN"
+			elif t.objective == "three_hits":
+				st = " %d/3" % mini(3, t.get("obj_hits", 0))
+			lines.append("SIDE JOB +$%d%s\n%s: %s" % [o.cash, st, o.name, o.desc])
+		job_panel.visible = not lines.is_empty()
+		job_lbl.text = "\n".join(lines)
 	if status_lbl.text == "":
 		_status("")
 	hud.queue_redraw()
@@ -315,7 +449,16 @@ func _refresh_tokens() -> void:
 			tok.badge = Content.FLAWS[item.flaw].short
 		tok.selected = i == selected_item
 		tok.hover_text = "%s: %s" % [Content.CHIPS[item.kind].name, Content.CHIPS[item.kind].desc]
-		tok.hover_target = _status
+		tok.hover_target = func(txt: String):
+			_status(txt)
+			if Preview.absolute_trigger(item.kind):
+				felt_view.preview = {}
+				for p in Preview.pays_on(run.felt, item.kind, Preview.rep_key(run.felt, item.kind), item.value):
+					felt_view.preview[Board.straight_key(p)] = P.CYAN
+				felt_view.queue_redraw()
+		tok.hover_exit = func():
+			felt_view.preview = {}
+			felt_view.queue_redraw()
 		tok.pressed.connect(_select_item.bind(i))
 		rack_grid.add_child(tok)
 	if inv.is_empty():
@@ -387,7 +530,8 @@ func _draw_hud(c: Control) -> void:
 		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 120.0)
 		c.draw_rect(mr.grow(1), Color(P.GOLD, 0.5 + 0.5 * g), false, 2.0)
 		c.draw_rect(mr.grow(3), Color(P.GOLD, 0.25 * g), false, 1.0)
-	Art.text(c, font, Vector2(mr.get_center().x, 16), ("PAID!  %d / %d" if shown_take >= t.target else "TAKE %d / %d") % [int(shown_take), t.target], 8, P.CREAM if k < 0.55 else P.WOOD_DARK, true)
+	var mtxt: String = ("PAID!  %d / %d" % [int(shown_take), t.target]) if shown_take >= t.target else ("TAKE %d / %d   NEED %d" % [int(shown_take), t.target, int(ceil(t.target - shown_take))])
+	Art.text(c, font, Vector2(mr.get_center().x, 16), mtxt, 8, P.CREAM if k < 0.55 else P.WOOD_DARK, true)
 	# Spins as balls.
 	var total: int = t.spins_used + t.spins_left
 	for i in range(total):
@@ -493,6 +637,11 @@ func _draw_score(c: Control) -> void:
 		var w := font.get_string_size(amt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 		Art.text(c, font, Vector2(c.size.x - 10 - w, y), amt, 8, col)
 		y += 14.0
+	if receipt != "" and not spinning:
+		c.draw_rect(Rect2(4, c.size.y - 26, c.size.x - 8, 1), P.LINE.darkened(0.5))
+		var rw := font.get_string_size(receipt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+		Art.text(c, font, Vector2(165, c.size.y - 15), receipt if rw < c.size.x - 12 else receipt.substr(0, 60) + "...", 8, P.CREAM, true)
+		Art.text(c, font, Vector2(165, c.size.y - 5), "click for the full calculation", 8, P.DIM, true)
 
 
 # --- Input ------------------------------------------------------------------------
@@ -526,19 +675,54 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	if button == MOUSE_BUTTON_LEFT and not zoomed and _zoom_enabled():
 		_zoom()
 		return
+	# Quick layout edits: Shift-click takes back one chip size, Ctrl-click an outside box (or a
+	# street/line) clears every bet inside that region, Alt-click pins a bet so Clear keeps it.
+	if button == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_SHIFT) and selected_item < 0:
+		if run.unbet(key, bet_size) > 0:
+			bet_history = bet_history.filter(func(h): return h.key != key)
+			_chips_home(key)
+			Sfx.play("refund")
+		return
+	if button == MOUSE_BUTTON_LEFT and (Input.is_key_pressed(KEY_CTRL) or Input.is_key_pressed(KEY_META)) and selected_item < 0:
+		var region: Array = run.felt.board.bet(key).numbers
+		var n := 0
+		for c in run.felt.chips.duplicate():
+			if c.is_bet() and not pinned.has(c.bet) and run.felt.board.bet(c.bet).numbers.all(func(x): return x in region):
+				_chips_home(c.bet)
+				n += run.take_back(c.bet) as int
+		if n > 0:
+			Sfx.play("clear_all")
+			_status("Cleared %d bet%s inside %s." % [n, "" if n == 1 else "s", felt_view.describe(key).split("  ")[0]])
+		return
+	if button == MOUSE_BUTTON_LEFT and Input.is_key_pressed(KEY_ALT) and selected_item < 0:
+		if run.felt.chips_on(key).any(func(c): return c.is_bet()):
+			if pinned.has(key):
+				pinned.erase(key)
+			else:
+				pinned[key] = true
+			felt_view.pinned = pinned
+			felt_view.queue_redraw()
+			Sfx.play("click")
+			_status("Pinned: Clear keeps this bet." if pinned.has(key) else "Unpinned.")
+		return
 	if button == MOUSE_BUTTON_RIGHT:
 		if run.take_back(key):
 			bet_history = bet_history.filter(func(h): return h.key != key)
-			Sfx.play("chip_remove")
+			_chips_home(key)
+			Sfx.play("refund")
 		return
 	if button != MOUSE_BUTTON_LEFT:
 		return
 	if selected_item >= 0:
+		var kind: String = run.inventory[selected_item].kind
+		var twin: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == kind)
 		if run.place_chip(selected_item, key):
 			selected_item = -1
 			felt_view.pop(key)
-			main.fx.burst(main.fx.local(felt_view.key_global(key)), 8, [P.GOLD, P.CREAM], 60.0)
-			Sfx.play("chip_place")
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 8 if not twin else 20, [P.GOLD, P.CREAM] if not twin else [P.GOOD, P.GOLD, P.CREAM], 60.0)
+			if twin:
+				main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
+			Sfx.play("stack" if twin else "chip_place")
 		else:
 			_status("That chip can't go there.")
 		return
@@ -546,13 +730,15 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	if run.place_bet(key, amt):
 		bet_history.append({"key": key, "amount": amt})
 		felt_view.pop(key)
+		main.fx.fly(STACK_AT, main.fx.local(felt_view.key_global(key)), Art.denom_color(amt), 1)
 		Sfx.play("chip_place")
 	elif run.is_called_spin():
 		_status("Big Sal calls this spin. No new bets.")
 	elif run.table.stack <= 0:
 		_status("Your stack is empty.")
 	else:
-		_status("Closed tonight.")
+		var why: String = run.bet_block_reason(key)
+		_status(why if why != "" else "Closed tonight.")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -596,20 +782,27 @@ func _on_spin() -> void:
 	score_rows = []
 	spin_score = 0.0
 	spin_score_vis = false
+	receipt = ""
 	var pockets: Array = run.felt.board.pockets
 	var pocket: int = pockets[run.rng.range_i(0, pockets.size() - 1)]
-	wheel_view.spin_to(pocket)
+	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9)
 	await wheel_view.spin_done
 	Sfx.play("ball_drop")
-	var before: float = run.table.take
-	var target: int = run.table.target
-	var staked: int = run.felt.bet_stakes()
+	var ctx := {"before": run.table.take, "target": run.table.target, "spins_before": run.table.spins_left,
+		"stakes": run.felt.bet_stakes(), "layout": run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return [c.bet, c.value])}
 	var res: Dictionary = run.spin(pocket)
-	main.check_feats("spin", {"res": res, "staked": staked, "target": target})
+	main.check_feats("spin", {"res": res, "staked": ctx.stakes, "target": ctx.target, "before": ctx.before,
+		"spins_before": ctx.spins_before, "cleared": run.phase == RunState.Phase.SHOP or run.phase == RunState.Phase.VICTORY})
 	history.append(pocket)
 	history_view.queue_redraw()
-	await _play_count(res, before, target)
+	await count.play(res, ctx)
 	_log(res)
+	var cleared: bool = run.phase == RunState.Phase.SHOP or run.phase == RunState.Phase.VICTORY
+	if cleared and ctx.spins_before <= 1:
+		log_box.append_text("[color=#f2c14e][b]*** PAID ON THE LAST BALL ***[/b][/color]\n")
+		main.pending_lines.append({"speaker": "Dealer", "text": ["Last ball. Paid in full. I've seen grown men faint for less.", "The house hates a finish like that. I love it.", "On the very last ball. Somebody upstairs just spilled his drink."][randi() % 3]})
+	if run.phase == RunState.Phase.GAME_OVER:
+		main.last_layout = {"layout": ctx.layout, "short": maxi(0, int(ceil(run.table.target - run.table.take))), "target": run.table.target, "take": int(run.table.take)}
 	if run.phase != RunState.Phase.TABLE:
 		if run.phase == RunState.Phase.GAME_OVER:
 			main.fx.stamp("BUSTED", P.DANGER, 1.6)
@@ -621,8 +814,8 @@ func _on_spin() -> void:
 			Sfx.play("clear")
 			if not main.fast_ui:
 				await get_tree().create_timer(0.9).timeout
-				_show_tally()
-		await get_tree().create_timer(1.5 if main.fast_ui else 2.8).timeout
+				count.show_tally()
+		await get_tree().create_timer(1.5 if main.fast_ui or fast() else 2.8).timeout
 		spinning = false
 		main.route()
 	else:
@@ -631,162 +824,6 @@ func _on_spin() -> void:
 			Sfx.play("chip_place")
 		main.save_run()
 		refresh()
-
-
-func _play_count(res: Dictionary, before: float, target: int) -> void:
-	var run = main.run
-	var B = run.felt.board
-	var fx = main.fx
-	var pkey := Board.straight_key(res.pocket)
-	var pocket_pos: Vector2 = main.fx.local(felt_view.key_global(pkey))
-	felt_view.flash(pkey, 1.2)
-	var straight_hit := false
-	for e in res.events:
-		if e.kind == "win" and e.label == "straight":
-			straight_hit = true
-	if B.is_zero(res.pocket):
-		fx.banner("ZERO!", P.GOOD, 1.0, 112)
-	elif straight_hit:
-		fx.banner("STRAIGHT UP!", P.GOLD, 1.1, 112)
-		fx.burst(pocket_pos, 26, [P.GOLD, P.CREAM, P.RED])
-	if res.zero_tax:
-		fx.banner("ORO TAKES 10%", P.DANGER, 1.2, 140, 8)
-		before *= 1.0 - Content.ZERO_TAX
-	spin_score_vis = true
-	var gross := 0.0
-	var lost := 0.0
-	var delay := 0.24
-	var combo := 0
-	hits = 0
-	var meter_at := Vector2(MID_X + 150, 12)
-	# Build up first: wins and bonuses, then multipliers, then the losses tick off.
-	var order := {"win": 0, "bonus": 1, "cash": 2, "push": 3, "mult": 4, "loss": 5}
-	var events: Array = res.events.duplicate()
-	events.sort_custom(func(a, b): return order[a.kind] < order[b.kind])
-	for e in events:
-		var key: String = e.key
-		var at: Vector2 = main.fx.local(felt_view.key_global(key)) if key != "" else Vector2(353, 120)
-		var name: String = _bet_name(key)
-		match e.kind:
-			"win":
-				gross += e.amount
-				felt_view.flash(key, 0.6)
-				felt_view.pop(key)
-				felt_view.float_text(key, "+%d" % int(e.amount), P.GOLD)
-				fx.burst(at, 6 + mini(20, int(e.amount / 4.0)), [P.GOLD, P.CREAM])
-				fx.fly(at, meter_at, P.GOLD, 2 + mini(6, int(e.amount / 6.0)))
-				hits += 1
-				score_rows.append({"kind": "win", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": _chip_icon(key)})
-				Sfx.play("win", 1.0 + 0.09 * combo)
-				combo += 1
-			"bonus":
-				gross += e.amount
-				felt_view.float_text(key, "+%d" % int(e.amount), P.CYAN)
-				fx.burst(at, 8, [P.CYAN, P.CREAM])
-				fx.fly(at, meter_at, P.CYAN, 2)
-				hits += 1
-				score_rows.append({"kind": "bonus", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": _chip_icon(key)})
-				Sfx.play("win", 1.0 + 0.09 * combo)
-				combo += 1
-			"loss":
-				lost += -e.amount
-				felt_view.float_text(key, "%d" % int(e.amount), P.DANGER)
-				score_rows.append({"kind": "loss", "text": "%s  LOST%s" % [name, (" (" + e.label + ")") if e.label != "" else ""], "amount": "%d" % int(e.amount), "icon": ""})
-				Sfx.play("lose")
-			"mult":
-				gross *= e.amount
-				fx.banner("x%s %s" % [_fmt(e.amount), e.label.to_upper()], P.VIOLET, 0.9, 140, 8)
-				score_rows.append({"kind": "mult", "text": e.label.to_upper(), "amount": "x" + _fmt(e.amount), "icon": "red_streak" if e.label == "Red Streak" else ("hot_hand" if e.label == "Hot Hand" else "dealer_signature")})
-				main.shake(2.0, 0.15)
-				Sfx.play("mult")
-			"cash":
-				felt_view.float_text(key, "+$%d" % int(e.amount), P.GOOD)
-				score_rows.append({"kind": "cash", "text": "%s  MINT" % name, "amount": "+$%d" % int(e.amount), "icon": "mint"})
-				Sfx.play("cash")
-			"push":
-				felt_view.float_text(key, e.label.to_upper(), P.DIM)
-				score_rows.append({"kind": "push", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "0", "icon": ""})
-		spin_score = maxf(0.0, gross - lost)
-		score_pop = 1.0
-		score_view.queue_redraw()
-		await get_tree().create_timer(delay).timeout
-		delay = maxf(0.08, delay * 0.82)
-	if res.respins > 0:
-		fx.banner("+%d SPIN" % res.respins, P.CYAN, 0.9, 140, 8)
-	spin_score = res.take
-	score_pop = 1.0
-	if res.events.is_empty():
-		score_rows.append({"kind": "push", "text": "%s %s - nothing on it" % [B.label(res.pocket), B.colour_name(res.pocket).to_upper()], "amount": "0", "icon": ""})
-	score_view.queue_redraw()
-	# Slam the spin's Take into the meter.
-	var after: float = before + res.take
-	if res.take > 0.0:
-		var ratio: float = res.take / maxf(1.0, target)
-		meter_pulse = 1.0
-		if ratio >= 1.0:
-			# One spin paid the whole table: the full jackpot treatment.
-			fx.banner("JACKPOT!", P.GOLD, 1.6, 100, 24)
-			fx.flash(0.7)
-			main.shake(6.0, 0.5)
-			fx.coin_rain(60)
-			fx.burst(meter_at, 60, [P.GOLD, P.CREAM, P.GOOD, P.CYAN], 170.0)
-			Sfx.play("jackpot")
-			Engine.time_scale = 0.45
-			await get_tree().create_timer(0.35, true, false, true).timeout
-			Engine.time_scale = 1.0
-		elif ratio >= 0.4:
-			fx.banner("BIG WIN", P.GOLD, 1.2, 100, 16)
-			fx.flash(0.3)
-			main.shake(4.0, 0.35)
-			fx.burst(meter_at, 40, [P.GOLD, P.CREAM, P.GOOD], 140.0)
-			Sfx.play("big_win")
-		elif ratio >= 0.15:
-			fx.banner("NICE", P.GOOD, 0.8, 100, 8)
-		var tw := create_tween()
-		tw.tween_method(func(v: float): shown_take = v, before, after, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		await tw.finished
-	else:
-		shown_take = after
-		_near_miss(res)
-	await get_tree().create_timer(0.25).timeout
-
-
-## The reward breakdown after a table is paid.
-func _show_tally() -> void:
-	var run = main.run
-	var info: Dictionary = main.last_clear
-	if info.is_empty():
-		return
-	var rows := [
-		["PAYMENT", "%d / %d" % [int(info.take), info.target], P.CREAM],
-		["BASE PAY", "+$%d" % Content.CLEAR_CASH[info.table], P.GOLD],
-	]
-	if info.spins_left > 0:
-		rows.append(["%d SPIN%s LEFT" % [info.spins_left, "" if info.spins_left == 1 else "S"], "+$%d" % (info.spins_left * Content.CASH_PER_SPIN_LEFT), P.GOLD])
-	if info.comps > 0:
-		rows.append(["COMPS", "+$%d" % info.comps, P.GOLD])
-	var spare: int = maxi(0, int(info.take - info.target))
-	if spare > 0:
-		rows.append(["SPARE TAKE", "+%d" % spare, P.VIOLET])
-	rows.append(["MARKER LEFT", "$" + P.money(run.marker_left()) if run.marker_left() > 0 else "PAID IN FULL", P.DANGER if run.marker_left() > 0 else P.GOOD])
-	main.fx.show_tally("TABLE CLEARED  +$%d" % info.reward, rows)
-
-
-## The ball landed right next to one of your numbers: let the player feel it.
-func _near_miss(res: Dictionary) -> void:
-	var run = main.run
-	var B = run.felt.board
-	for c in run.felt.chips:
-		if not Board.is_straight(c.bet):
-			continue
-		var n := Board.straight_number(c.bet)
-		if n == res.pocket:
-			continue
-		if B.wheel_distance(n, res.pocket) == 1 or res.pocket in B.neighbours(n):
-			felt_view.near(c.bet)
-			main.fx.pop_text(main.fx.local(felt_view.key_global(c.bet)) - Vector2(0, 8), "SO CLOSE", P.CREAM)
-			Sfx.play("near")
-			return
 
 
 func _bet_name(key: String) -> String:

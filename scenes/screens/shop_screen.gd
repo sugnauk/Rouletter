@@ -9,7 +9,9 @@ const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 const FeltView := preload("res://scenes/ui/felt_view.gd")
+const Preview := preload("res://core/preview.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
+const Portraits := preload("res://scenes/ui/portraits.gd")
 
 const CAGE := Rect2(8, 28, 288, 150)
 
@@ -29,6 +31,10 @@ var mode := "place"
 var selected_item := -1
 var board_id := ""
 var t := 0.0
+
+
+var choice: Panel = null   ## the pick-one overlay (opening pick / early-clear bonus / refine)
+var refine_id := -1        ## the chip waiting for a Refine path
 
 
 func setup() -> void:
@@ -57,7 +63,10 @@ func setup() -> void:
 	P.place(desc_body, Vector2(6, 18), Vector2(276, 62))
 	next_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
 	next_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(next_lbl, Vector2(8, 320), Vector2(200, 36))
+	P.place(next_lbl, Vector2(8, 318), Vector2(200, 40))
+	next_lbl.add_theme_constant_override("line_spacing", -2)
+	next_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
+	next_lbl.mouse_entered.connect(func(): _describe("NEXT TABLE", main.run.next_table_detail()))
 	var nb := P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
 	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 14), P.FONT_SMALL)
 	P.place(mb, Vector2(594, 6))
@@ -77,8 +86,8 @@ func setup() -> void:
 	mode_box.add_theme_constant_override("separation", 4)
 	P.place(mode_box, Vector2(304, 164))
 	add_child(mode_box)
-	for m in [["place", "PLACE"], ["move", "MOVE $%d" % Content.RELOCATE_PRICE], ["sell", "SELL"]]:
-		var b := P.button(mode_box, m[1], _set_mode.bind(m[0]), Vector2(70, 16), P.FONT_SMALL)
+	for m in [["place", "PLACE"], ["move", "MOVE $%d" % Content.RELOCATE_PRICE], ["sell", "SELL"], ["trade", "TRADE $%d" % Content.CONVERT_PRICE], ["refine", "REFINE $%d" % Content.REFINE_PRICE]]:
+		var b := P.button(mode_box, m[1], _set_mode.bind(m[0]), Vector2(62, 16), P.FONT_SMALL)
 		b.toggle_mode = true
 		b.set_meta("mode", m[0])
 	P.place(P.label(self, "RACK", P.FONT_SMALL, P.DIM), Vector2(304, 188))
@@ -154,6 +163,14 @@ func _hint() -> String:
 			return "Click one of your chips on the felt to pick it up ($%d), then place it again." % Content.RELOCATE_PRICE
 		"sell":
 			return "Click one of your chips on the felt to sell it for half its price."
+		"refine":
+			if not "cashier" in main.run.shop.get("vendors", []):
+				return "The Cashier handles refines, and the Cashier isn't on."
+			return "Click a number chip at level %d+: give it a second act ($%d)." % [Content.REFINE_LEVEL, Content.REFINE_PRICE]
+		"trade":
+			if not "cashier" in main.run.shop.get("vendors", []):
+				return "The Cashier handles trade-ins, and the Cashier isn't on."
+			return "Click one of your chips: the Cashier swaps it for a related chip ($%d), same square, same level." % Content.CONVERT_PRICE
 	return "Pick a chip from your rack, then click the felt to place it."
 
 
@@ -161,7 +178,7 @@ func _hint() -> String:
 func _idle_desc(run) -> void:
 	var lines := []
 	for v in run.shop.vendors:
-		lines.append("%s: %s" % [Content.VENDORS[v].name.to_upper(), Content.VENDORS[v].blurb])
+		lines.append("%s (%s): %s" % [Content.VENDORS[v].name.to_upper(), Content.VENDORS[v].get("job", ""), Content.VENDORS[v].blurb])
 	_describe("", "\n".join(lines))
 
 
@@ -185,6 +202,9 @@ func _next() -> void:
 			selected_item = 0
 			refresh()
 			status_lbl.text = "Place the chips in your rack before you leave."
+	elif not main.run.shop.get("routes", []).is_empty():
+		status_lbl.text = "Pick your table first."
+		Sfx.play("click")
 	elif main.run.leave_shop():
 		Sfx.play("click")
 		main.route()
@@ -208,9 +228,11 @@ func refresh() -> void:
 	for ch in service_box.get_children():
 		ch.queue_free()
 	var rr = Token.new("reroll", Vector2(40, 44))
-	rr.price = "$%d" % run.shop.reroll
-	rr.dim = run.cash < run.shop.reroll
-	rr.hover_target = func(_s): _describe("Reroll  $%d" % run.shop.reroll, "New stock on the counter. Gets $1 pricier each time.")
+	var free: int = run.shop.get("free_rerolls", 0)
+	rr.price = "FREE" if free > 0 else "$%d" % run.shop.reroll
+	rr.badge = "x%d" % free if free > 1 else ""
+	rr.dim = run.cash < run.shop.reroll and free == 0
+	rr.hover_target = func(_s): _describe("Reroll  " + ("FREE (%d left)" % free if free > 0 else "$%d" % run.shop.reroll), "New stock on the counter. Gets $1 pricier each time. Right-click (or long-press) an item first to hold it through the reroll.")
 	rr.pressed.connect(func():
 		if run.reroll():
 			for it in run.shop.stock:
@@ -245,9 +267,8 @@ func refresh() -> void:
 		nxt += "  (stack %d, -%d to the Pit Boss)" % [run.stack_size - run.stack_owed, run.stack_owed]
 	if run.loan_pct > 0.0:
 		nxt += "  (+%d%% to the Loan Shark)" % int(round(run.loan_pct * 100))
-	if run.table_idx == 2:
-		var e: Dictionary = Content.ENFORCERS[run.night_enforcer()]
-		nxt += "\n%s: %s" % [e.name, e.desc]
+	for l in run.next_table_lines():
+		nxt += "\n" + l
 	next_lbl.text = nxt
 	next_lbl.add_theme_color_override("font_color", P.DANGER if run.table_idx == 2 else P.CREAM)
 	for b in mode_box.get_children():
@@ -257,6 +278,144 @@ func refresh() -> void:
 	_refresh_rack()
 	status_lbl.text = _hint()
 	cage_view.queue_redraw()
+	_refresh_choice(run)
+
+
+## The pick-one panels over the Cage: the opening build pick, and the early-clear bonus.
+func _refresh_choice(run) -> void:
+	if choice != null:
+		choice.queue_free()
+		choice = null
+	var offer: Array = run.shop.get("offer", [])
+	var bonus: Array = run.shop.get("bonus", [])
+	if refine_id >= 0 and not run.can_refine(refine_id):
+		refine_id = -1
+	var event: String = run.shop.get("event", "")
+	var routes: Array = run.shop.get("routes", [])
+	if offer.is_empty() and bonus.is_empty() and refine_id < 0 and event == "" and routes.is_empty():
+		return
+	choice = Panel.new()
+	choice.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.96), P.GOLD, 1))
+	P.place(choice, CAGE.position, CAGE.size)
+	add_child(choice)
+	var title := P.label(choice, "", P.FONT, P.GOLD)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	P.place(title, Vector2(0, 6), Vector2(CAGE.size.x, 12))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	P.place(row, Vector2(0, 26), Vector2(CAGE.size.x, 90))
+	choice.add_child(row)
+	if refine_id >= 0:
+		var rc = run.felt.find(refine_id)
+		title.text = "REFINE %s (LV %d): PICK A PATH  $%d" % [Content.CHIPS[rc.kind].name.to_upper(), rc.value, Content.REFINE_PRICE]
+		for path in Content.REFINES:
+			var rf: Dictionary = Content.REFINES[path]
+			_choice_option(row, rc.kind, "PATH", rf.name, rf.desc + "\nOne path per chip. It stays if you move the chip.", func():
+				if run.refine(refine_id, path):
+					Sfx.play("buy")
+					felt_view.pop(rc.bet)
+					main.fx.burst(main.fx.local(felt_view.key_global(rc.bet)), 20, [P.CYAN, P.GOLD, P.CREAM])
+					main.fx.pop_text(main.fx.local(felt_view.key_global(rc.bet)) - Vector2(0, 12), rf.name.to_upper() + "!", P.CYAN)
+				else:
+					_describe("Can't refine", "Not enough cash ($%d)." % Content.REFINE_PRICE)
+				refine_id = -1
+				refresh())
+		var cb := P.button(choice, "Cancel", func():
+			refine_id = -1
+			refresh(), Vector2(60, 16), P.FONT_SMALL)
+		P.place(cb, Vector2(CAGE.size.x - 68, CAGE.size.y - 22))
+	elif not offer.is_empty():
+		title.text = "ON THE HOUSE: PICK ONE"
+		for i in range(offer.size()):
+			var o: Dictionary = offer[i]
+			var nm: String = Content.CHIPS[o.id].name if o.type == "chip" else Content.HOUSE_RULES[o.id].name
+			var ds: String = Content.CHIPS[o.id].desc if o.type == "chip" else Content.HOUSE_RULES[o.id].desc
+			_choice_option(row, o.id, Content.DIRECTIONS[o.dir].to_upper(), nm, ds + ("\n(A House Rule.)" if o.type == "rule" else "\n(A chip: place it on the felt.)"), func():
+				if run.take_offer(i):
+					main.profile.note_used(o.id)
+					Sfx.play("buy")
+					main.fx.burst(CAGE.get_center(), 30, [P.GOLD, P.CREAM, P.CYAN], 140.0)
+					if o.type == "chip":
+						selected_item = run.inventory.size() - 1
+						mode = "place"
+					refresh())
+		var sk := P.button(choice, "No thanks", func():
+			run.skip_offer()
+			refresh(), Vector2(70, 16), P.FONT_SMALL)
+		P.place(sk, Vector2(CAGE.size.x - 78, CAGE.size.y - 22))
+		var sub := P.label(choice, "Three ways to build: keep one.", P.FONT_SMALL, P.DIM)
+		P.place(sub, Vector2(8, CAGE.size.y - 20))
+	elif bonus.is_empty() and event != "":
+		var ev: Dictionary = Content.EVENTS[event]
+		title.text = ev.who.to_upper()
+		row.queue_free()
+		var face := Control.new()
+		P.place(face, Vector2(12, 26), Vector2(48, 48))
+		face.draw.connect(func(): Portraits.draw(face, ev.who, Rect2(Vector2.ZERO, Vector2(48, 48))))
+		choice.add_child(face)
+		var said := P.label(choice, "", P.FONT_SMALL, P.CREAM)
+		said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		P.place(said, Vector2(70, 26), Vector2(CAGE.size.x - 80, 64))
+		said.text = "\"%s\"" % ev.text
+		for i in range(ev.options.size()):
+			var o: Array = ev.options[i]
+			var b := P.button(choice, o[0], func():
+				var got: String = run.answer_event(i)
+				if i == 0 and got == "" and event == "lou_bet":
+					_describe("Not enough cash", "Lou wants $%d up front." % Content.LOU_STAKE)
+					return
+				Sfx.play("buy" if got != "" else "click")
+				if got != "":
+					_describe(ev.who, got)
+				refresh(), Vector2(120, 18), P.FONT_SMALL)
+			P.place(b, Vector2(12 + i * 134, CAGE.size.y - 50))
+			b.mouse_entered.connect(func(): _describe(o[0], o[1]))
+	elif bonus.is_empty() and not routes.is_empty():
+		title.text = "PICK YOUR NEXT TABLE"
+		for id in routes:
+			var rt: Dictionary = Content.ROUTES[id]
+			_choice_option(row, "respin" if id == "back_room" else "spin", "%d BALLS" % rt.spins, rt.name, rt.desc, func():
+				run.pick_route(id)
+				Sfx.play("click")
+				refresh())
+		_choice_option(row, "stack", "%d BALLS" % Content.SPINS, "The usual", "The ordinary High Roller table.", func():
+			run.pick_route("")
+			Sfx.play("click")
+			refresh())
+	else:
+		title.text = "PAID WITH BALLS TO SPARE: PICK A BONUS"
+		for i in range(bonus.size()):
+			var b: Dictionary = bonus[i]
+			var icon: String = {"cash": "cash", "reroll": "reroll"}.get(b.type, "")
+			if b.type == "favour":
+				icon = Content.FAVOURS[b.id].icon
+			var head: String = {"cash": "CASH", "favour": "FAVOUR", "reroll": "REROLLS"}[b.type]
+			var nm: String = "+$%d" % b.amount if b.type == "cash" else (Content.FAVOURS[b.id].name if b.type == "favour" else "%d free" % b.amount)
+			_choice_option(row, icon, head, nm, run.bonus_text(b), func():
+				if run.take_bonus(i):
+					Sfx.play("cash" if b.type == "cash" else "buy")
+					main.fx.burst(CAGE.get_center(), 24, [P.GOLD, P.CREAM], 120.0)
+					refresh())
+
+
+func _choice_option(row: Control, icon: String, head: String, name: String, body: String, pick: Callable) -> void:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.custom_minimum_size = Vector2(82, 0)
+	row.add_child(col)
+	var h := P.label(col, head, P.FONT_SMALL, P.CYAN)
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var tok = Token.new(icon, Vector2(46, 46))
+	tok.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tok.rarity = Content.rarity_of(icon)
+	tok.hover_target = func(_s): _describe(name, body)
+	tok.pressed.connect(pick)
+	col.add_child(tok)
+	var n := P.label(col, name, P.FONT_SMALL, P.CREAM)
+	n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	n.custom_minimum_size = Vector2(82, 0)
 
 
 ## Lay the vendor windows side by side across the cage area, each sized to its stock.
@@ -321,7 +480,27 @@ func _build_windows(run) -> void:
 					body += "\nYou own one: stack this on it to level it up."
 				for h in run.item_hints(item):
 					body += "\n" + h
+				if not item.sold and item.type != "loan":
+					body += "\n(Right-click or long-press: hold it through a reroll.)" if i != run.shop.get("reserved", -1) else "\nHELD: it stays when you reroll."
+				if not item.sold:
+					var ch := Preview.cage_hints(run, item)
+					for h in ch.lines:
+						body += "\n" + h
+					felt_view.preview = {}
+					for p in ch.pockets:
+						felt_view.preview[Board.straight_key(p)] = P.CYAN
+					felt_view.queue_redraw()
 				_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
+			tok.hover_exit = func():
+				felt_view.preview = {}
+				felt_view.queue_redraw()
+			if i == run.shop.get("reserved", -1) and not item.sold:
+				tok.badge = "HOLD"
+				tok.selected = true
+			tok.gui_input.connect(func(e):
+				if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT and e.pressed:
+					_reserve(i))
+			tok.long_pressed = _reserve.bind(i)
 			tok.pressed.connect(_buy.bind(i))
 			row.add_child(tok)
 
@@ -364,6 +543,12 @@ func _select(i: int) -> void:
 	mode = "place"
 	Sfx.play("click")
 	refresh()
+
+
+func _reserve(i: int) -> void:
+	if main.run.reserve(i):
+		Sfx.play("click")
+		refresh()
 
 
 func _buy(i: int) -> void:
@@ -422,6 +607,25 @@ func _on_felt(key: String, button: int) -> void:
 		mode = "place"
 		Sfx.play("chip_remove")
 		refresh()
+	elif mode == "refine":
+		if run.can_refine(mine[0].id):
+			refine_id = mine[0].id
+			Sfx.play("click")
+			refresh()
+		else:
+			status_lbl.text = "Refine needs a number chip at level %d+ with no refine yet, and the Cashier on." % Content.REFINE_LEVEL
+	elif mode == "trade":
+		var old: String = Content.CHIPS[mine[0].kind].name
+		var nk: String = run.convert_chip(mine[0].id)
+		if nk != "":
+			felt_view.pop(key)
+			main.fx.burst(main.fx.local(felt_view.key_global(key)), 16, [P.CYAN, P.GOLD, P.CREAM])
+			Sfx.play("buy")
+			main.profile.note_used(nk)
+			refresh()
+			_describe("Traded: %s -> %s" % [old, Content.CHIPS[nk].name], Content.CHIPS[nk].desc)
+		else:
+			status_lbl.text = "No trade: need $%d, and a related chip that fits that square." % Content.CONVERT_PRICE
 	elif mode == "sell" and run.sell_chip(mine[0].id):
 		main.fx.burst(main.fx.local(felt_view.key_global(key)), 12, [P.GOLD])
 		Sfx.play("cash")

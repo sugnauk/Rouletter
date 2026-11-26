@@ -16,16 +16,19 @@ var wins: int = 0
 var best_night: int = 0
 var total_paid: int = 0      ## lifetime dollars paid on markers (a stat)
 var best_take: int = 0       ## best single-run Take (a stat)
+var best_spin: int = 0       ## best single spin ever (personal-best celebrations)
 var feats: Array = []        ## Feats earned (core/feats.gd)
 var seen_items: Array = []   ## Almanac: content ids that have appeared in the Cage
 var used_items: Array = []   ## Almanac: content ids you have bought
+var wheels_won: Array = []        ## wheels you've won a run on (the Grand Tour Feat)
+var weekly_best: Dictionary = {}   ## this week's best weekly challenge run: {id, nights, won, take}
 var best_grade: int = -1     ## highest marker grade won (-1: none yet)
 var history: Array = []      ## the last runs, newest first: {wheel, acts, nights, take, best_spin, won}
 const HISTORY_MAX := 10
 var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
-const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false}
+const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false, "fast_spins": false}
 var settings: Dictionary = DEFAULT_SETTINGS.duplicate()
 var save_path: String = DEFAULT_PATH
 
@@ -48,7 +51,7 @@ static func default_unlocks() -> Array:
 static func catalogue() -> Array:
 	var out := []
 	var cats := {"wheel": Wheels.WHEELS, "chip": Content.CHIPS, "upgrade": Content.UPGRADES,
-		"rule": Content.HOUSE_RULES, "feature": Content.FEATURES, "vendor": Content.VENDORS}
+		"rule": Content.HOUSE_RULES, "feature": Content.FEATURES, "vendor": Content.VENDORS, "starter": Content.STARTERS}
 	for cat in cats:
 		var table: Dictionary = cats[cat]
 		for id in table:
@@ -138,7 +141,7 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 func to_dict() -> Dictionary:
 	return {"markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
 		"runs": runs, "wins": wins, "best_night": best_night,
-		"total_paid": total_paid, "best_take": best_take, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "settings": settings}
+		"total_paid": total_paid, "best_take": best_take, "best_spin": best_spin, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "best_grade": best_grade, "act2_runs": act2_runs, "act2_wins": act2_wins, "weekly_best": weekly_best, "wheels_won": wheels_won, "settings": settings}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -148,11 +151,14 @@ func from_dict(d: Dictionary) -> void:
 		if id not in unlocked:
 			unlocked.append(id)
 	seen_beats = d.get("seen_beats", [])
+	weekly_best = d.get("weekly_best", {})
+	wheels_won = d.get("wheels_won", [])
 	runs = int(d.get("runs", 0))
 	wins = int(d.get("wins", 0))
 	best_night = int(d.get("best_night", 0))
 	total_paid = int(d.get("total_paid", 0))
 	best_take = int(d.get("best_take", 0))
+	best_spin = int(d.get("best_spin", 0))
 	feats = d.get("feats", [])
 	seen_items = d.get("seen_items", [])
 	used_items = d.get("used_items", [])

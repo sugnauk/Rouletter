@@ -106,6 +106,33 @@ CI: `.github/workflows/test-branch.yml` runs the tests and the smoke screenshots
 - **Content:** rarity tiers and weighted stock, chip levelling, Mirror / Porch Light chips, Lucky Sevens / Satin Gloves rules.
 - **Art:** pixel portraits for every character (`scenes/ui/portraits.gd`) in dialogue, Enforcer cards and the boss panel; chip shine and legendary halos; rarity frames.
 
+## Feel and replay (v0.0.15-0.0.23)
+- **Spin feel:** a three-beat count (`scenes/screens/table_count.gd`): reveal, then the build lights up, then the Take counts in. Win tiers with their own timing and stings, a spin receipt, distinct sounds for each felt action, a tension music layer, Fast spins, and story-shaped Feats.
+- **Readable builds** (`core/preview.gd`, Resolver dry-runs):
+  - Hover a square for what scores if it hits, and the pockets a chip pays on.
+  - Gold rings mark bets that would clear the table.
+  - Quick edits: Shift (-1 size), Ctrl (clear an area), Alt (pin).
+  - Loadout-aware Cage hints ("With your last layout: +1.4 Take a spin").
+- **Run identity:**
+  - Each wheel has a named starter plan (`style`/`kit`/`house` in `core/wheels.gd`).
+  - A free pick-1-of-3 from different build directions after the first table.
+  - Clearing with 3+ balls left offers a bonus pick (the balls-left cash, a favour, or a reroll).
+  - Hold one item through a reroll.
+  - Cashier services: Trade ($3, a related chip) and Refine ($6: Focused or Steady, `Chip.mod`).
+  - Four bridge House Rules.
+- **Table variety:**
+  - Act I has 8 Enforcers, 4 per run (adds Duchess, Miss Tempo, Timekeeper, Countess Ilsa).
+  - Table conditions (`CONDITIONS`), side jobs (`OBJECTIVES`), a route pick before the High Roller (`ROUTES`), and between-table events (`EVENTS`).
+  - The next table is rolled when the Cage opens, so the Cage can preview it.
+- **Long-term:**
+  - Seeds (`run_seed`; `RunState.parse_seed`).
+  - A weekly challenge derived from the date (`RunState.weekly_preset`).
+  - Named challenges (`CHALLENGES`, with Feats).
+  - Starter kits sold at the Pawn Shop (`STARTERS`).
+  - Continue-run details on the title screen, and per-wheel Feats including the Grand Tour.
+- **Art:** pixel sprites (`Art.SPRITES`, 12x12 character grids) replaced the lettered tiles.
+- **Balance (bot, 300 runs, full pool, v0.0.21):** French 35%, European 35%, American 21%, Mini 45% (payments raised to x1.2 in v0.0.24, from 62%), Triple Zero 21%, Sunrise 13%, Cheater's 4%.
+
 ## Known gaps and next steps
 - Late-game scaling is mostly additive. It needs more multiplicative synergies (Balatro-style) so builds can explode.
 - Run saves (resuming mid-run), an endless mode, more Enforcers and a Floor 2 / Owner arc.

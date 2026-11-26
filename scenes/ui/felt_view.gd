@@ -26,6 +26,9 @@ var pops: Dictionary = {}        ## key -> seconds left (chip placed)
 var nears: Dictionary = {}       ## key -> seconds left (near miss shudder)
 var floaters: Array = []         ## {text, pos, t, col}
 var cell_w: float = 24.0
+var preview: Dictionary = {}     ## key -> Color: squares lit by a hover preview (what fires / where a chip pays)
+var ring_keys: Dictionary = {}
+var pinned: Dictionary = {}      ## pinned bet keys (a small pin on their chips)   ## bet keys that could clear the table on a hit (gold ring on their chips)
 var marks := false               ## colour-blind aid: a diamond on every red square
 
 
@@ -130,7 +133,7 @@ func float_text(key: String, text: String, col: Color = P.GOLD) -> void:
 
 
 func _process(delta: float) -> void:
-	if run != null and run.felt.perm_chips().any(func(c): return Content.rarity_of(c.kind) == "legendary"):
+	if run != null and (not ring_keys.is_empty() or run.felt.perm_chips().any(func(c): return Content.rarity_of(c.kind) == "legendary")):
 		queue_redraw()
 	if press_key != "":
 		press_t += delta
@@ -226,6 +229,8 @@ func _draw() -> void:
 			bg = bg.lightened(0.14)
 		if k in targets:
 			bg = bg.lerp(P.CYAN, 0.45)
+		if preview.has(k):
+			bg = bg.lerp(preview[k], 0.42)
 		if flashes.has(k):
 			bg = bg.lerp(P.GOLD, clampf(flashes[k], 0.0, 0.7))
 		if nears.has(k):
@@ -275,6 +280,8 @@ func _draw_line_zones(font: Font) -> void:
 		if k == hover_key:
 			draw_rect(r, Color(P.GOLD, 0.45))
 			draw_rect(r, P.GOLD, false, 1.0)
+		elif preview.has(k):
+			draw_rect(r, Color(preview[k], 0.55))
 		elif run.felt.chips_on(k).is_empty():
 			draw_rect(Rect2(r.get_center().floor() - Vector2(1, 1), Vector2(2, 2)), Color(P.CREAM, 0.3))
 		if flashes.has(k):
@@ -300,7 +307,7 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	if bet_total > 0:
 		entries.append({"col": Art.denom_color(bet_total), "kind": "bet", "value": bet_total, "frozen": false})
 	for c in perms.slice(0, 2):
-		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id})
+		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id, "mod": c.mod})
 	var is_line := line_rects.has(k)
 	var rad := 5.0 if (is_line or r.size.y <= STRIP_H + 1.0 or not Board.is_straight(k)) else 6.0
 	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
@@ -316,10 +323,22 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		first = Vector2(r.end.x - 7.0 - (n - 1) * spacing, r.get_center().y)  # strips: chips hug the right edge
 	else:
 		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.position.y + 7.0)  # columns: chips above the label
+	var fp := first.floor()
+	if ring_keys.has(k):
+		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 160.0)
+		draw_arc(fp, rad + 2.5, 0, TAU, 18, Color(P.GOLD, 0.5 + 0.5 * g), 1.0, false)
+	if pinned.has(k):
+		draw_rect(Rect2(fp + Vector2(rad - 2, -rad - 5), Vector2(1, 4)), P.CREAM)
+		draw_circle(fp + Vector2(rad - 1.5, -rad - 5), 1.8, P.RED, true, -1.0, false)
 	for i in range(n):
 		var e: Dictionary = entries[i]
 		var p := (first + Vector2(i * spacing, 0)).floor()
 		Art.chip(self, p, rad * scale, e.col, e.kind, 0, e.frozen)
+		if e.get("mod", "") != "":
+			# A refined chip: a small diamond on its rim (cyan Focused, green Steady).
+			var mc: Color = P.CYAN if e.mod == "focused" else P.GOOD
+			var mp := p + Vector2(-rad, -rad + 1)
+			draw_colored_polygon(PackedVector2Array([mp + Vector2(0, -2), mp + Vector2(2, 0), mp + Vector2(0, 2), mp + Vector2(-2, 0)]), mc)
 		# Shine, and a slow gold halo on legendary chips.
 		draw_rect(Rect2(p + Vector2(-rad * 0.5, -rad * 0.6), Vector2(2, 1)), Color(1, 1, 1, 0.55))
 		if e.kind != "bet" and Content.rarity_of(e.kind) == "legendary":

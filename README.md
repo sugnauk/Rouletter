@@ -9,7 +9,7 @@ The version is shown bottom-right on the title screen; see [CHANGELOG.md](CHANGE
 **Play in your browser:** https://sugnauk.github.io/Rouletter/
 
 ## Controls
-- **Click** a square (or a split, corner, street or line on the felt's edges): bet from your stack. **Right-click**: take it back.
+- **Click** a square (or a split, corner, street or line on the felt's edges): bet from your stack. **Right-click**: take it back. **Shift-click**: take back one chip. **Ctrl-click** an outside box: clear the bets inside it. **Alt-click**: pin a bet so Clear keeps it. Hover a square to see what scores if it hits.
 - **Z / Backspace**: undo the last bet. **C**: clear all bets. **1 / 2 / 3**: chip size 1, 5 or 10.
 - **Space**: spin. Your layout goes back down after every spin. **L**: toggle the spin log.
 - **Touch:** tap the felt to zoom it, tap to bet, hold to take a bet back, tap outside to close.

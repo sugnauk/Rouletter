@@ -52,6 +52,50 @@ const GLYPHS := {
 }
 
 
+## Pixel sprites for items that used to be lettered tiles: 12 rows of 12 characters.
+## Colours: see SPRITE_COLOURS ('.' is transparent).
+const SPRITES := {
+	"odd_fellow": ["............", ".kkkkkkkkkk.", ".kwwwwwwwwk.", ".kwkkwwwwwk.", ".kwkkwwwwwk.", ".kwwwwkkwwk.", ".kwwwwkkwwk.", ".kwwwwwwkkk.", ".kwwwwwwkkk.", ".kwwwwwwwwk.", ".kkkkkkkkkk.", "............"],
+	"even_keel": ["......k.....", "......kw....", "......kww...", "......kwww..", "......kwwww.", "......kwwwww", "......k.....", "bbbbbbbbbbbb", ".bbbbbbbbbb.", "..bbbbbbbb..", ".BBB.BBB.BBB", "BBBBBBBBBBBB"],
+	"low_roller": ["....GGGG....", "....GGGG....", "....GGGG....", "....GGGG....", ".GGGGGGGGGG.", "..GGGGGGGG..", "...GGGGGG...", "....GGGG....", ".....GG.....", "............", "wwwwwwwwwwww", "dddddddddddd"],
+	"penthouse": ["....yyyy....", "...kyyyyk...", "...kkkkkk...", "..kddddddk..", "..kdydydyk..", "..kddddddk..", "..kdydydyk..", "..kddddddk..", "..kdydydyk..", "..kddddddk..", "..kddkkddk..", "..kkkkkkkk.."],
+	"dozen_watch": [".....gg.....", "....g..g....", "...gggggg...", "..gwwwwwwg..", ".gwwwkwwwwg.", ".gwwwkwwwwg.", ".gwwwkkkwwg.", ".gwwwwwwwwg.", ".gwwwwwwwwg.", "..gwwwwwwg..", "...gggggg...", "............"],
+	"pillar": ["wwwwwwwwwwww", ".dddddddddd.", "..wwwwwwww..", "..wdwwdwwd..", "..wdwwdwwd..", "..wdwwdwwd..", "..wdwwdwwd..", "..wdwwdwwd..", "..wdwwdwwd..", "..wwwwwwww..", ".dddddddddd.", "wwwwwwwwwwww"],
+	"night_owl": [".b........b.", ".bb......bb.", ".bbbbbbbbbb.", "bbwwbbbbwwbb", "bwykwbbwykwb", "bwkkwbbwkkwb", "bbwwbbbbwwbb", ".bbbboobbbb.", ".bbbb..bbbb.", ".bwbwbbwbwb.", "..bbbbbbbb..", "...yy..yy..."],
+	"piggy_bank": [".....kk.....", "...pppppp...", "..pppppppppp", ".pppkppppppp", "pppppppppppo", "pppppppppppo", ".ppppppppppp", "..pppppppp..", "..pp....pp..", "..pp....pp..", "............", "............"],
+	"clover": ["...GG..GG...", "..GGGGGGGG..", "..GGGGGGGG..", "...GGGGGG...", ".GG..GG..GG.", "GGGGGGGGGGGG", "GGGGGGGGGGGG", ".GG..GG..GG.", "...GGGGGG...", ".....bb.....", "....bb......", "...bb......."],
+	"doorbell": [".....yy.....", "....yyyy....", "...yyyyyy...", "..yyyyywyy..", "..yyyyywyy..", "..yyyyyyyy..", "..yyyyyyyy..", ".yyyyyyyyyy.", "yyyyyyyyyyyy", "yyyyyyyyyyyy", ".....bb.....", "............"],
+	"prime_time": ["...k....k...", "....k..k....", ".....kk.....", "kkkkkkkkkkkk", "kccccccccdkk", "kcwcccccckrk", "kcccccccckkk", "kccccccccdkk", "kccccccccdkk", "kkkkkkkkkkkk", ".kk......kk.", "............"],
+	"square_deal": ["cccccccccccc", "c..........c", "c.........Gc", "c........GGc", "c.......GG.c", "cG.....GG..c", "cGG...GG...c", "c.GG.GG....c", "c..GGG.....c", "c...G......c", "c..........c", "cccccccccccc"],
+	"teen_idol": ["....dddd....", "...dwdwdd...", "...ddwdwd...", "...dwdwdd...", "....dddd....", ".....kk.....", ".....pp.....", ".....pp.....", ".....pp.....", ".....pp.....", "....kkkk....", "............"],
+	"fibonacci": ["...vvvvvv...", "..v......v..", ".v..vvvv..v.", "v..v....v..v", "v.v..vv..v.v", "v.v.v..v.v.v", "v.v.v.v..v.v", "v.v..v..v..v", "v..v...v...v", ".v..vvv...v.", "..v......v..", "...vvvvvv..."],
+	"nickel": ["....dddd....", "..dddddddd..", ".ddwwwwwwdd.", ".dwwkkkkwwd.", "ddwwkwwwwwdd", "ddwwkkkwwwdd", "ddwwwwwkwwdd", "ddwwwwwkwwdd", ".dwwkkkwwwd.", ".ddwwwwwwdd.", "..dddddddd..", "....dddd...."],
+	"seventh_heaven": ["...yyyyyy...", "..y......y..", "...yyyyyy...", "............", "...kkkkkk...", ".......kk...", "......kk....", "..www.kkwww.", ".wwwwkkwwwww", "wwwwwkkwwwww", "wwwwwwwwwwww", ".wwwwwwwwww."],
+	"last_digit": [".kkkkkkkkkk.", ".kccccccccck", ".kcckkkccck.", ".kcccckccck.", ".kccccccccck", ".kkkkkkkkkk.", ".kwkwkwkwkk.", ".kkkkkkkkkk.", ".kwkwkwkwkk.", ".kkkkkkkkkk.", ".kwkwkwkyyk.", ".kkkkkkkkkk."],
+	"far_side": ["....bbbb....", "..bbrrkrbb..", ".bkr....rkb.", ".br......rb.", "br...gg...rb", "bk..gwwg..kb", "br..gwwg..rb", "br...gg...kb", ".bk......rb.", ".brk....krb.", "..bbrrkrbb..", "....bbbb...."],
+	"seedling": ["............", "...GG..GG...", "..GGGG.GGGG.", "..GGGGGGGG..", "...GGGGGG...", ".....GG.....", ".....GG.....", ".....GG.....", "...bbbbbb...", "..bbbbbbbb..", "..bbbbbbbb..", "...bbbbbb..."],
+	"golden_goose": ["....yyyy....", "...yyyyyy...", "..yyyywyyy..", "..yyywwyyy..", ".yyyyywyyyy.", ".yyyyyyyyyy.", ".yyyyyyyyyy.", ".gyyyyyyyyg.", "..gyyyyyyg..", "..ggyyyygg..", "...gggggg...", "............"],
+	"heart_of_gold": ["............", ".ggg....ggg.", "gyyyg..gyyyg", "gywyyggyyyyg", "gywyyyyyyyyg", "gyyyyyyyyyyg", ".gyyyyyyyyg.", "..gyyyyyyg..", "...gyyyyg...", "....gyyg....", ".....gg.....", "............"],
+	"spare_key": ["............", "..gggg......", ".gg..gg.....", ".g....g.....", ".g....g.....", ".gg..gg.....", "..ggggggggg.", "......g.g.g.", "......g.g...", "............", "............", "............"],
+	"zero_tolerance": ["...GGGGGG...", "..GG....GG..", ".GG......GG.", ".G....rr..G.", "GG...rr...GG", "GG..rr....GG", "GG.rr.....GG", "G.rr.......G", ".rr......GG.", "rr......GG..", "..GGGGGGG...", "............"],
+	"bankroll": ["............", "..GGGGGGGG..", ".GwwwwwwwwG.", "GGGGGGGGGGGG", "GGGGrrrGGGGG", "GGGGrrrGGGGG", "GGGGGGGGGGGG", ".GwwwwwwwwG.", "..GGGGGGGG..", "............", "............", "............"],
+	"compound_interest": ["...........y", "..........yy", ".........y.y", "..........y.", ".........G..", ".......G.G..", ".....G.G.G..", ".....G.G.G..", "...G.G.G.G..", ".G.G.G.G.G..", ".G.G.G.G.G..", "dddddddddddd"],
+	"double_down": ["..rrrrrrrr..", ".rrwrrrrwrr.", ".rrrwwwwrrr.", "..rrrrrrrr..", "..wwwwwwww..", "..rrrrrrrr..", ".rrwrrrrwrr.", ".rrrwwwwrrr.", "..rrrrrrrr..", "..wwwwwwww..", "............", "............"],
+	"corner_office": ["GGGGG.GGGGG.", "GwwwG.GwwwG.", "GwwwG.GwwwG.", "GwwwG.GwwwG.", "GGGGGyGGGGG.", ".....yy.....", "GGGGGyGGGGG.", "GwwwG.GwwwG.", "GwwwG.GwwwG.", "GwwwG.GwwwG.", "GGGGG.GGGGG.", "............"],
+	"big_spender": ["....bbbb....", ".....bb.....", "....bbbb....", "...bbbbbb...", "..bbbyybbb..", ".bbbyybbbbb.", ".bbbbyybbbb.", ".bbbbbyybbb.", ".bbbbyybbbb.", "..bbbbbbbb..", "...bbbbbb...", "............"],
+	"patron": ["............", "...kkkkkk...", "...kkkkkk...", "...kkkkkk...", "...kkkkkk...", "...rrrrrr...", "...kkkkkk...", "kkkkkkkkkkkk", ".kkkkkkkkkk.", "............", "............", "............"],
+	"late_bloomer": ["....pppp....", "...pppppp...", "..ppyyyypp..", "..ppyyyypp..", "...pppppp...", "....pppp....", ".....GG.....", "..GG.GG.....", "...GGGG.....", ".....GG.....", ".....GG.....", "....bbbb...."],
+	"veterans": ["..rr....rr..", "...rr..rr...", "....rrrr....", ".....rr.....", "....gggg....", "...gyyyyg...", "..gyyyyyyg..", "..gyywwyyg..", "..gyyyyyyg..", "...gyyyyg...", "....gggg....", "............"],
+	"outside_connection": ["............", "..gggg......", ".g....g.....", ".g..gggggg..", ".g..g.g...g.", "..gggg.g..g.", ".......g..g.", ".......gggg.", "............", "............", "............", "............"],
+	"inside_track": ["rrrrrrrrrrrr", "r..........r", "r.wwwwwwww.r", "r.w......w.r", "r.w.cccc.w.r", "r.w.cccc.w.r", "r.w.cccc.w.r", "r.w......w.r", "r.wwwwwwww.r", "r..........r", "rrrrrrrrrrrr", "............"],
+	"colour_coded": ["....rrkk....", "..rrrrkkkk..", ".rrrrrkkkkk.", ".rrrrrkkkkk.", "rrrrrrkkkkkk", "rrrrrrkkkkkk", "rrrrrrkkkkkk", "rrrrrrkkkkkk", ".rrrrrkkkkk.", ".rrrrrkkkkk.", "..rrrrkkkk..", "....rrkk...."],
+	"rainy_day": [".....c......", "...BBBBBB...", "..BBBBBBBB..", ".BBBBBBBBBB.", "BBBBBBBBBBBB", ".c...dd..c..", ".....dd.....", ".c...dd..c..", ".....dd.....", ".....dd.....", "...d.dd.....", "....dd......"],
+}
+const SPRITE_COLOURS := {"k": "#1a1410", "w": "#f4ead5", "g": "#b8862b", "y": "#f2c14e", "r": "#c0392b",
+	"G": "#3fae5a", "c": "#5fd3d3", "v": "#b07ad9", "b": "#7a4e2a", "d": "#8a8a8a", "p": "#f4a3c0",
+	"o": "#e9894a", "B": "#3f6fd1"}
+
+
 ## A small pixel icon (12x12 at scale 1). `tiny` = draw a 6x6 glyph for inside chips.
 static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool = false) -> void:
 	c = c.round()
@@ -395,7 +439,15 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 			ci.draw_circle(c, 4 * s, P.CREAM, true, -1.0, false)
 			ci.draw_circle(c - Vector2(1, 1) * s, 1.5 * s, Color.WHITE, true, -1.0, false)
 		_:
-			if GLYPHS.has(id):
+			if SPRITES.has(id):
+				var rows: Array = SPRITES[id]
+				for y in range(12):
+					var row: String = rows[y]
+					for x in range(12):
+						var ch := row[x]
+						if ch != ".":
+							R.call(x, y, 1, 1, Color(SPRITE_COLOURS[ch]))
+			elif GLYPHS.has(id):
 				# Lettered tile: a felt square with a short label, framed in the item's colour.
 				var g: Array = GLYPHS[id]
 				R.call(0, 1, 12, 10, Color(g[1]).darkened(0.55))
