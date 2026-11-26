@@ -284,7 +284,43 @@ func _process(delta: float) -> void:
 		[37.5, func(): shot("33_options_screen_fit")],
 		[37.7, func():
 			main.set_option("fit", 1.0)
-			get_tree().quit()],
+			main.start_run("european")],
+		[38.9, func():
+			_close_dialogue()
+			main.run.table_offer = []
+			var ts = main.screens.table
+			ts.refresh()
+			ts._select_item(0)
+			ts.felt_view.hover_key = "S17"
+			ts._on_hover("S17")],
+		[39.2, func(): shot("34_placing_ghost")],
+		[39.3, func():
+			var ts = main.screens.table
+			ts._place_selected("S17")
+			ts.selected_item = -1
+			ts.refresh()
+			ts.felt_view.hover_key = "S17"
+			ts._on_hover("S17")],
+		[39.6, func(): shot("35_chip_card")],
+		[39.7, func():
+			main.hide_card()
+			var r = main.run
+			r.inventory = []
+			var guard := 0
+			while r.phase == 0 and guard < 20:
+				guard += 1
+				r.place_bet("S17", mini(5, r.table.stack))
+				r.spin(17)
+			r.shop.bonus = []
+			r.shop.routes = []
+			r.shop.event = ""
+			r.cash = 30
+			main.route()],
+		[41.1, func():
+			_close_dialogue()
+			main.screens.shop._pick(0)],
+		[41.4, func(): shot("36_cage_pick")],
+		[41.6, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

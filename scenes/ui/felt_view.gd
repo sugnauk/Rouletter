@@ -4,7 +4,8 @@ extends Control
 
 signal bet_clicked(key: String, button: int)
 signal bet_hovered(key: String)
-signal bet_held(key: String)        ## touch: a long press on a square
+signal bet_held(key: String)
+signal rack_dropped(index: int, key: String)   ## a rack chip was dragged onto a spot        ## touch: a long press on a square
 
 const P := preload("res://scenes/ui/palette.gd")
 const Board := preload("res://core/board.gd")
@@ -22,6 +23,12 @@ var rects: Dictionary = {}
 var line_rects: Dictionary = {}  ## splits, streets, corners, six-lines: small zones on the felt lines
 var hover_key: String = ""
 var targets: Array = []          ## keys to highlight (upgrade placement)
+## Placing a chip: where it may go (thin gold outline), where its twin sits (green: it'll level
+## up), and the chip itself drawn as a ghost under the pointer.
+var legal: Dictionary = {}
+var twins: Dictionary = {}
+var ghost: String = ""
+var ghost_col: Color = P.GOLD
 var flashes: Dictionary = {}     ## key -> seconds left
 var pops: Dictionary = {}        ## key -> seconds left (chip placed)
 var nears: Dictionary = {}       ## key -> seconds left (near miss shudder)
@@ -142,6 +149,8 @@ func float_text(key: String, text: String, col: Color = P.GOLD) -> void:
 
 
 func _process(delta: float) -> void:
+	if ghost != "" and hover_key != "":
+		queue_redraw()
 	if run != null and (not ring_keys.is_empty() or run.felt.perm_chips().any(func(c): return Content.rarity_of(c.kind) == "legendary")):
 		queue_redraw()
 	if press_key != "":
@@ -274,13 +283,51 @@ func _draw() -> void:
 			tx = r.position.x + 3.0  # make room for the chips on the right of a strip
 		draw_string(font, Vector2(tx, floor(ty)), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, tcol)
 		_draw_chips(k, r, font)
+		if twins.has(k):
+			draw_rect(r.grow(-1.0), P.GOOD, false, 2.0)
+		elif legal.has(k):
+			draw_rect(r.grow(-1.0), Color(P.GOLD, 0.55), false, 1.0)
 	_draw_line_zones(font)
+	_draw_ghost(font)
 	for f in floaters:
 		var a: float = clampf(f.t, 0.0, 1.0)
 		var w := font.get_string_size(f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT).x
 		var pos: Vector2 = (f.pos - Vector2(w / 2.0, 0)).floor()
 		draw_string(font, pos + Vector2(1, 1), f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT, Color(0, 0, 0, a))
 		draw_string(font, pos, f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT, Color(f.col, a))
+
+
+## The chip being placed, drawn faintly where it would land (or a red cross where it can't).
+func _draw_ghost(font: Font) -> void:
+	if ghost == "" or hover_key == "":
+		return
+	var r: Rect2 = rect_of(hover_key)
+	var c := r.get_center().floor()
+	if legal.has(hover_key) or twins.has(hover_key):
+		var pulse := 0.55 + 0.25 * sin(Time.get_ticks_msec() / 120.0)
+		draw_circle(c, 7.0, Color(0, 0, 0, 0.35), true, -1.0, false)
+		Art.chip(self, c, 6.0, Color(ghost_col, pulse), ghost)
+		if twins.has(hover_key):
+			draw_string(font, c + Vector2(-16, -9), "LEVEL UP", HORIZONTAL_ALIGNMENT_LEFT, -1, 8, P.GOOD)
+	else:
+		draw_line(c + Vector2(-4, -4), c + Vector2(4, 4), P.DANGER, 2.0)
+		draw_line(c + Vector2(-4, 4), c + Vector2(4, -4), P.DANGER, 2.0)
+
+
+## Drag a chip from the rack onto the felt.
+func _can_drop_data(at: Vector2, data) -> bool:
+	if not (data is Dictionary and data.has("rack")):
+		return false
+	var k := key_at(at)
+	if k != hover_key:
+		hover_key = k
+		bet_hovered.emit(k)
+	queue_redraw()
+	return k != ""
+
+
+func _drop_data(at: Vector2, data) -> void:
+	rack_dropped.emit(int(data.rack), key_at(at))
 
 
 func _draw_line_zones(font: Font) -> void:

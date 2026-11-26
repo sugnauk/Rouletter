@@ -13,6 +13,8 @@ const Preview := preload("res://core/preview.gd")
 const Story := preload("res://core/story.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
 const Portraits := preload("res://scenes/ui/portraits.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
+const Placing := preload("res://scenes/ui/placing.gd")
 
 const CAGE := Rect2(8, 28, 288, 150)
 
@@ -35,6 +37,9 @@ var t := 0.0
 
 
 var speed_btn: Button   ## fast-forward: > / >> / >>>
+var picked := -1        ## the stock item being looked at (click again or BUY to buy it)
+var picked_ref = null
+var buy_btn             ## BUY in the description panel (a marquee button)
 var choice: Panel = null   ## the pick-one overlay (opening pick / early-clear bonus / refine)
 var refine_id := -1        ## the chip waiting for a Refine path
 
@@ -59,6 +64,11 @@ func setup() -> void:
 	add_child(dp)
 	desc_title = P.label(dp, "", P.FONT, P.GOLD)
 	P.place(desc_title, Vector2(6, 4))
+	buy_btn = P.button(dp, "BUY", func():
+		if picked >= 0:
+			_buy(picked), Vector2(92, 18), P.FONT_SMALL)
+	P.place(buy_btn, Vector2(190, 60))
+	buy_btn.visible = false
 	desc_body = P.label(dp, "", P.FONT_SMALL, P.CREAM)
 	desc_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_body.add_theme_constant_override("line_spacing", -1)
@@ -85,7 +95,13 @@ func setup() -> void:
 	felt_view = FeltView.new()
 	P.place(felt_view, Vector2(304, 32))
 	felt_view.bet_clicked.connect(_on_felt)
-	felt_view.bet_hovered.connect(func(k): status_lbl.text = felt_view.describe(k) if k != "" else _hint())
+	felt_view.bet_hovered.connect(_on_felt_hover)
+	felt_view.rack_dropped.connect(func(i: int, k: String):
+		if k == "" or main.run.phase != RunState.Phase.SHOP:
+			return
+		selected_item = i
+		mode = "place"
+		_place_selected(k))
 	add_child(felt_view)
 	P.place(P.label(self, "YOUR CHIPS", P.FONT_SMALL, P.DIM), Vector2(304, 152))
 	mode_box = HBoxContainer.new()
@@ -177,7 +193,9 @@ func _hint() -> String:
 			if not "cashier" in main.run.shop.get("vendors", []):
 				return "The Cashier handles trade-ins, and the Cashier isn't on."
 			return "Click one of your chips: the Cashier swaps it for a related chip ($%d), same square, same level." % Content.CONVERT_PRICE
-	return "Pick a chip from your rack, then click the felt to place it."
+	if main.run.inventory.is_empty():
+		return "Click an item on the counter to look at it; click it again (or BUY) to buy it."
+	return "Click a chip in your rack, then a lit spot on the felt (or drag it there). Right-click puts it down."
 
 
 ## What the description panel says when nothing is hovered: who's on duty and how they deal.
@@ -222,6 +240,10 @@ func refresh() -> void:
 	var run = main.run
 	if run.phase != RunState.Phase.SHOP:
 		return
+	# Forget the picked item if the counter changed under it (bought, rerolled, a new visit).
+	if picked >= 0 and (picked >= run.shop.stock.size() or run.shop.stock[picked].sold or not is_same(run.shop.stock[picked], picked_ref)):
+		picked = -1
+	picked_ref = run.shop.stock[picked] if picked >= 0 else null
 	felt_view.marks = main.profile.settings.cb_marks
 	var bid: String = run.wheel_id + str(run.has_feature("call_bets"))
 	if felt_view.run != run or board_id != bid:
@@ -287,6 +309,7 @@ func refresh() -> void:
 	cage_view.queue_redraw()
 	_refresh_choice(run)
 	_first_time_tips(run)
+	_update_buy_btn()
 
 
 func _first_time_tips(run) -> void:
@@ -512,42 +535,81 @@ func _build_windows(run) -> void:
 			var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE", "loan": "LOAN",
 				"favour": "FAVOUR (next table)", "voucher": "VOUCHER (whole run)"}[item.type]
 			var vname: String = Content.VENDORS[v].name
-			tok.hover_target = func(_s):
-				var body: String = run.item_desc(item)
-				if v != "cashier" and v != "pit_boss" and item.type != "loan":
-					body += "\n" + Content.VENDORS[v].blurb
-				if item.currency == "stack":
-					body += "\n%s takes %s off your next stack (you can spare %d)." % [vname, run.price_text(item).to_lower(), maxi(0, run.stack_spare())]
-				var rar: String = Content.rarity_of(item.id)
-				if item.type in ["chip", "upgrade", "rule"] and rar != "common":
-					tag = rar.to_upper() + " " + tag
-				if item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", "")):
-					body += "\nYou own one: stack this on it to level it up."
-				for h in run.item_hints(item):
-					body += "\n" + h
-				if not item.sold and item.type != "loan":
-					body += "\n(Right-click or long-press: hold it through a reroll.)" if i != run.shop.get("reserved", -1) else "\nHELD: it stays when you reroll."
-				if not item.sold:
-					var ch := Preview.cage_hints(run, item)
-					for h in ch.lines:
-						body += "\n" + h
-					felt_view.preview = {}
-					for p in ch.pockets:
-						felt_view.preview[Board.straight_key(p)] = P.CYAN
-					felt_view.queue_redraw()
-				_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
+			tok.hover_target = func(_s): _describe_stock(i)
 			tok.hover_exit = func():
 				felt_view.preview = {}
 				felt_view.queue_redraw()
+				if picked >= 0:
+					_describe_stock(picked)
 			if i == run.shop.get("reserved", -1) and not item.sold:
 				tok.badge = "HOLD"
-				tok.selected = true
+			tok.selected = i == picked or (i == run.shop.get("reserved", -1) and not item.sold)
 			tok.gui_input.connect(func(e):
 				if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_RIGHT and e.pressed:
 					_reserve(i))
 			tok.long_pressed = _reserve.bind(i)
-			tok.pressed.connect(_buy.bind(i))
+			tok.pressed.connect(_pick.bind(i))
 			row.add_child(tok)
+
+
+## The description panel for stock item `i`: what it is, what it does with your build, its price.
+func _describe_stock(i: int) -> void:
+	var run = main.run
+	if i < 0 or i >= run.shop.stock.size():
+		return
+	var item: Dictionary = run.shop.stock[i]
+	var v: String = item.vendor
+	var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE", "loan": "LOAN",
+		"favour": "FAVOUR (next table)", "voucher": "VOUCHER (whole run)"}[item.type]
+	var vname: String = Content.VENDORS[v].name
+	var body: String = run.item_desc(item)
+	if v != "cashier" and v != "pit_boss" and item.type != "loan":
+		body += "\n" + Content.VENDORS[v].blurb
+	if item.currency == "stack":
+		body += "\n%s takes %s off your next stack (you can spare %d)." % [vname, run.price_text(item).to_lower(), maxi(0, run.stack_spare())]
+	var rar: String = Content.rarity_of(item.id)
+	if item.type in ["chip", "upgrade", "rule"] and rar != "common":
+		tag = rar.to_upper() + " " + tag
+	if item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", "")):
+		body += "\nYou own one: stack this on it to level it up."
+	for h in run.item_hints(item):
+		body += "\n" + h
+	if not item.sold:
+		var ch := Preview.cage_hints(run, item)
+		for h in ch.lines:
+			body += "\n" + h
+		felt_view.preview = {}
+		for p in ch.pockets:
+			felt_view.preview[Board.straight_key(p)] = P.CYAN
+		felt_view.queue_redraw()
+	_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
+	_update_buy_btn()
+
+
+## Click a stock item to look at it; click it again (or BUY) to buy it.
+func _pick(i: int) -> void:
+	var run = main.run
+	if i < 0 or i >= run.shop.stock.size() or run.shop.stock[i].sold:
+		return
+	if picked == i:
+		_buy(i)
+		return
+	picked = i
+	picked_ref = run.shop.stock[i]
+	Sfx.play("click")
+	refresh()
+	_describe_stock(i)
+
+
+func _update_buy_btn() -> void:
+	var run = main.run
+	var ok: bool = picked >= 0 and picked < run.shop.stock.size() and not run.shop.stock[picked].sold
+	buy_btn.visible = ok
+	if ok:
+		var item: Dictionary = run.shop.stock[picked]
+		buy_btn.text = "BUY  %s" % run.price_text(item)
+		buy_btn.disabled = not run.can_afford(item)
+		buy_btn.pulse = run.can_afford(item)
 
 
 ## Where a stock token sits on screen (for purchase sparkles).
@@ -578,9 +640,18 @@ func _refresh_rack() -> void:
 		if item.get("flaw", "") != "":
 			tok.badge = Content.FLAWS[item.flaw].short
 		tok.selected = i == selected_item
-		tok.hover_target = func(_s): status_lbl.text = "%s: %s" % [Content.CHIPS[item.kind].name, Content.CHIPS[item.kind].desc]
+		tok.drag_data = {"rack": i}
+		tok.drag_started = func():
+			selected_item = i
+			mode = "place"
+			Placing.mark(felt_view, main.run, i)
+		tok.hover_target = func(_s):
+			status_lbl.text = "%s: click it, then a spot on the felt (or drag it there)." % Content.CHIPS[item.kind].name
+			main.card_near(tok, InfoCard.for_item(item))
+		tok.hover_exit = main.hide_card
 		tok.pressed.connect(_select.bind(i))
 		rack.add_child(tok)
+	Placing.mark(felt_view, main.run, selected_item if mode == "place" else -1)
 
 
 func _select(i: int) -> void:
@@ -601,6 +672,7 @@ func _buy(i: int) -> void:
 	var item: Dictionary = run.shop.stock[i]
 	var owned_twin: bool = item.type == "chip" and run.felt.perm_chips().any(func(c): return c.kind == item.id and c.flaw == item.get("flaw", ""))
 	if run.buy(i):
+		picked = -1
 		main.profile.note_used(item.id)
 		if owned_twin:
 			main.tip("level", true)
@@ -625,8 +697,45 @@ func _buy(i: int) -> void:
 			_describe("Can't buy that", "Not enough cash, or your House Rule slots are full.")
 
 
+## Hovering the Cage's felt: the spot's odds, and a card for any chips you own there.
+func _on_felt_hover(k: String) -> void:
+	status_lbl.text = felt_view.describe(k) if k != "" else _hint()
+	var perms: Array = Placing.perms_on(main.run, k) if k != "" and main.run.felt.board.has_bet(k) else []
+	if perms.is_empty() or selected_item >= 0:
+		main.hide_card()
+		return
+	var d := InfoCard.for_chip(perms[0], main.run)
+	if perms.size() > 1:
+		d.body += "\nAlso here: " + ", ".join(perms.slice(1).map(func(c): return "%s x%d" % [Content.CHIPS[c.kind].name, c.value]))
+	main.card_at_felt(felt_view, k, d)
+
+
+## Place the selected rack chip; the next one in the rack is picked up straight after.
+func _place_selected(key: String) -> void:
+	var run = main.run
+	if selected_item < 0 or selected_item >= run.inventory.size():
+		return
+	var kind: String = run.inventory[selected_item].kind
+	var twin: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == kind)
+	if run.place_chip(selected_item, key):
+		selected_item = 0 if not run.inventory.is_empty() else -1
+		felt_view.pop(key)
+		main.fx.burst(main.fx.local(felt_view.key_global(key)), 10 if not twin else 20, [P.GOLD, P.CREAM] if not twin else [P.GOOD, P.GOLD, P.CREAM], 60.0)
+		if twin:
+			main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
+		Sfx.play("stack" if twin else "chip_place")
+		refresh()
+	else:
+		status_lbl.text = "%s can't go there: try a lit spot." % Content.CHIPS[kind].name
+		Sfx.play("click")
+
+
 func _on_felt(key: String, button: int) -> void:
 	var run = main.run
+	if button == MOUSE_BUTTON_RIGHT and selected_item >= 0:   # right-click puts the held chip back down
+		selected_item = -1
+		refresh()
+		return
 	if button != MOUSE_BUTTON_LEFT or main.dialogue.is_open():
 		return
 	if run.shop.pending_upgrade != "":
@@ -636,13 +745,7 @@ func _on_felt(key: String, button: int) -> void:
 			Sfx.play("chip_place")
 		return
 	if selected_item >= 0:
-		if run.place_chip(selected_item, key):
-			selected_item = -1
-			felt_view.pop(key)
-			main.fx.burst(main.fx.local(felt_view.key_global(key)), 10, [P.GOLD, P.CREAM], 60.0)
-			Sfx.play("chip_place")
-		else:
-			status_lbl.text = "That chip can't go there."
+		_place_selected(key)
 		return
 	var mine: Array = run.felt.chips_on(key).filter(func(c): return not c.is_bet())
 	if mine.is_empty():

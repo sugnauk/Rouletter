@@ -3,6 +3,19 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.39
+- **No more accidental buys.** Clicking an item in the Cage now selects it: it lights up, and the panel shows what it does, how it fits your build, and a BUY button with its price. Click it again (or BUY) to buy it. Right-click or long-press still holds an item through a reroll.
+- **See what your chips do.** Point at (or tap) any of these and a card pops up beside it:
+  - a chip on the felt: its level, how many are stacked, any refine or flaw, and what it does (plus any other chips on that spot);
+  - a chip in your rack;
+  - a House Rule or a voucher.
+- **Smoother placing:**
+  - While you hold a chip from the rack, every spot it can go is outlined. Spots where its twin already sits glow green, because it'll level up there.
+  - The chip follows your pointer as a ghost (a red cross where it can't go).
+  - You can drag a chip from the rack straight onto the felt.
+  - Right-click puts the held chip back down.
+  - After you place a chip, the next one in your rack is picked up automatically.
+
 ## 0.0.38
 - Playtest kit:
   - **Copy report:** a new button on the end screen copies the whole run as text, ready to paste. It covers:

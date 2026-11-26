@@ -8,6 +8,7 @@ const Backdrop := preload("res://scenes/ui/backdrop.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
 const Transition := preload("res://scenes/ui/transition.gd")
 const PauseMenu := preload("res://scenes/ui/pause_menu.gd")
+const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
@@ -38,6 +39,7 @@ var fx
 var crt: CanvasLayer
 var transition
 var pause
+var card   ## the pop-up info card for chips, rules and vouchers (scenes/ui/info_card.gd)
 var options_return := ""   ## screen the Options screen goes back to (when opened mid-run)
 var fast_ui := false
 var shake_t := 0.0
@@ -80,6 +82,8 @@ func _ready() -> void:
 		screens[k] = s
 	fx = FxLayer.new()
 	frame.add_child(fx)
+	card = InfoCard.new()
+	frame.add_child(card)
 	dialogue = DialogueBox.new()
 	frame.add_child(dialogue)
 	pause = PauseMenu.new()
@@ -161,6 +165,8 @@ func show_screen(n: String) -> void:
 	for s in screens.values():
 		s.visible = false
 	current = n
+	if card != null:
+		card.hide_card()
 	screens[n].visible = true
 	screens[n].call("refresh")
 	if n == "table" or n == "shop":
@@ -475,6 +481,19 @@ func abandon_run() -> void:
 
 
 ## Change one option, apply it straight away and save it.
+## The info card beside a control (rack tokens, rules) or a spot on a felt view.
+func card_near(ctrl: Control, d: Dictionary) -> void:
+	card.show_at(fx.local(ctrl.global_position + Vector2(ctrl.size.x, 0)), d)
+
+
+func card_at_felt(felt_view, key: String, d: Dictionary) -> void:
+	card.show_at(fx.local(felt_view.key_global(key)), d)
+
+
+func hide_card() -> void:
+	card.hide_card()
+
+
 func set_option(key: String, value) -> void:
 	profile.settings[key] = value
 	crt.visible = profile.settings.crt
