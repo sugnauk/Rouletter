@@ -24,7 +24,7 @@ func _init() -> void:
 ## Everything with unlock cost 0.
 static func default_unlocks() -> Array:
 	var out := []
-	for table in [Wheels.WHEELS, Content.CHIPS, Content.UPGRADES, Content.HOUSE_RULES, Content.FEATURES]:
+	for table in [Wheels.WHEELS, Content.CHIPS, Content.UPGRADES, Content.HOUSE_RULES, Content.FEATURES, Content.VENDORS]:
 		for id in table:
 			if table[id].get("unlock", 0) == 0:
 				out.append(id)
@@ -35,7 +35,7 @@ static func default_unlocks() -> Array:
 static func catalogue() -> Array:
 	var out := []
 	var cats := {"wheel": Wheels.WHEELS, "chip": Content.CHIPS, "upgrade": Content.UPGRADES,
-		"rule": Content.HOUSE_RULES, "feature": Content.FEATURES}
+		"rule": Content.HOUSE_RULES, "feature": Content.FEATURES, "vendor": Content.VENDORS}
 	for cat in cats:
 		var table: Dictionary = cats[cat]
 		for id in table:

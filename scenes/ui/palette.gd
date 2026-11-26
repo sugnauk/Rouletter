@@ -24,6 +24,7 @@ const CHIP_COLORS := {
 	"bet": Color("#ece6d6"), "perm": GOLD, "magnet": Color("#e63946"), "compounding": Color("#80ed99"),
 	"croupier": Color("#adb5bd"), "wildcard_zero": Color("#2ec4b6"), "mint": Color("#57cc99"),
 	"respin": CYAN, "ledger": Color("#f4a261"), "collector": VIOLET,
+	"bridge": Color("#cdb4db"), "kingmaker": Color("#ffd166"),
 }
 
 ## Fonts (SIL Open Font License, see fonts/*-OFL.txt):

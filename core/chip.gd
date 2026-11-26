@@ -7,6 +7,7 @@ var id: int = 0
 var kind: String = "bet"
 var bet: String = "S0"
 var value: int = 1
+var flaw: String = ""      ## Fence chips: "cracked" | "hot" | "sticky" (see Content.FLAWS)
 
 
 func _init(id_in: int = 0, kind_in: String = "bet", bet_in: String = "S0", value_in: int = 1) -> void:
@@ -17,7 +18,9 @@ func _init(id_in: int = 0, kind_in: String = "bet", bet_in: String = "S0", value
 
 
 func copy():
-	return get_script().new(id, kind, bet, value)
+	var c = get_script().new(id, kind, bet, value)
+	c.flaw = flaw
+	return c
 
 
 func is_bet() -> bool:

@@ -14,6 +14,7 @@ var wheel_rules: Array = []            ## rules built into the wheel (French: la
 var boss_rule: String = ""             ## current Enforcer twist
 var frozen_id: int = -1                ## chip frozen by the "frozen" Enforcer
 var red_streak: int = 0
+var hit_streak: int = 0                ## scoring spins in a row (Momentum)
 var last_pocket: int = -99
 var next_id: int = 1
 
@@ -34,6 +35,7 @@ func copy():
 	f.boss_rule = boss_rule
 	f.frozen_id = frozen_id
 	f.red_streak = red_streak
+	f.hit_streak = hit_streak
 	f.last_pocket = last_pocket
 	f.next_id = next_id
 	return f
@@ -43,8 +45,9 @@ func has_rule(id: String) -> bool:
 	return id in house_rules or id in wheel_rules
 
 
-func add_chip(kind: String, bet: String, value: int):
+func add_chip(kind: String, bet: String, value: int, flaw: String = ""):
 	var c = Chip.new(next_id, kind, bet, value)
+	c.flaw = flaw
 	next_id += 1
 	chips.append(c)
 	return c

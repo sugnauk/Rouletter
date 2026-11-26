@@ -102,6 +102,12 @@ const VENDOR_INTROS := {
 	"pit_boss": {"id": "meet_pit_boss", "title": "The Pit Boss", "lines": [
 		{"speaker": "Pit Boss", "text": "I sell House Rules. I don't take dollars. I take chips, off your next stack."},
 		{"speaker": "Pit Boss", "text": "Every rule you own, the next one costs more. That's how I keep the floor honest."}]},
+	"loan_shark": {"id": "meet_loan_shark", "title": "The Loan Shark", "lines": [
+		{"speaker": "Loan Shark", "text": "Short? Everybody's short at four in the morning. I've got cash, no paperwork."},
+		{"speaker": "Loan Shark", "text": "You don't pay me back. You pay Vance a little extra at the next table. He passes it along. Clean."}]},
+	"fence": {"id": "meet_fence", "title": "The Fence", "lines": [
+		{"speaker": "Fence", "text": "Half price. Don't ask where they're from. Some are cracked, some are hot, some won't come off the felt."},
+		{"speaker": "Fence", "text": "If the house finds a hot one, it was never mine. I was never here. Neither were you."}]},
 }
 
 

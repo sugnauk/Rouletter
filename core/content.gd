@@ -29,14 +29,29 @@ const SELL_SHARE := 0.5
 ##   "stack" - betting chips docked from your stack at the next table
 const VENDORS := {
 	"cashier": {"name": "Cashier", "currency": "cash", "unlock": 0,
-		"blurb": "Chips and felt work. Cash only, fair prices.",
+		"blurb": "Chips and felt work. Cash only, fair prices.", "desc": "Chips and felt work for cash.",
 		"note": "The casino cage: the one window that deals in money."},
 	"pit_boss": {"name": "Pit Boss", "currency": "stack", "unlock": 0,
-		"blurb": "Sells House Rules for chips off your next stack. Every rule you own raises his price.",
+		"blurb": "Sells House Rules for chips off your next stack. Every rule you own raises his price.", "desc": "House Rules, paid in chips off your next stack.",
 		"note": "The pit boss sets table rules and is paid in chips, not cash."},
+	"loan_shark": {"name": "Loan Shark", "currency": "loan", "unlock": 0,
+		"blurb": "Cash now. You pay him back by making the next payment bigger.", "desc": "Loans: cash now, a bigger payment at the next table.",
+		"note": "Casino markers are loans; this one is collected at the table."},
+	"fence": {"name": "Fence", "currency": "cash", "unlock": 2,
+		"blurb": "Chips at half price. They fell off a truck, and every one has a flaw.", "desc": "A Cage window selling chips at half price. Every one is cracked, hot or sticky.",
+		"note": "Stolen or doctored chips: cheap, but never quite right."},
 }
+## Loans the Loan Shark offers: cash now, the next table's payment grows by `pct`.
+const LOANS := [{"cash": 5, "pct": 0.15}, {"cash": 10, "pct": 0.35}]
+## Flaws on the Fence's chips (`short` is the badge on the token).
+const FLAWS := {
+	"cracked": {"name": "Cracked", "short": "CRK", "desc": "Scores half."},
+	"hot": {"name": "Hot", "short": "HOT", "desc": "Confiscated the first time a zero hits."},
+	"sticky": {"name": "Sticky", "short": "STK", "desc": "Can't be moved or sold once placed."},
+}
+const FENCE_SHARE := 0.5
 const ALWAYS_VENDOR := "cashier"
-const VENDORS_PER_VISIT := 2              ## windows open at each Cage visit, the Cashier included
+const VENDORS_PER_VISIT := 2              ## windows open at each Cage visit: the Cashier plus one who rotates
 const PIT_BOSS_STEP := 2                  ## +chips per House Rule already owned
 const MIN_STACK := 10                     ## the Pit Boss never leaves you fewer betting chips than this
 
@@ -49,6 +64,9 @@ const HOT_HAND_MULT := 3.0
 const SIGNATURE_RANGE := 3
 const SIGNATURE_BONUS := 0.5
 const ZERO_TAX := 0.10
+const BRIDGE_PER_NUMBER := 1.0            ## Bridge: +Take per number its bet covers
+const KINGMAKER_MULT := 1.5               ## Kingmaker: the spin's Take x1.5 when it hits
+const MOMENTUM_STEP := 0.25               ## Momentum: +25% per scoring spin in a row
 
 # --- Meta ------------------------------------------------------------------------------
 const DEBT_START := 1000000
@@ -85,8 +103,14 @@ const CHIPS := {
 	"collector": {"name": "Collector", "desc": "When it hits, +1 Take per value of your other chips in its dozen or column.",
 		"price": 6, "unlock": 2,
 		"note": "Pays off roulette's own groupings when you crowd them."},
+	"bridge": {"name": "Bridge", "desc": "Sits on a split, corner, street or line. When it hits, +1 Take per number it covers.",
+		"price": 5, "unlock": 0, "line_only": true,
+		"note": "Lives on the felt's lines, the inside bets only a roulette layout has."},
+	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5.",
+		"price": 7, "unlock": 0,
+		"note": "A crowned number: one pocket that makes the whole spin."},
 }
-const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zero", "mint", "respin", "ledger", "collector"]
+const SPECIAL_ON_STRAIGHT := ["magnet", "compounding", "croupier", "wildcard_zero", "mint", "respin", "ledger", "collector", "kingmaker"]
 
 # --- Felt upgrades -------------------------------------------------------------------
 ## target: "number" (any pocket) or "outside" (column/dozen)
@@ -101,6 +125,8 @@ const UPGRADES := {
 		"price": 7, "unlock": 0, "note": "Thick felt for a favourite number."},
 	"pinned": {"name": "Pinned Pocket", "desc": "When this number hits, call bets (Voisins/Tiers/Orphelins) score double.", "target": "number",
 		"price": 6, "unlock": 2, "note": "Ties the felt to the wheel: a pocket that anchors its sector."},
+	"cornerstone": {"name": "Cornerstone", "desc": "When this number hits, your split, corner, street and line bets on it score double.", "target": "number",
+		"price": 6, "unlock": 0, "note": "Rewards building inside bets around one square of the grid."},
 }
 
 # --- House Rules (relics) ---------------------------------------------------------------
@@ -119,6 +145,10 @@ const HOUSE_RULES := {
 		"price": 8, "unlock": 3, "note": "Every roulette player has seen a number hit twice."},
 	"dealer_signature": {"name": "Dealer's Signature", "desc": "Hits within 3 wheel pockets of the last ball score +50%.",
 		"price": 7, "unlock": 3, "note": "The myth that a croupier's throw lands in the same sector."},
+	"split_decision": {"name": "Split Decision", "desc": "Split, street, corner and line bets pay +1x.",
+		"price": 6, "unlock": 0, "note": "Rewrites the printed odds of the inside bets."},
+	"momentum": {"name": "Momentum", "desc": "Each scoring spin in a row adds +25% to the next one's Take. A blank spin resets it.",
+		"price": 8, "unlock": 2, "note": "The gambler's 'hot table', paid out as a growing multiplier."},
 }
 
 # --- Unlockable table features --------------------------------------------------------------

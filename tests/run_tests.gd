@@ -23,7 +23,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth",
 	]:
 		call(t)
@@ -337,6 +337,8 @@ func test_pit_boss() -> void:
 	run.place_bet("S17", 1)
 	run.spin(17)
 	check(run.phase == RunState.Phase.SHOP, "in the Cage")
+	run.shop.vendors = ["cashier", "pit_boss"]
+	run._restock()
 	var rules := []
 	for i in range(run.shop.stock.size()):
 		if run.shop.stock[i].vendor == "pit_boss":
@@ -356,12 +358,86 @@ func test_pit_boss() -> void:
 	check(run.table.stack == run.stack_size - pa and run.table.docked == pa and run.stack_owed == 0, "docked at the next table, once")
 
 
+func test_loan_shark_and_fence() -> void:
+	var run = new_run()
+	run.unlocked.append("fence")
+	run.place_bet("S17", 1)
+	run.spin(17)
+	run.shop.vendors = ["cashier", "loan_shark"]
+	run._restock()
+	var li := -1
+	for i in range(run.shop.stock.size()):
+		if run.shop.stock[i].type == "loan" and run.shop.stock[i].price == 10:
+			li = i
+	var cash0: int = run.cash
+	var due: int = run.current_target()
+	check(li >= 0 and run.buy(li) and run.cash == cash0 + 10 and is_equal_approx(run.loan_pct, 0.35), "a $10 loan pays cash now")
+	check(not run.buy(li), "each loan once")
+	run.leave_shop()
+	check(run.table.target == int(ceil(due * 1.35)) and is_equal_approx(run.loan_pct, 0.0), "the next payment grows by 35%, once")
+	# Fence
+	run.phase = RunState.Phase.SHOP
+	run.shop = {"stock": [], "reroll": 2, "pending_upgrade": "", "vendors": ["cashier", "fence"]}
+	run._restock()
+	var fi := -1
+	for i in range(run.shop.stock.size()):
+		if run.shop.stock[i].vendor == "fence":
+			fi = i
+	var it: Dictionary = run.shop.stock[fi]
+	check(it.flaw in Content.FLAWS and it.price == maxi(1, int(ceil(Content.CHIPS[it.id].price * 0.5))), "Fence chips are half price with a flaw")
+	run.cash = 50
+	check(run.buy(fi) and run.inventory[-1].flaw == it.flaw, "the flaw comes with the chip")
+	# Flaw effects in the resolver.
+	var f = felt("european", [["perm", "S7", 2]])
+	f.chips[0].flaw = "cracked"
+	near(Resolver.resolve_spin(f, 7).take, 35.0, "cracked scores half")
+	var g = felt("european", [["perm", "S7", 1]])
+	g.chips[0].flaw = "hot"
+	check(Resolver.resolve_spin(g, 0).felt_after.chips.is_empty(), "hot chips are confiscated on a zero")
+	check(Resolver.resolve_spin(g, 7).felt_after.chips.size() == 1, "...and only on a zero")
+	var run2 = new_run()
+	run2.place_bet("S17", 1)
+	run2.spin(17)
+	var sc = run2.felt.add_chip("perm", "S3", 1, "sticky")
+	run2.cash = 20
+	check(not run2.sell_chip(sc.id) and not run2.pick_up(sc.id), "sticky chips can't be sold or moved")
+
+
+func test_inside_content() -> void:
+	var f = felt("european", [["bridge", "CO1", 1]])
+	near(Resolver.resolve_spin(f, 5).take, 8.0 + 4.0, "Bridge: corner pays 8 plus 1 per covered number")
+	var k = felt("european", [["kingmaker", "S7", 1], ["perm", "RED", 2]])
+	near(Resolver.resolve_spin(k, 7).take, (35.0 + 2.0) * 1.5, "Kingmaker multiplies the whole spin")
+	var sd = felt("european", [["perm", "SP1_4", 1]])
+	sd.house_rules.append("split_decision")
+	near(Resolver.resolve_spin(sd, 4).take, 18.0, "Split Decision: split pays 18")
+	var cs = felt("european", [["perm", "ST1", 1], ["perm", "S2", 1]])
+	cs.square_upgrades[2] = "cornerstone"
+	near(Resolver.resolve_spin(cs, 2).take, 22.0 + 35.0, "Cornerstone doubles inside bets on it, not the straight")
+	var m = felt("european", [["perm", "RED", 4]])
+	m.house_rules.append("momentum")
+	var r1 := Resolver.resolve_spin(m, 1)
+	var r2 := Resolver.resolve_spin(r1.felt_after, 3)
+	var r3 := Resolver.resolve_spin(r2.felt_after, 3)
+	near(r1.take, 4.0, "Momentum: first scoring spin plain")
+	near(r2.take, 5.0, "Momentum: second x1.25")
+	near(r3.take, 6.0, "Momentum: third x1.5")
+	check(Resolver.resolve_spin(r3.felt_after, 2).felt_after.hit_streak == 0, "a blank spin resets Momentum")
+	var run = new_run()
+	run.inventory.append({"kind": "bridge", "value": 1})
+	var bi: int = run.inventory.size() - 1
+	check(not run.place_chip(bi, "S5") and run.place_chip(bi, "CO1"), "Bridge only sits on line bets")
+
+
 func test_shop() -> void:
 	var run = new_run()
 	run.place_bet("S17", 1)
 	run.spin(17)
 	run.cash = 100
-	check(run.shop.vendors == ["cashier", "pit_boss"] and run.shop.stock.size() == 5, "Cashier (2 chips + upgrade) and Pit Boss (2 rules)")
+	check(run.shop.vendors.size() == 2 and run.shop.vendors[0] == "cashier", "the Cashier plus one rotating vendor")
+	run.shop.vendors = ["cashier", "pit_boss"]
+	run._restock()
+	check(run.shop.stock.size() == 5, "Cashier (2 chips + upgrade) and Pit Boss (2 rules)")
 	var up_i := -1
 	for i in range(run.shop.stock.size()):
 		if run.shop.stock[i].type == "upgrade":
@@ -460,7 +536,8 @@ func test_profile() -> void:
 	for i in range(20):
 		run._restock()
 		for item in run.shop.stock:
-			check(item.id in Profile.default_unlocks() or item.id == "perm", "shop only stocks unlocked content (%s)" % item.id)
+			check(item.type == "loan" or item.id in Profile.default_unlocks() or item.id == "perm", "shop only stocks unlocked content (%s)" % item.id)
+		check(not ("fence" in run.shop.vendors), "the Fence needs unlocking")
 
 
 func test_sfx_synth() -> void:

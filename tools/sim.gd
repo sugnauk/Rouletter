@@ -117,7 +117,7 @@ func place_inventory(run) -> void:
 func bot_shop(run) -> void:
 	for i in range(run.shop.stock.size()):
 		var item: Dictionary = run.shop.stock[i]
-		if not item.sold and run.can_afford(item):
+		if not item.sold and item.type != "loan" and run.can_afford(item):
 			run.buy(i)
 			if run.shop.pending_upgrade != "":
 				var t: Array = run.upgrade_targets()

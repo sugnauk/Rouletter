@@ -42,42 +42,57 @@ func _process(delta: float) -> void:
 			main.route()],
 		[9.5, func(): _close_dialogue()],
 		[9.6, func(): shot("06_shop")],
-		[9.7, func():
+		[9.8, func(): _staff(["cashier", "fence"])],
+		[10.0, func(): shot("06b_shop_fence")],
+		[10.1, func(): _staff(["cashier", "loan_shark"])],
+		[10.3, func(): shot("06c_shop_loan_shark")],
+		[10.4, func(): _staff(["cashier", "pit_boss"])],
+		[10.7, func():
 			for i in range(run.shop.stock.size()):
 				if run.shop.stock[i].type == "upgrade":
 					run.buy(i)
 			main.screens.shop.refresh()],
-		[10.0, func(): shot("07_shop_upgrade_target")],
-		[10.1, func():
+		[11, func(): shot("07_shop_upgrade_target")],
+		[11.1, func():
 			if run.shop.pending_upgrade != "":
 				run.apply_upgrade(run.upgrade_targets()[0])
 			run.table_idx = 2
 			run.leave_shop()
 			main.route()],
-		[10.9, func(): shot("08_enforcer")],
-		[11.0, func():
+		[11.9, func(): shot("08_enforcer")],
+		[12, func():
 			_close_dialogue()
 			run.table.spins_left = 1
 			run.spin(_empty_pocket(run))
 			main.route()],
-		[14.4, func(): shot("09_game_over")],
-		[14.5, func(): main.show_screen("pawn")],
-		[14.8, func(): shot("10_pawn")],
-		[14.82, func(): main.show_screen("journal")],
-		[14.88, func(): shot("10b_journal")],
-		[14.9, func():
+		[15.4, func(): shot("09_game_over")],
+		[15.5, func(): main.show_screen("pawn")],
+		[15.8, func(): shot("10_pawn")],
+		[15.82, func(): main.show_screen("journal")],
+		[15.88, func(): shot("10b_journal")],
+		[15.9, func():
 			main.fast_ui = false
 			main.show_screen("card")],
-		[17.6, func(): shot("11_title_card")],
-		[17.7, func():
+		[18.6, func(): shot("11_title_card")],
+		[18.7, func():
 			main.screens.card.done = true
 			main.go("title", "NIGHT 2", "High Roller table  -  pay 28")],
-		[18.3, func(): shot("12_loading_card")],
-		[19.6, func(): get_tree().quit()],
+		[19.3, func(): shot("12_loading_card")],
+		[20.6, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
 		step += 1
+
+
+## Put specific vendors in the Cage (for screenshots of each window).
+func _staff(vendors: Array) -> void:
+	var run = main.run
+	if not "fence" in run.unlocked:
+		run.unlocked.append("fence")
+	run.shop.vendors = vendors
+	run._restock()
+	main.screens.shop.refresh()
 
 
 func _close_dialogue() -> void:

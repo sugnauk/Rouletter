@@ -257,6 +257,8 @@ func _refresh_tokens() -> void:
 		var item: Dictionary = inv[i]
 		var tok = Token.new(item.kind, Vector2(25, 25))
 		tok.badge = "x%d" % item.value if item.value > 1 else ""
+		if item.get("flaw", "") != "":
+			tok.badge = Content.FLAWS[item.flaw].short
 		tok.selected = i == selected_item
 		tok.hover_text = "%s: %s" % [Content.CHIPS[item.kind].name, Content.CHIPS[item.kind].desc]
 		tok.hover_target = _status

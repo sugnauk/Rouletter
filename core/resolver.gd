@@ -24,7 +24,7 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	var B = w.board
 	var res := {
 		"pocket": pocket, "take": 0.0, "gross": 0.0, "lost": 0, "stack": 0, "cash": 0, "respins": 0,
-		"zero_tax": false, "red_streak": felt.red_streak, "effects": [], "events": [],
+		"zero_tax": false, "red_streak": felt.red_streak, "hit_streak": felt.hit_streak, "effects": [], "events": [],
 		"log": {"base": [], "upgrades": [], "chips": [], "rules": []},
 		"felt_after": w,
 	}
@@ -103,8 +103,16 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				_event(res, "bonus", Board.straight_key(m), amt, "link")
 
 	# Chip effects.
+	var kings := 0
 	for c in hits:
 		match c.kind:
+			"bridge":
+				var nb: float = Content.BRIDGE_PER_NUMBER * B.bet(c.bet).numbers.size()
+				take += nb
+				res.log.chips.append("Bridge: +%d for %d numbers" % [int(nb), B.bet(c.bet).numbers.size()])
+				_event(res, "bonus", c.bet, nb, "bridge")
+			"kingmaker":
+				kings += 1
 			"croupier":
 				if lost > 0:
 					take += lost
@@ -131,6 +139,12 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		for c in w.chips:
 			if c.kind == "wildcard_zero":
 				_event(res, "bonus", c.bet, Content.WILDCARD_BONUS, "wildcard")
+	if zero_hit:
+		for c in w.perm_chips():
+			if c.flaw == "hot":
+				res.log.chips.append("Hot chip on %s confiscated by the house" % c.bet)
+				_event(res, "loss", c.bet, 0.0, "confiscated")
+				_remove(res, w, c, "confiscated")
 	for c in w.perm_chips():
 		if c.kind == "mint":
 			res.cash += 1
@@ -160,12 +174,29 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		take *= 1.0 + Content.SIGNATURE_BONUS
 		res.log.rules.append("Dealer's Signature: +50%")
 		_mult(res, 1.0 + Content.SIGNATURE_BONUS, "Signature")
+	for k in range(kings):
+		if take > 0.0:
+			take *= Content.KINGMAKER_MULT
+			res.log.chips.append("Kingmaker x%.1f" % Content.KINGMAKER_MULT)
+			_mult(res, Content.KINGMAKER_MULT, "Kingmaker")
+	res.hit_streak = felt.hit_streak
+	if w.has_rule("momentum"):
+		if take > lost:
+			var mm: float = 1.0 + Content.MOMENTUM_STEP * felt.hit_streak
+			if mm > 1.0:
+				take *= mm
+				res.log.rules.append("Momentum x%.2f" % mm)
+				_mult(res, mm, "Momentum")
+			res.hit_streak = felt.hit_streak + 1
+		else:
+			res.hit_streak = 0
 	if zero_hit and w.boss_rule == "zero_tax":
 		res.zero_tax = true
 		res.log.rules.append("Madame Oro takes her cut")
 
 	# Take is what the spin paid minus what it cost you: hedging both colours scores nothing.
 	w.red_streak = res.red_streak
+	w.hit_streak = res.hit_streak
 	w.last_pocket = pocket
 	res.gross = take
 	res.lost = lost
@@ -226,7 +257,16 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	if w.bet_upgrades.get(c.bet, "") == "hot":
 		payout += 1.0
 		res.log.upgrades.append("Hot %s: +1x" % c.bet)
+	if w.has_rule("split_decision") and b.type in Board.LINE_TYPES:
+		payout += 1.0
+		res.log.rules.append("Split Decision: %s +1x" % c.bet)
 	var amount: float = c.value * payout
+	if b.type in Board.LINE_TYPES and up == "cornerstone":
+		amount *= 2.0
+		res.log.upgrades.append("Cornerstone %s: x2" % B.label(pocket))
+	if c.flaw == "cracked":
+		amount *= 0.5
+		res.log.chips.append("Cracked chip on %s scores half" % c.bet)
 	if straight and up == "double_felt":
 		amount *= 2.0
 		res.log.upgrades.append("Double Felt: x2")

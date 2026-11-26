@@ -29,6 +29,7 @@ var inventory: Array = []        ## unplaced permanent chips: {kind, value}
 var stack_size: int = Content.START_STACK
 var stack_buys: int = 0
 var stack_owed: int = 0        ## betting chips owed to the Pit Boss, docked at the next table
+var loan_pct: float = 0.0      ## Loan Shark: the next table's payment grows by this much
 var last_bets: Dictionary = {}   ## bet layout at the last real spin: key -> chips (for rebet)
 var night: int = 0
 var table_idx: int = 0
@@ -54,6 +55,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	stack_size = Content.START_STACK
 	stack_buys = 0
 	stack_owed = 0
+	loan_pct = 0.0
 	night = 0
 	table_idx = 0
 	total_take = 0.0
@@ -84,6 +86,10 @@ func night_enforcer() -> String:
 
 func _start_table() -> void:
 	var target: int = current_target()
+	var loan := loan_pct
+	if loan > 0.0:
+		target = int(ceil(target * (1.0 + loan)))
+	loan_pct = 0.0
 	var boss := table_idx == 2
 	var enforcer: String = night_enforcer() if boss else ""
 	felt.clear_bets()
@@ -97,9 +103,10 @@ func _start_table() -> void:
 		if best != null:
 			felt.frozen_id = best.id
 	felt.red_streak = 0
+	felt.hit_streak = 0
 	felt.last_pocket = -99
 	table = {"target": target, "take": 0.0, "spins_left": Content.SPINS, "spins_used": 0,
-		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed}
+		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan}
 	stack_owed = 0
 	last_result = {}
 	last_bets = {}
@@ -110,6 +117,8 @@ func _start_table() -> void:
 		message = "Night %d, %s table. Payment due: %d." % [night + 1, table_name(), target]
 	if table.docked > 0:
 		message += " The Pit Boss takes %d chips off your stack." % table.docked
+	if table.loan > 0.0:
+		message += " The Loan Shark's cut: +%d%% on this payment." % int(round(table.loan * 100))
 	changed.emit()
 
 
@@ -218,6 +227,8 @@ func can_place_chip(kind: String, key: String) -> bool:
 		return straight and Board.straight_number(key) <= 0
 	if kind == "perm":
 		return can_bet_on(key) or (straight and felt.boss_rule != "no_outside")
+	if Content.CHIPS.get(kind, {}).get("line_only", false):
+		return felt.board.is_line_bet(key)
 	return straight
 
 
@@ -232,11 +243,11 @@ func place_chip(index: int, key: String) -> bool:
 		return false
 	inventory.remove_at(index)
 	for c in felt.chips_on(key):
-		if c.kind == "perm" and item.kind == "perm":
+		if c.kind == "perm" and item.kind == "perm" and c.flaw == item.get("flaw", ""):
 			c.value += item.value
 			changed.emit()
 			return true
-	felt.add_chip(item.kind, key, item.value)
+	felt.add_chip(item.kind, key, item.value, item.get("flaw", ""))
 	changed.emit()
 	return true
 
@@ -314,11 +325,13 @@ func _lose(why: String) -> void:
 
 func _open_shop() -> void:
 	phase = Phase.SHOP
-	shop = {"stock": [], "reroll": Content.REROLL_BASE, "pending_upgrade": ""}
+	shop = {"stock": [], "reroll": Content.REROLL_BASE, "pending_upgrade": "", "vendors": _pick_vendors()}
 	_restock()
 
 
-func _restock() -> void:
+## Who is working the Cage this visit: the Cashier, plus others drawn from the unlocked pool.
+## They stay for the whole visit (rerolls refresh their stock, not the staff).
+func _pick_vendors() -> Array:
 	var vendors := [Content.ALWAYS_VENDOR]
 	var pool := []
 	for v in Content.VENDORS:
@@ -327,6 +340,13 @@ func _restock() -> void:
 	pool = rng.shuffle(pool)
 	while vendors.size() < Content.VENDORS_PER_VISIT and not pool.is_empty():
 		vendors.append(pool.pop_front())
+	return vendors
+
+
+func _restock() -> void:
+	if not shop.has("vendors"):
+		shop.vendors = _pick_vendors()
+	var vendors: Array = shop.vendors
 	var stock := []
 	for v in vendors:
 		stock.append_array(_vendor_stock(v))
@@ -360,6 +380,18 @@ func _vendor_stock(v: String) -> Array:
 			rules = rng.shuffle(rules)
 			for r in rules.slice(0, 2):
 				out.append({"type": "rule", "id": r, "price": Content.HOUSE_RULES[r].price})
+		"loan_shark":
+			for l in Content.LOANS:
+				out.append({"type": "loan", "id": "loan", "price": l.cash, "pct": l.pct})
+		"fence":
+			var chips := ["perm"]
+			for k in Content.CHIPS:
+				if k in unlocked:
+					chips.append(k)
+			for i in range(2):
+				var k: String = rng.pick(chips)
+				out.append({"type": "chip", "id": k, "flaw": rng.pick(Content.FLAWS.keys()),
+					"price": maxi(1, int(ceil(Content.CHIPS[k].price * Content.FENCE_SHARE)))})
 	for item in out:
 		item.vendor = v
 		item.currency = cur
@@ -380,6 +412,8 @@ func stack_spare() -> int:
 
 
 func can_afford(item: Dictionary) -> bool:
+	if item.get("currency", "cash") == "loan":
+		return true
 	if item.get("currency", "cash") == "stack":
 		return stack_spare() >= price_of(item)
 	return cash >= price_of(item)
@@ -387,6 +421,8 @@ func can_afford(item: Dictionary) -> bool:
 
 ## "$6" or "8 chips", for price tags.
 func price_text(item: Dictionary) -> String:
+	if item.get("currency", "cash") == "loan":
+		return "+%d%% DUE" % int(round(item.pct * 100))
 	if item.get("currency", "cash") == "stack":
 		return "%d CHIPS" % price_of(item)
 	return "$%d" % price_of(item)
@@ -395,7 +431,10 @@ func price_text(item: Dictionary) -> String:
 func item_name(item: Dictionary) -> String:
 	match item.type:
 		"chip":
-			return Content.CHIPS[item.id].name + " chip"
+			var flaw: String = item.get("flaw", "")
+			return ("%s " % Content.FLAWS[flaw].name if flaw != "" else "") + Content.CHIPS[item.id].name + " chip"
+		"loan":
+			return "$%d loan" % item.price
 		"upgrade":
 			return Content.UPGRADES[item.id].name
 	return Content.HOUSE_RULES[item.id].name
@@ -404,7 +443,10 @@ func item_name(item: Dictionary) -> String:
 func item_desc(item: Dictionary) -> String:
 	match item.type:
 		"chip":
-			return Content.CHIPS[item.id].desc
+			var flaw: String = item.get("flaw", "")
+			return Content.CHIPS[item.id].desc + ("  FLAW: " + Content.FLAWS[flaw].desc if flaw != "" else "")
+		"loan":
+			return "+$%d now. Your next payment is %d%% bigger." % [item.price, int(round(item.pct * 100))]
 		"upgrade":
 			return Content.UPGRADES[item.id].desc
 	return Content.HOUSE_RULES[item.id].desc
@@ -418,14 +460,21 @@ func buy(i: int) -> bool:
 		return false
 	if item.type == "rule" and felt.house_rules.size() >= Content.RELIC_SLOTS:
 		return false
-	if item.get("currency", "cash") == "stack":
-		stack_owed += price_of(item)
-	else:
-		cash -= price_of(item)
+	match item.get("currency", "cash"):
+		"stack":
+			stack_owed += price_of(item)
+		"loan":
+			cash += item.price
+			loan_pct += item.pct
+		_:
+			cash -= price_of(item)
 	item.sold = true
 	match item.type:
 		"chip":
-			inventory.append({"kind": item.id, "value": 1})
+			var inv := {"kind": item.id, "value": 1}
+			if item.get("flaw", "") != "":
+				inv.flaw = item.flaw
+			inventory.append(inv)
 		"rule":
 			felt.house_rules.append(item.id)
 		"upgrade":
@@ -489,9 +538,9 @@ func buy_stack() -> bool:
 
 func sell_chip(chip_id: int) -> bool:
 	var c = felt.find(chip_id)
-	if phase != Phase.SHOP or c == null or c.is_bet():
+	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky":
 		return false
-	cash += int(Content.CHIPS[c.kind].price * Content.SELL_SHARE)
+	cash += int(Content.CHIPS[c.kind].price * Content.SELL_SHARE * (Content.FENCE_SHARE if c.flaw != "" else 1.0))
 	felt.remove(chip_id)
 	changed.emit()
 	return true
@@ -500,10 +549,13 @@ func sell_chip(chip_id: int) -> bool:
 ## Pick a placed chip back up into the inventory to move it.
 func pick_up(chip_id: int) -> bool:
 	var c = felt.find(chip_id)
-	if phase != Phase.SHOP or c == null or c.is_bet() or cash < Content.RELOCATE_PRICE:
+	if phase != Phase.SHOP or c == null or c.is_bet() or c.flaw == "sticky" or cash < Content.RELOCATE_PRICE:
 		return false
 	cash -= Content.RELOCATE_PRICE
-	inventory.append({"kind": c.kind, "value": c.value})
+	var inv := {"kind": c.kind, "value": c.value}
+	if c.flaw != "":
+		inv.flaw = c.flaw
+	inventory.append(inv)
 	felt.remove(chip_id)
 	changed.emit()
 	return true

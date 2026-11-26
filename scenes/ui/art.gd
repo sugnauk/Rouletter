@@ -139,6 +139,40 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 				R.call(x, 1, 2, 4, Color("#d9a47a"))
 			R.call(9, 5, 2, 3, Color("#d9a47a"))
 			R.call(2, 10, 8, 1, P.DANGER)
+		"bridge":
+			# Two squares joined across a line.
+			R.call(1, 4, 4, 4, P.CREAM)
+			R.call(7, 4, 4, 4, P.CREAM)
+			R.call(4, 5, 4, 2, P.GOLD)
+		"kingmaker":
+			# A crown.
+			R.call(2, 6, 8, 4, P.GOLD)
+			R.call(2, 3, 2, 3, P.GOLD)
+			R.call(5, 2, 2, 4, P.GOLD)
+			R.call(8, 3, 2, 3, P.GOLD)
+			R.call(5, 7, 2, 2, P.RED)
+		"cornerstone":
+			# A square with its four corners lit.
+			R.call(2, 2, 8, 8, P.FELT.lightened(0.2))
+			for p in [[1, 1], [9, 1], [1, 9], [9, 9]]:
+				R.call(p[0], p[1], 2, 2, P.GOLD)
+		"split_decision":
+			# A square split down the middle.
+			R.call(1, 3, 4, 6, P.RED)
+			R.call(7, 3, 4, 6, P.BLACK.lightened(0.3))
+			R.call(5, 2, 2, 8, P.GOLD)
+		"momentum":
+			# Three chevrons speeding up.
+			for i in range(3):
+				R.call(1 + i * 4, 3, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+				R.call(2 + i * 4, 5, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+				R.call(1 + i * 4, 7, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+		"loan":
+			# A banknote with an IOU stripe.
+			R.call(1, 3, 10, 6, P.GOOD.darkened(0.3))
+			R.call(2, 4, 8, 4, P.GOOD.darkened(0.1))
+			R.call(4, 5, 4, 2, P.WOOD_DARK)
+			R.call(1, 9, 10, 1, P.CYAN)
 		"dealer_signature":
 			R.call(2, 9, 9, 1, P.CREAM)
 			for i in range(5):
@@ -184,6 +218,12 @@ static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
 			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
 		"wildcard_zero":
 			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
+		"bridge":
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"kingmaker":
+			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 2)), col)
+			ci.draw_rect(Rect2(o, Vector2(1, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 2)), col)
 		_:
 			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 2)), col)
 

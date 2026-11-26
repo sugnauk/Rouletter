@@ -21,7 +21,9 @@ All scenes live in `core/story.gd` with an id and a Journal title; `profile.seen
 - **The Cage (shop):** a row of **vendor windows**, each selling different things for a different currency. The Cashier is always open; the others rotate.
   - **Cashier** (cash): 2 chips and 1 felt upgrade. Reroll, a bigger stack, move a chip ($2) and sell a chip are cash services too.
   - **Pit Boss** (stack chips): 2 House Rules (5 relic slots). His price is taken off your betting stack at the next table, rises by 2 per rule you own, and never leaves you under 10 chips.
-  - Vendors live in `VENDORS` in `core/content.gd`; Loan Shark, Fence and Dealer are planned.
+  - **Loan Shark** (pay later): $5 or $10 now; the next table's payment grows by 15% or 35%.
+  - **Fence** (cash, unlocked with Markers): chips at half price, each with a flaw: Cracked (scores half), Hot (confiscated the first time a zero hits) or Sticky (can't be moved or sold).
+  - Each visit the Cashier works with **one other vendor** drawn from the unlocked pool; rerolls refresh their stock, not the staff. Vendors live in `VENDORS` in `core/content.gd`.
 - **HUD:** shows Take per spin and the **pay-off chance**. The chance is an exact convolution over the remaining spins, assuming you bet the same way each time.
 
 ## Wheels = starting gamblers
@@ -37,9 +39,10 @@ Payout formula: `numbers / numbers covered − 1`, so every plain bet loses exac
 
 ## Content
 Every entry has an originality `note` in `core/content.gd`.
-- **Chips:** Permanent, Magnet, Compounding, Croupier, Wildcard Zero, Mint, Respin, Ledger*, Collector*.
-- **Felt upgrades:** Gilded, Hot, Neighbour Link, Double Felt, Pinned Pocket*.
-- **House Rules:** La Partage, Red Streak, Rent Control, Thirteen, En Prison*, Hot Hand*, Dealer's Signature*.
+- **Chips:** Permanent, Magnet, Compounding, Croupier, Wildcard Zero, Mint, Respin, Bridge (line bets only), Kingmaker, Ledger*, Collector*.
+- **Felt upgrades:** Gilded, Hot, Neighbour Link, Double Felt, Cornerstone, Pinned Pocket*.
+- **House Rules:** La Partage, Red Streak, Rent Control, Thirteen, Split Decision, En Prison*, Hot Hand*, Dealer's Signature*, Momentum*.
+- **Vendors:** Cashier, Pit Boss, Loan Shark, Fence*.
 - **Feature:** Call Bets* (Voisins, Tiers and Orphelins on the felt).
 - **Enforcers:**
   - The Accountant: no outside bets.
@@ -81,7 +84,7 @@ Full-run win rate: French 11%, European 13%, American 8%, Mini 11%, Triple Zero 
 ## Roadmap ("The Floor Above")
 1. Done: vendor Cage (Cashier, Pit Boss), title card and loading cards, Undo and touch controls, branch CI.
 2. Done: story cast (Dolores, Lucky Lou, Abe, Big Sal, the vendors), milestone beats (first Enforcer, third run, first win, six runs without a win), interludes before nights 2-4, vendor introductions, a Journal screen that replays every scene, and the Act I epilogue when the marker is paid.
-3. Loan Shark (borrow against the next target), Fence (cheap items with flaws), inside-bet content, multipliers.
+3. Done: Loan Shark, Fence and flaws; inside-bet content (Bridge chip, Cornerstone upgrade, Split Decision rule); multipliers (Kingmaker chip x1.5, Momentum rule +25% per scoring spin in a row).
 4. Act 2: nights 5-8 upstairs, the Owner, new Enforcers and wheels.
 5. Vouchers, Dealer favours, run saves, endless mode, onboarding and accessibility.
 

@@ -110,7 +110,7 @@ func _draw_cage() -> void:
 
 ## One vendor's window: wood frame, dark interior, a lamp, brass bars, velvet counter, name.
 func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
-	var accent: Color = P.GOLD if Content.VENDORS[vendor].currency == "cash" else P.RED.lightened(0.2)
+	var accent: Color = {"cash": P.GOLD, "stack": P.RED.lightened(0.2), "loan": P.CYAN}.get(Content.VENDORS[vendor].currency, P.GOLD)
 	c.draw_rect(w.grow(4), P.WOOD_DARK)
 	c.draw_rect(w.grow(2), P.WOOD)
 	c.draw_rect(w, Color("#0d0907"))
@@ -129,7 +129,7 @@ func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
 	c.draw_rect(Rect2(w.position.x, w.position.y + 30, w.size.x, 2), P.GOLD.darkened(0.35))
 	# Name plate over the bars.
 	_plate(c, w, 14, Content.VENDORS[vendor].name.to_upper(), accent)
-	_plate(c, w, 38, "CASH" if Content.VENDORS[vendor].currency == "cash" else "PAY IN CHIPS", accent.darkened(0.25))
+	_plate(c, w, 38, {"cash": "CASH", "stack": "PAY IN CHIPS", "loan": "PAY LATER"}.get(Content.VENDORS[vendor].currency, ""), accent.darkened(0.25))
 
 
 func _plate(c: Control, w: Rect2, y: float, text: String, col: Color) -> void:
@@ -217,6 +217,8 @@ func refresh() -> void:
 	var nxt := "NEXT: Night %d %s - pay %d" % [run.night + 1, run.table_name(), run.current_target()]
 	if run.stack_owed > 0:
 		nxt += "  (stack %d, -%d to the Pit Boss)" % [run.stack_size - run.stack_owed, run.stack_owed]
+	if run.loan_pct > 0.0:
+		nxt += "  (+%d%% to the Loan Shark)" % int(round(run.loan_pct * 100))
 	if run.table_idx == 2:
 		var e: Dictionary = Content.ENFORCERS[run.night_enforcer()]
 		nxt += "\n%s: %s" % [e.name, e.desc]
@@ -269,12 +271,18 @@ func _build_windows(run) -> void:
 			var item: Dictionary = run.shop.stock[i]
 			var tok = Token.new(item.id, TOK)
 			tok.price = "SOLD" if item.sold else run.price_text(item)
+			if item.get("flaw", "") != "":
+				tok.badge = Content.FLAWS[item.flaw].short
+			elif item.type == "loan":
+				tok.badge = "$%d" % item.price
 			tok.dim = item.sold or not run.can_afford(item)
 			tok.disabled = item.sold
-			var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE"}[item.type]
+			var tag: String = {"chip": "CHIP", "upgrade": "FELT UPGRADE", "rule": "HOUSE RULE", "loan": "LOAN"}[item.type]
 			var vname: String = Content.VENDORS[v].name
 			tok.hover_target = func(_s):
 				var body: String = run.item_desc(item)
+				if v != "cashier" and v != "pit_boss" and item.type != "loan":
+					body += "\n" + Content.VENDORS[v].blurb
 				if item.currency == "stack":
 					body += "\n%s takes %s off your next stack (you can spare %d)." % [vname, run.price_text(item).to_lower(), maxi(0, run.stack_spare())]
 				_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
@@ -306,6 +314,8 @@ func _refresh_rack() -> void:
 		var item: Dictionary = inv[i]
 		var tok = Token.new(item.kind, Vector2(25, 25))
 		tok.badge = "x%d" % item.value if item.value > 1 else ""
+		if item.get("flaw", "") != "":
+			tok.badge = Content.FLAWS[item.flaw].short
 		tok.selected = i == selected_item
 		tok.hover_target = func(_s): status_lbl.text = "%s: %s" % [Content.CHIPS[item.kind].name, Content.CHIPS[item.kind].desc]
 		tok.pressed.connect(_select.bind(i))
@@ -332,7 +342,9 @@ func _buy(i: int) -> void:
 			main.fx.banner(Content.HOUSE_RULES[item.id].name.to_upper(), P.GOLD, 1.0, 120, 8)
 		refresh()
 	else:
-		if item.get("currency", "cash") == "stack":
+		if item.type == "loan":
+			_describe("Already borrowed", "Each loan once per visit.")
+		elif item.get("currency", "cash") == "stack":
 			_describe("Can't buy that", "The Pit Boss won't leave you fewer than %d betting chips, or your House Rule slots are full." % Content.MIN_STACK)
 		else:
 			_describe("Can't buy that", "Not enough cash, or your House Rule slots are full.")
