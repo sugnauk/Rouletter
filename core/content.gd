@@ -229,6 +229,36 @@ const COUNTERS := {
 }
 
 
+## The Almanac's categories: [title, source table name, ids]. Every item appears exactly once.
+const ALMANAC := [
+	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "croupier", "collector", "ledger"]],
+	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball"]],
+	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "crown", "bridge"]],
+	["ZERO CHIPS", "CHIPS", ["wildcard_zero", "sentinel"]],
+	["CASH & TIME CHIPS", "CHIPS", ["mint", "penny", "respin"]],
+	["NUMBER UPGRADES", "UPGRADES", ["gilded", "double_felt", "link", "sweet_spot", "lamp", "cornerstone", "pinned"]],
+	["OUTSIDE UPGRADES", "UPGRADES", ["hot", "silk"]],
+	["PAYOUT RULES", "HOUSE_RULES", ["split_decision", "sevens", "satin_gloves", "high_society", "black_tie", "thirteen"]],
+	["MULTIPLIER RULES", "HOUSE_RULES", ["red_streak", "hot_hand", "dealer_signature", "momentum", "last_call"]],
+	["SAFETY RULES", "HOUSE_RULES", ["la_partage", "en_prison", "insurance", "rent_control", "comped"]],
+	["DEALER FAVOURS", "FAVOURS", ["extra_spin", "fat_stack", "head_start"]],
+	["DEALER VOUCHERS", "VOUCHERS", ["comp_card", "vip_rack", "patience", "house_credit"]],
+]
+
+
+static func almanac_table(name: String) -> Dictionary:
+	match name:
+		"CHIPS":
+			return CHIPS
+		"UPGRADES":
+			return UPGRADES
+		"HOUSE_RULES":
+			return HOUSE_RULES
+		"FAVOURS":
+			return FAVOURS
+	return VOUCHERS
+
+
 static func tags_of(id: String) -> Array:
 	return TAGS.get(id, [])
 

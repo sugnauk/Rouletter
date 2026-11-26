@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
@@ -763,6 +763,20 @@ func test_content_batch() -> void:
 	run.spin(17)
 	check(run.last_result.size() > 0 and run.cash >= cash0 + Content.CLEAR_CASH[0] + Content.COMPED_CASH, "Comped Drinks: +$3 a clear")
 	check(Content.CHIPS.size() >= 18 and Content.UPGRADES.size() >= 9 and Content.HOUSE_RULES.size() >= 16, "content counts")
+
+
+func test_almanac_categories() -> void:
+	var counted := {}
+	for g in Content.ALMANAC:
+		var table: Dictionary = Content.almanac_table(g[1])
+		check(not g[2].is_empty(), "category %s has items" % g[0])
+		for id in g[2]:
+			check(table.has(id), "%s is in %s" % [id, g[1]])
+			check(not counted.has(id), "%s listed once" % id)
+			counted[id] = true
+	for table in [Content.CHIPS, Content.UPGRADES, Content.HOUSE_RULES, Content.FAVOURS, Content.VOUCHERS]:
+		for id in table:
+			check(counted.has(id), "%s appears in an Almanac category" % id)
 
 
 func test_shop() -> void:
