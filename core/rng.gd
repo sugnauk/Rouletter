@@ -16,6 +16,17 @@ func reseed(seed_in: int) -> void:
 	_rng.seed = seed_in
 
 
+## Save / restore the exact position in the random stream (run saves).
+func get_state() -> Dictionary:
+	return {"seed": seed_value, "state": _rng.state}
+
+
+func set_state(d: Dictionary) -> void:
+	seed_value = d.seed
+	_rng.seed = d.seed
+	_rng.state = d.state
+
+
 ## A fair European pocket, uniform over 0..36.
 func pocket() -> int:
 	return _rng.randi_range(0, 36)
@@ -33,6 +44,21 @@ func pick(arr: Array):
 	if arr.is_empty():
 		return null
 	return arr[_rng.randi_range(0, arr.size() - 1)]
+
+
+## Pick one entry with probability proportional to its weight.
+func pick_weighted(arr: Array, weights: Array):
+	if arr.is_empty():
+		return null
+	var total := 0.0
+	for w in weights:
+		total += w
+	var r := _rng.randf() * total
+	for i in range(arr.size()):
+		r -= weights[i]
+		if r < 0.0:
+			return arr[i]
+	return arr[-1]
 
 
 func shuffle(arr: Array) -> Array:

@@ -95,6 +95,29 @@ static func synth(cue: String) -> AudioStreamWAV:
 			var fan := [523.3, 659.3, 784.0, 659.3, 784.0, 1046.5]
 			for i in range(fan.size()):
 				_tone(s, i * 0.09, 0.22 if i < fan.size() - 1 else 0.6, fan[i], 0.3, "square")
+		"jackpot":
+			# A rising run, a held chord and a shower of high sparkles.
+			var run := [523.3, 659.3, 784.0, 1046.5, 1318.5, 1568.0, 2093.0]
+			for i in range(run.size()):
+				_tone(s, i * 0.05, 0.25, run[i], 0.24, "square")
+			for f in [1046.5, 1318.5, 1568.0]:
+				_tone(s, 0.4, 0.9, f, 0.18, "square")
+			for i in range(10):
+				_tone(s, 0.45 + i * 0.07, 0.08, 2600.0 + (i % 3) * 400.0, 0.12, "sine")
+		"feat":
+			# A bright two-bell chime.
+			_tone(s, 0.0, 0.5, 1568.0, 0.3, "sine")
+			_tone(s, 0.0, 0.5, 3136.0, 0.1, "sine")
+			_tone(s, 0.12, 0.7, 2093.0, 0.3, "sine")
+			_tone(s, 0.12, 0.7, 4186.0, 0.08, "sine")
+		"near":
+			# So close: a falling slide.
+			_tone(s, 0.0, 0.35, 660.0, 0.28, "square", 330.0)
+		"unlock":
+			var up := [392.0, 523.3, 659.3, 784.0, 1046.5]
+			for i in range(up.size()):
+				_tone(s, i * 0.06, 0.2 if i < up.size() - 1 else 0.7, up[i], 0.28, "square")
+			_noise(s, 0.3, 0.2, 0.2)
 		"bust":
 			var down := [392.0, 349.2, 311.1, 233.1]
 			for i in range(down.size()):

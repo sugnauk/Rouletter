@@ -48,5 +48,7 @@ func refresh() -> void:
 func _buy(id: String) -> void:
 	if main.profile.buy_unlock(id):
 		main.save_profile()
-		Sfx.play("buy")
+		Sfx.play("unlock")
+		main.fx.stamp("UNLOCKED", P.GOLD, 1.0)
+		main.fx.burst(main.fx.get_local_mouse_position(), 30, [P.GOLD, P.CREAM, P.GOOD], 150.0)
 		refresh()

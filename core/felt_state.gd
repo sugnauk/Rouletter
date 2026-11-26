@@ -4,6 +4,7 @@ extends RefCounted
 
 const Board := preload("res://core/board.gd")
 const Chip := preload("res://core/chip.gd")
+const Content := preload("res://core/content.gd")
 
 var board
 var chips: Array = []
@@ -14,6 +15,7 @@ var wheel_rules: Array = []            ## rules built into the wheel (French: la
 var boss_rule: String = ""             ## current Enforcer twist
 var frozen_id: int = -1                ## chip frozen by the "frozen" Enforcer
 var red_streak: int = 0
+var hit_streak: int = 0                ## scoring spins in a row (Momentum)
 var last_pocket: int = -99
 var next_id: int = 1
 
@@ -34,17 +36,54 @@ func copy():
 	f.boss_rule = boss_rule
 	f.frozen_id = frozen_id
 	f.red_streak = red_streak
+	f.hit_streak = hit_streak
 	f.last_pocket = last_pocket
 	f.next_id = next_id
 	return f
+
+
+## Plain data for run saves (store_var keeps the int/float types).
+func to_dict() -> Dictionary:
+	var cs := []
+	for c in chips:
+		cs.append({"id": c.id, "kind": c.kind, "bet": c.bet, "value": c.value, "flaw": c.flaw})
+	return {"wheel": board.wheel_id, "chips": cs, "square_upgrades": square_upgrades.duplicate(),
+		"bet_upgrades": bet_upgrades.duplicate(), "house_rules": house_rules.duplicate(),
+		"wheel_rules": wheel_rules.duplicate(), "boss_rule": boss_rule, "frozen_id": frozen_id,
+		"red_streak": red_streak, "hit_streak": hit_streak, "last_pocket": last_pocket, "next_id": next_id}
+
+
+static func from_dict(d: Dictionary):
+	var f = load("res://core/felt_state.gd").new(d.wheel)
+	for c in d.chips:
+		var chip = Chip.new(c.id, c.kind, c.bet, c.value)
+		chip.flaw = c.flaw
+		f.chips.append(chip)
+	f.square_upgrades = d.square_upgrades.duplicate()
+	f.bet_upgrades = d.bet_upgrades.duplicate()
+	f.house_rules = d.house_rules.duplicate()
+	f.wheel_rules = d.wheel_rules.duplicate()
+	f.boss_rule = d.boss_rule
+	f.frozen_id = d.frozen_id
+	f.red_streak = d.red_streak
+	f.hit_streak = d.hit_streak
+	f.last_pocket = d.last_pocket
+	f.next_id = d.next_id
+	return f
+
+
+## Is this Enforcer twist in force? (The Owner's table combines several.)
+func boss_is(rule: String) -> bool:
+	return boss_rule == rule or (boss_rule == "owner" and rule in Content.OWNER_RULES)
 
 
 func has_rule(id: String) -> bool:
 	return id in house_rules or id in wheel_rules
 
 
-func add_chip(kind: String, bet: String, value: int):
+func add_chip(kind: String, bet: String, value: int, flaw: String = ""):
 	var c = Chip.new(next_id, kind, bet, value)
+	c.flaw = flaw
 	next_id += 1
 	chips.append(c)
 	return c

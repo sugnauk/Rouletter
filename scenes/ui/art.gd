@@ -139,6 +139,67 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 				R.call(x, 1, 2, 4, Color("#d9a47a"))
 			R.call(9, 5, 2, 3, Color("#d9a47a"))
 			R.call(2, 10, 8, 1, P.DANGER)
+		"bridge":
+			# Two squares joined across a line.
+			R.call(1, 4, 4, 4, P.CREAM)
+			R.call(7, 4, 4, 4, P.CREAM)
+			R.call(4, 5, 4, 2, P.GOLD)
+		"kingmaker":
+			# A crown.
+			R.call(2, 6, 8, 4, P.GOLD)
+			R.call(2, 3, 2, 3, P.GOLD)
+			R.call(5, 2, 2, 4, P.GOLD)
+			R.call(8, 3, 2, 3, P.GOLD)
+			R.call(5, 7, 2, 2, P.RED)
+		"cornerstone":
+			# A square with its four corners lit.
+			R.call(2, 2, 8, 8, P.FELT.lightened(0.2))
+			for p in [[1, 1], [9, 1], [1, 9], [9, 9]]:
+				R.call(p[0], p[1], 2, 2, P.GOLD)
+		"split_decision":
+			# A square split down the middle.
+			R.call(1, 3, 4, 6, P.RED)
+			R.call(7, 3, 4, 6, P.BLACK.lightened(0.3))
+			R.call(5, 2, 2, 8, P.GOLD)
+		"momentum":
+			# Three chevrons speeding up.
+			for i in range(3):
+				R.call(1 + i * 4, 3, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+				R.call(2 + i * 4, 5, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+				R.call(1 + i * 4, 7, 2, 2, P.CYAN.darkened(0.3 - i * 0.15))
+		"mirror":
+			# A hand mirror: two halves of one number.
+			R.call(2, 2, 8, 8, P.CYAN.darkened(0.2))
+			R.call(3, 3, 3, 6, P.CREAM)
+			R.call(6, 3, 3, 6, P.CYAN.lightened(0.4))
+			R.call(5, 10, 2, 2, P.WOOD)
+		"porch_light":
+			# A lamp casting light to both sides.
+			R.call(5, 1, 2, 2, P.WOOD)
+			R.call(4, 3, 4, 4, P.GOLD)
+			R.call(5, 7, 2, 4, P.WOOD)
+			R.call(1, 4, 2, 1, P.GOLD.darkened(0.2))
+			R.call(9, 4, 2, 1, P.GOLD.darkened(0.2))
+			R.call(1, 6, 2, 1, P.GOLD.darkened(0.4))
+			R.call(9, 6, 2, 1, P.GOLD.darkened(0.4))
+		"sevens":
+			# A gold 7.
+			R.call(2, 2, 8, 2, P.GOLD)
+			R.call(7, 4, 2, 2, P.GOLD)
+			R.call(6, 6, 2, 2, P.GOLD)
+			R.call(5, 8, 2, 3, P.GOLD)
+		"satin_gloves":
+			# A white glove.
+			R.call(3, 5, 6, 6, P.CREAM)
+			for i in range(4):
+				R.call(3 + i * 2 - (1 if i == 0 else 0), 1 + (i % 2), 1 + (1 if i == 0 else 0), 4, P.CREAM)
+			R.call(3, 9, 6, 1, P.DIM)
+		"loan":
+			# A banknote with an IOU stripe.
+			R.call(1, 3, 10, 6, P.GOOD.darkened(0.3))
+			R.call(2, 4, 8, 4, P.GOOD.darkened(0.1))
+			R.call(4, 5, 4, 2, P.WOOD_DARK)
+			R.call(1, 9, 10, 1, P.CYAN)
 		"dealer_signature":
 			R.call(2, 9, 9, 1, P.CREAM)
 			for i in range(5):
@@ -148,9 +209,10 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 			ci.draw_arc(c, 5 * s, -PI, 0, 10, P.GOLD, 2.0 * s, false)
 			R.call(5, 5, 2, 6, P.GOLD)
 		"reroll":
-			R.call(1, 1, 10, 10, P.CREAM)
-			for p in [[3, 3], [7, 3], [5, 5], [3, 7], [7, 7]]:
-				R.call(p[0], p[1], 2, 2, P.BLACK)
+			# Refresh symbol: an open circular arrow, arrowhead at the top right.
+			ci.draw_arc(c, 4 * s, -PI * 0.1, PI * 1.5, 16, P.CREAM, 2.0 * s, false)
+			var e := c + Vector2(0, -4) * s
+			ci.draw_colored_polygon(PackedVector2Array([e + Vector2(0, -3) * s, e + Vector2(0, 3) * s, e + Vector2(3.5, 0) * s]), P.CREAM)
 		"stack":
 			for i in range(4):
 				R.call(2, 9 - i * 2, 8, 2, [P.CREAM, P.RED, P.CREAM, P.RED][i])
@@ -183,6 +245,18 @@ static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
 			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
 		"wildcard_zero":
 			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
+		"bridge":
+			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
+		"mirror":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
+		"porch_light":
+			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 3)), col)
+			ci.draw_rect(Rect2(o + Vector2(0, 3), Vector2(4, 1)), col)
+		"kingmaker":
+			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 2)), col)
+			ci.draw_rect(Rect2(o, Vector2(1, 2)), col)
+			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 2)), col)
 		_:
 			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 2)), col)
 
@@ -207,3 +281,16 @@ static func text(ci: CanvasItem, font: Font, pos: Vector2, s: String, size: int,
 	p = p.round()
 	ci.draw_string(font, p + Vector2(1, 1), s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0, 0, 0, 0.7 * col.a))
 	ci.draw_string(font, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, col)
+
+
+## Centred neon lettering in the title font with a soft glow. `on` < 1 dims it (flicker).
+static func neon(ci: CanvasItem, centre: Vector2, s: String, size: int, col: Color, alpha: float = 1.0, on: float = 1.0) -> void:
+	var font := P.title_font()
+	var w := font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var p := (centre - Vector2(w / 2.0, -size / 2.0)).round()
+	var lit: Color = col.lerp(col.darkened(0.7), 1.0 - on)
+	if on > 0.5:
+		for d in [Vector2(-2, 0), Vector2(2, 0), Vector2(0, -2), Vector2(0, 2)]:
+			ci.draw_string(font, p + d, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(col, 0.18 * alpha * on))
+	ci.draw_string(font, p + Vector2(1, 1), s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0, 0, 0, 0.6 * alpha))
+	ci.draw_string(font, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(lit, alpha))

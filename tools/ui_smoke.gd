@@ -28,9 +28,16 @@ func _process(delta: float) -> void:
 			run.place_bet("S17", 5)
 			run.place_bet("DOZ2", 5)
 			run.place_bet("RED", 3)],
+		[2.5, func():
+			_close_dialogue()
+			main.profile.settings.cb_marks = true
+			main.screens.table.refresh()],
 		[2.6, func(): shot("04_table_bets")],
 		[2.7, func(): main.screens.table._on_spin()],
 		[4.8, func(): shot("05a_counting")],
+		[6.2, func():
+			main.last_clear = {"take": 12.0, "target": 8, "table": 0, "spins_left": 3, "comps": 1, "reward": 7}
+			main.screens.table._show_tally()],
 		[7.0, func(): shot("05_after_spin")],
 		[7.1, func():
 			var guard := 0
@@ -40,33 +47,89 @@ func _process(delta: float) -> void:
 				run.spin(17)
 			run.cash = 40
 			main.route()],
+		[9.5, func(): _close_dialogue()],
 		[9.6, func(): shot("06_shop")],
-		[9.7, func():
+		[9.8, func(): _staff(["cashier", "fence"])],
+		[10.0, func(): shot("06b_shop_fence")],
+		[10.1, func(): _staff(["cashier", "loan_shark"])],
+		[10.3, func(): shot("06c_shop_loan_shark")],
+		[10.4, func():
+			main.run.overflow = 14
+			_staff(["cashier", "dealer"])],
+		[10.55, func(): shot("06d_shop_dealer")],
+		[10.6, func(): _staff(["cashier", "pit_boss"])],
+		[10.7, func():
 			for i in range(run.shop.stock.size()):
 				if run.shop.stock[i].type == "upgrade":
 					run.buy(i)
 			main.screens.shop.refresh()],
-		[10.0, func(): shot("07_shop_upgrade_target")],
-		[10.1, func():
+		[11, func(): shot("07_shop_upgrade_target")],
+		[11.1, func():
 			if run.shop.pending_upgrade != "":
 				run.apply_upgrade(run.upgrade_targets()[0])
 			run.table_idx = 2
 			run.leave_shop()
 			main.route()],
-		[10.9, func(): shot("08_enforcer")],
-		[11.0, func():
+		[11.9, func(): shot("08_enforcer")],
+		[12, func():
 			_close_dialogue()
 			run.table.spins_left = 1
 			run.spin(_empty_pocket(run))
 			main.route()],
-		[14.4, func(): shot("09_game_over")],
-		[14.5, func(): main.show_screen("pawn")],
-		[14.8, func(): shot("10_pawn")],
-		[15.0, func(): get_tree().quit()],
+		[15.4, func(): shot("09_game_over")],
+		[15.5, func(): main.show_screen("pawn")],
+		[15.8, func(): shot("10_pawn")],
+		[16.0, func(): main.show_screen("journal")],
+		[16.2, func(): shot("10b_journal")],
+		[16.3, func(): main.show_screen("options")],
+		[16.5, func(): shot("10c_options")],
+		[16.7, func():
+			main.fast_ui = false
+			main.show_screen("card")],
+		[19.4, func(): shot("11_title_card")],
+		[19.5, func():
+			main.screens.card.done = true
+			main.go("title", "NIGHT 2", "High Roller table  -  pay 28")],
+		[20.1, func(): shot("12_loading_card")],
+		[21.4, func():
+			main.profile.feats = ["straight_up", "jackpot", "beat_sal"]
+			main.show_screen("feats")
+			main.fx.toast("FEAT: STRAIGHT UP", "+1 Marker")],
+		[21.799999999999997, func(): shot("13_feats")],
+		[22.0, func():
+			main.profile.seen_items = ["perm", "magnet", "gilded", "la_partage", "patience"]
+			main.profile.used_items = ["perm"]
+			main.screens.feats.tab = "almanac"
+			main.screens.feats.refresh()],
+		[22.3, func(): shot("14_almanac")],
+		[22.5, func():
+			main.show_screen("title")
+			main.say([{"speaker": "Mr. Vance", "text": "Portrait check."}])],
+		[22.8, func(): shot("15_portrait_vance")],
+		[22.9, func():
+			main.dialogue.lines = [{"speaker": "Dolores", "text": "Portrait check."}]
+			main.dialogue.idx = 0
+			main.dialogue._show_line()],
+		[23.2, func(): shot("16_portrait_dolores")],
+		[23.3, func():
+			main.dialogue.lines = [{"speaker": "Madame Oro", "text": "Portrait check."}]
+			main.dialogue._show_line()],
+		[23.6, func(): shot("17_portrait_oro")],
+		[23.8, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
 		step += 1
+
+
+## Put specific vendors in the Cage (for screenshots of each window).
+func _staff(vendors: Array) -> void:
+	var run = main.run
+	if not "fence" in run.unlocked:
+		run.unlocked.append("fence")
+	run.shop.vendors = vendors
+	run._restock()
+	main.screens.shop.refresh()
 
 
 func _close_dialogue() -> void:

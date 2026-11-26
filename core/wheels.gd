@@ -11,6 +11,8 @@ const AMERICAN_ORDER := [0, 28, 9, 26, 30, 11, 7, 20, 32, 17, 5, 22, 34, 15, 3, 
 	-1, 27, 10, 25, 29, 12, 8, 19, 31, 18, 6, 21, 33, 16, 4, 23, 35, 14, 2]
 const TRIPLE_ORDER := [0, 28, 9, 26, 30, 11, 7, 20, 32, 17, 5, 22, 34, 15, 3, 24, 36, 13, 1,
 	-1, 27, 10, 25, 29, 12, 8, 19, 31, 18, 6, 21, 33, 16, 4, 23, 35, 14, 2, -2]
+const NO_ZERO_ORDER := [32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10,
+	5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
 const MINI_ORDER := [0, 1, 4, 8, 7, 3, 10, 12, 5, 6, 11, 9, 2]
 
 ## Classic French call bets (by number set; used on every 36-number wheel).
@@ -48,9 +50,19 @@ const WHEELS := {
 		"rules": [], "cash": 0, "kit": [{"kind": "wildcard_zero", "value": 1}], "unlock": 6,
 		"desc": "0, 00 and 000. The worst odds in the casino, but zero chips trigger three times as often.",
 	},
+	"sunrise": {
+		"name": "Sunrise Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
+		"rules": ["momentum"], "cash": 0, "kit": [{"kind": "kingmaker", "value": 1}], "unlock": 5, "target": 1.15,
+		"desc": "The last wheel before dawn. Momentum built in and a Kingmaker to start, but payments are 15% bigger.",
+	},
+	"no_zero": {
+		"name": "Cheater's Wheel", "numbers": 36, "zeros": [], "order": NO_ZERO_ORDER, "red": RED_36,
+		"rules": [], "cash": 0, "kit": [], "unlock": 8, "target": 1.35,
+		"desc": "No zero at all: every bet is perfectly fair. Mr. Vance makes up for it with payments 35% bigger.",
+	},
 }
 
-const ORDER := ["french", "european", "american", "mini", "triple_zero"]
+const ORDER := ["french", "european", "american", "mini", "triple_zero", "sunrise", "no_zero"]
 
 
 static func get_def(id: String) -> Dictionary:

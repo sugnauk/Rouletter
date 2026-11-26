@@ -6,18 +6,24 @@ const P := preload("res://scenes/ui/palette.gd")
 const DialogueBox := preload("res://scenes/ui/dialogue_box.gd")
 const Backdrop := preload("res://scenes/ui/backdrop.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
+const Transition := preload("res://scenes/ui/transition.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 const Profile := preload("res://core/profile.gd")
+const Feats := preload("res://core/feats.gd")
 
 const SCREENS := {
+	"card": preload("res://scenes/screens/card_screen.gd"),
 	"title": preload("res://scenes/screens/title_screen.gd"),
 	"select": preload("res://scenes/screens/select_screen.gd"),
 	"table": preload("res://scenes/screens/table_screen.gd"),
 	"shop": preload("res://scenes/screens/shop_screen.gd"),
 	"end": preload("res://scenes/screens/end_screen.gd"),
 	"pawn": preload("res://scenes/screens/pawn_screen.gd"),
+	"journal": preload("res://scenes/screens/journal_screen.gd"),
+	"options": preload("res://scenes/screens/options_screen.gd"),
+	"feats": preload("res://scenes/screens/feats_screen.gd"),
 }
 
 var run
@@ -29,10 +35,14 @@ var current: String = ""
 var dialogue
 var fx
 var crt: CanvasLayer
+var transition
+var fast_ui := false
 var shake_t := 0.0
 var shake_amt := 0.0
 var pending_lines: Array = []
 var last_summary: Dictionary = {}
+var last_clear: Dictionary = {}    ## the last table_cleared info, for the reward tally
+var run_feats: Array = []          ## Feats earned during the current run (end screen)
 
 
 func _ready() -> void:
@@ -42,6 +52,7 @@ func _ready() -> void:
 	if game != null:
 		run = game.run
 		profile = game.profile
+		fast_ui = game.fast_ui
 	else:
 		run = RunState.new()
 		profile = Profile.new()
@@ -77,10 +88,16 @@ func _ready() -> void:
 	rect.material = mat
 	crt.add_child(rect)
 	add_child(crt)
+	crt.visible = profile.settings.crt
+	var tl := CanvasLayer.new()
+	tl.layer = 9
+	transition = Transition.new()
+	tl.add_child(transition)
+	add_child(tl)
 	run.changed.connect(_on_run_changed)
 	run.table_cleared.connect(_on_table_cleared)
 	run.run_ended.connect(_on_run_ended)
-	show_screen("title")
+	show_screen("title" if fast_ui else "card")
 
 
 func _recenter() -> void:
@@ -98,21 +115,94 @@ func show_screen(n: String) -> void:
 	current = n
 	screens[n].visible = true
 	screens[n].call("refresh")
+	if n == "table" or n == "shop":
+		save_run()
+
+
+# --- Run saves: the run in progress is kept next to the profile ---------------------------
+
+func run_save_path() -> String:
+	return profile.save_path.get_basename() + "_run.save"
+
+
+func save_run() -> void:
+	if not fast_ui or profile.save_path != Profile.DEFAULT_PATH:
+		run.save_to(run_save_path())
+
+
+func has_saved_run() -> bool:
+	return FileAccess.file_exists(run_save_path())
+
+
+func delete_saved_run() -> void:
+	if has_saved_run():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(run_save_path()))
+
+
+func continue_run() -> void:
+	if run.load_from(run_save_path()):
+		run_feats = []
+		Sfx.play("click")
+		route()
+	else:
+		delete_saved_run()
+		screens.title.refresh()
+
+
+## Switch screens behind a themed loading card (title + subtitle), or instantly when the
+## card is empty or the UI runs in fast mode. Queued story lines play once the card lifts.
+func go(n: String, title: String = "", subtitle: String = "", accent: Color = P.GOLD, who: String = "") -> void:
+	if title == "" or fast_ui or not profile.settings.cards:
+		show_screen(n)
+		_flush_lines()
+		return
+	transition.play(title, subtitle, func():
+		show_screen(n)
+		_flush_lines.call_deferred(), accent, who)
+
+
+func _flush_lines() -> void:
+	if not pending_lines.is_empty():
+		var lines := pending_lines
+		pending_lines = []
+		say(lines)
+
+
+## The card shown before a table: night and table name, or the Enforcer's name and rule.
+func table_card() -> Array:
+	if run.table.boss:
+		var e: Dictionary = Content.ENFORCERS[run.table.enforcer]
+		return ["NIGHT %d" % (run.night + 1), "%s  -  %s" % [e.name, e.desc], P.DANGER if not e.get("final", false) else P.GOLD, e.name]
+	if run.upstairs() and run.table_idx == 0:
+		return ["NIGHT %d" % (run.night + 1), "The Floor Above  -  %s  -  pay %d" % [run.table_name(), run.table.target], P.VIOLET]
+	if run.table_idx == 0:
+		return ["NIGHT %d" % (run.night + 1), "%s table  -  pay %d  -  marker $%s left" % [run.table_name(), run.table.target, P.money(run.marker_left())], P.GOLD]
+	return ["NIGHT %d" % (run.night + 1), "%s table  -  pay %d" % [run.table_name(), run.table.target], P.GOLD]
 
 
 ## Go wherever the run's phase says, then play any queued story lines.
 func route() -> void:
 	match run.phase:
 		RunState.Phase.TABLE:
-			show_screen("table")
+			var card := table_card()
+			go("table", card[0], card[1], card[2], card[3] if card.size() > 3 else "")
 		RunState.Phase.SHOP:
-			show_screen("shop")
+			var names := []
+			if Story.TUTORIAL.shop.id not in profile.seen_beats:
+				_queue_scene(Story.TUTORIAL.shop)
+			for it in run.shop.stock:
+				profile.note_seen(it.id)
+			for v in run.shop.vendors:
+				names.append(Content.VENDORS[v].name)
+				var intro: Dictionary = Story.VENDOR_INTROS.get(v, {})
+				if not intro.is_empty() and intro.id not in profile.seen_beats:
+					_queue_scene(intro)
+			go("shop", "THE CAGE", " and ".join(names) + " are open", P.GOLD)
 		_:
-			show_screen("end")
-	if not pending_lines.is_empty():
-		var lines := pending_lines
-		pending_lines = []
-		say(lines)
+			if run.phase == RunState.Phase.VICTORY:
+				go("end", "THE OWNER FALLS" if run.acts == 2 else "PAID IN FULL", "The Floor Above is yours, for tonight" if run.acts == 2 else "Mr. Vance almost smiles", P.GOOD)
+			else:
+				go("end", "LAST CALL", "The marker stays on the books", P.DANGER)
 
 
 func begin_flow() -> void:
@@ -125,22 +215,59 @@ func begin_flow() -> void:
 		show_screen("select")
 
 
-func start_run(wheel: String) -> void:
-	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked)
+func start_run(wheel: String, acts: int = 1) -> void:
+	run.start_run(int(Time.get_unix_time_from_system()) ^ randi(), wheel, profile.unlocked, acts)
+	run_feats = []
 	Sfx.play("click")
-	show_screen("table")
+	if Story.TUTORIAL.table.id not in profile.seen_beats:
+		_queue_scene(Story.TUTORIAL.table)
+	var card := table_card()
+	go("table", card[0], card[1], card[2], card[3] if card.size() > 3 else "")
+
+
+## Check Feats for an event and pay out any newly earned ones.
+func check_feats(event: String, ctx: Dictionary) -> void:
+	ctx.run = run
+	var got := Feats.check(event, ctx, profile.feats)
+	if got.is_empty():
+		return
+	for id in got:
+		var f: Dictionary = Feats.FEATS[id]
+		profile.feats.append(id)
+		profile.markers += f.reward
+		run_feats.append(id)
+		fx.toast("FEAT: " + f.name.to_upper(), "+%d Marker%s" % [f.reward, "" if f.reward == 1 else "s"])
+	save_profile()
 
 
 func _on_table_cleared(info: Dictionary) -> void:
+	last_clear = info
+	check_feats("clear", {"info": info})
 	if info.boss:
 		var e: Dictionary = Content.ENFORCERS[info.enforcer]
 		pending_lines.append({"speaker": e.name, "text": e.defeat})
+		if run.phase == RunState.Phase.SHOP:
+			_queue_scene(Story.interlude(run.night + 1, profile))
+
+
+## Queue a story scene to play after the next loading card, and remember it for the Journal.
+func _queue_scene(scene: Dictionary) -> void:
+	if scene.is_empty():
+		return
+	pending_lines.append_array(scene.lines)
+	if scene.id not in profile.seen_beats:
+		profile.seen_beats.append(scene.id)
+		save_profile()
 
 
 func _on_run_ended(won: bool) -> void:
-	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won)
+	delete_saved_run()
+	check_feats("end", {"won": won})
+	var paid: int = run.marker_paid()
+	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
-		"paid": res.paid, "markers": res.markers}
+		"paid": paid, "marker": run.marker_total(), "markers": res.markers, "feats": run_feats.duplicate(),
+		"best_spin": run.best_spin, "beaten": run.beaten.duplicate()}
 	save_profile()
 
 
@@ -149,6 +276,8 @@ func say(lines: Array, done: Callable = Callable()) -> void:
 
 
 func shake(amount: float, t: float = 0.3) -> void:
+	if not profile.settings.shake:
+		return
 	shake_amt = amount
 	shake_t = t
 
@@ -169,9 +298,18 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_F2:
-			crt.visible = not crt.visible
+			set_option("crt", not profile.settings.crt)
 		elif event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
 			toggle_fullscreen()
+
+
+## Change one option, apply it straight away and save it.
+func set_option(key: String, value: bool) -> void:
+	profile.settings[key] = value
+	crt.visible = profile.settings.crt
+	save_profile()
+	if screens.has(current) and screens[current].visible:
+		screens[current].call("refresh")
 
 
 func toggle_fullscreen() -> void:

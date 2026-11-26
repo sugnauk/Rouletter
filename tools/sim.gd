@@ -1,6 +1,7 @@
 extends SceneTree
-## Headless balancing sim:  godot --headless --path . --script res://tools/sim.gd [-- runs=200 all]
-##   all  -> bot plays with every unlock (default: starting pool only)
+## Headless balancing sim:  godot --headless --path . --script res://tools/sim.gd [-- runs=200 all act=2]
+##   all    -> bot plays with every unlock (default: starting pool only)
+##   act=2  -> Act II runs (8 nights, ending at the Owner)
 ## Prints clear rates per table for each wheel, using a simple greedy bot.
 
 const Board := preload("res://core/board.gd")
@@ -14,11 +15,14 @@ const Profile := preload("res://core/profile.gd")
 func _initialize() -> void:
 	var runs := 200
 	var all := false
+	var acts := 1
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("runs="):
 			runs = int(a.substr(5))
 		elif a == "all":
 			all = true
+		elif a.begins_with("act="):
+			acts = int(a.substr(4))
 	var unlocks := Profile.default_unlocks()
 	if all:
 		for e in Profile.catalogue():
@@ -30,21 +34,22 @@ func _initialize() -> void:
 		print("  %-12s pockets %2d  even-money EV/unit %+.4f" % [id, f.board.pockets.size(), Resolver.expected_value(f).net / 2.0])
 	print("== Bot runs (%d per wheel, %s pool) ==" % [runs, "full" if all else "starting"])
 	for id in Wheels.ORDER:
-		sim_wheel(id, runs, unlocks)
+		sim_wheel(id, runs, unlocks, acts)
 	quit()
 
 
-func sim_wheel(wheel: String, runs: int, unlocks: Array) -> void:
+func sim_wheel(wheel: String, runs: int, unlocks: Array, acts: int = 1) -> void:
 	var reached := []
 	var cleared := []
-	reached.resize(Content.NIGHTS * 3)
-	cleared.resize(Content.NIGHTS * 3)
+	var n: int = Content.NIGHTS if acts == 1 else Content.ACT2_NIGHTS
+	reached.resize(n * 3)
+	cleared.resize(n * 3)
 	reached.fill(0)
 	cleared.fill(0)
 	var wins := 0
 	for s in range(runs):
 		var run = RunState.new()
-		run.start_run(5000 + s, wheel, unlocks)
+		run.start_run(5000 + s, wheel, unlocks, acts)
 		var guard := 0
 		while guard < 400:
 			guard += 1
@@ -117,7 +122,7 @@ func place_inventory(run) -> void:
 func bot_shop(run) -> void:
 	for i in range(run.shop.stock.size()):
 		var item: Dictionary = run.shop.stock[i]
-		if not item.sold and run.cash >= item.price:
+		if not item.sold and item.type != "loan" and run.can_afford(item):
 			run.buy(i)
 			if run.shop.pending_upgrade != "":
 				var t: Array = run.upgrade_targets()
