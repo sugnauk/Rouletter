@@ -344,12 +344,12 @@ func unbet(key: String, amount: int) -> int:
 
 
 ## Pick up every betting chip on the felt (permanent chips stay put).
-func clear_bets() -> bool:
+func clear_bets(keep: Array = []) -> bool:
 	if phase != Phase.TABLE or is_called_spin():
 		return false
 	var got := false
 	for c in felt.chips.duplicate():
-		if c.is_bet():
+		if c.is_bet() and not c.bet in keep:
 			table.stack += c.value
 			felt.remove(c.id)
 			got = true

@@ -16,6 +16,7 @@ var dim := false
 var rarity := "common"       ## "rare" (cyan frame) / "legendary" (shimmering gold frame)
 var level := 0               ## > 1: a "LV n" tag on the token
 var hover_target: Callable
+var hover_exit: Callable      ## optional: called when the pointer leaves
 
 
 func _init(id: String = "", sz: Vector2 = Vector2(24, 24)) -> void:
@@ -28,7 +29,10 @@ func _init(id: String = "", sz: Vector2 = Vector2(24, 24)) -> void:
 		if hover_target.is_valid():
 			hover_target.call(hover_text)
 		queue_redraw())
-	mouse_exited.connect(queue_redraw)
+	mouse_exited.connect(func():
+		if hover_exit.is_valid():
+			hover_exit.call()
+		queue_redraw())
 
 
 func _draw() -> void:

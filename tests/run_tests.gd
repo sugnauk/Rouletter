@@ -12,6 +12,7 @@ const RunState := preload("res://core/run_state.gd")
 const Profile := preload("res://core/profile.gd")
 const Story := preload("res://core/story.gd")
 const Feats := preload("res://core/feats.gd")
+const Preview := preload("res://core/preview.gd")
 
 var passed := 0
 var failed := 0
@@ -25,7 +26,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -890,6 +891,37 @@ func test_trigger_chips() -> void:
 	near(Resolver.resolve_spin(lv, 3).take, 6.0, "trigger rewards scale with level")
 	check(Content.CHIPS.size() >= 50, "50 chips (%d)" % Content.CHIPS.size())
 	check(Content.HOUSE_RULES.size() >= 25, "25 House Rules (%d)" % Content.HOUSE_RULES.size())
+
+
+func test_preview() -> void:
+	var f = felt("european", [["bet", "S17", 1]])
+	var fa := Preview.fires_at(f, 17)
+	check("S17" in fa.keys and fa.take > 30.0, "fires_at: the straight scores on its pocket")
+	check(Preview.fires_at(f, 5).keys.is_empty(), "fires_at: a miss lights nothing")
+	var odd := Preview.pays_on(f, "odd_fellow", "S10")
+	check(odd.size() == 19 and odd.all(func(p): return p % 2 == 1 or p == 10), "pays_on: Odd Fellow pays on the 18 odd pockets and its own square (%s)" % str(odd))
+	check(Preview.absolute_trigger("odd_fellow") and not Preview.absolute_trigger("bet"), "absolute triggers")
+	check(Preview.clearing_pockets(f, 20.0) == [17], "clearing_pockets: only 17 pays 20")
+	check(Preview.clearing_pockets(f, 0.0).is_empty(), "nothing to clear once paid")
+	check(Preview.ev_gain_chip(f, "odd_fellow", "S10") > 0.5, "ev gain of a trigger chip is positive")
+	check(Preview.rep_key(f, "bet") == "S1", "rep key defaults to a straight")
+	var before: float = Resolver.resolve_spin(f, 17).take
+	Preview.pays_on(f, "odd_fellow", "S10")
+	near(Resolver.resolve_spin(f, 17).take, before, "previews never mutate the felt")
+
+
+func test_pinned_clear() -> void:
+	var run = new_run()
+	run.place_bet("S17", 3)
+	run.place_bet("RED", 2)
+	check(run.clear_bets(["S17"]) and run.felt.value_on("S17") == 3 and run.felt.value_on("RED") == 0, "Clear keeps pinned bets")
+	run.last_bets = {"S17": 3, "RED": 2}
+	var h := Preview.cage_hints(run, {"type": "chip", "id": "odd_fellow"})
+	check(h.pockets.size() >= 18 and h.lines.size() == 1, "Cage hint for an absolute trigger lights its pockets %s %s" % [str(h), str(run.felt.chips.map(func(c): return [c.kind, c.bet]))])
+	var hr := Preview.cage_hints(run, {"type": "rule", "id": "red_streak"})
+	check(hr.lines.size() == 1, "Cage hint for a rule uses the last layout: %s" % str(hr.lines))
+	var hm := Preview.cage_hints(run, {"type": "chip", "id": "magnet"})
+	check(hm.lines.size() <= 1, "Cage hint for a placed chip picks a best bet")
 
 
 func test_new_rules() -> void:

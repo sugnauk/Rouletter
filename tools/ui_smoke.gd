@@ -36,10 +36,12 @@ func _process(delta: float) -> void:
 		[2.5, func():
 			_close_dialogue()
 			main.profile.settings.cb_marks = true
+			main.screens.table.pinned = {"RED": true}
 			main.screens.table.refresh()],
 		[2.6, func(): main.screens.table._zoom()],
 		[2.8, func(): shot("04z_zoomed_felt")],
 		[2.85, func(): main.screens.table._unzoom()],
+		[2.92, func(): main.screens.table._on_hover("S17")],
 		[3, func(): shot("04_table_bets")],
 		[3.1, func(): main.screens.table._on_spin()],
 		[5.2, func(): shot("05a_counting")],
@@ -61,9 +63,17 @@ func _process(delta: float) -> void:
 		[10.15, func(): shot("06e_shop_cashier_only")],
 		[10.2, func():
 			var it: Dictionary = main.run.shop.stock[0]
-			main.screens.shop._describe("%s  -  CHIP  %s" % [main.run.item_name(it), main.run.price_text(it)], main.run.item_desc(it) + "\nYou own one: stack this on it to level it up.\nWorks with your Magnet, Gilded Number.\nGood against Big Sal at the next table.")],
+			var ch: Dictionary = preload("res://core/preview.gd").cage_hints(run, {"type": "chip", "id": "odd_fellow"})
+			var fv = main.screens.shop.felt_view
+			fv.preview = {}
+			for p in ch.pockets:
+				fv.preview["S%d" % p] = Color("#5fd3d3")
+			fv.queue_redraw()
+			main.screens.shop._describe("%s  -  CHIP  %s" % [main.run.item_name(it), main.run.price_text(it)], main.run.item_desc(it) + "\nWorks with your Magnet, Gilded Number.\n" + "\n".join(ch.lines))],
 		[10.35, func(): shot("06f_shop_hover")],
-		[10.5, func(): _staff(["cashier", "fence"])],
+		[10.5, func():
+			main.screens.shop.felt_view.preview = {}
+			_staff(["cashier", "fence"])],
 		[10.7, func(): shot("06b_shop_fence")],
 		[10.8, func(): _staff(["cashier", "loan_shark"])],
 		[11, func(): shot("06c_shop_loan_shark")],

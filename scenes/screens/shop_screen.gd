@@ -9,6 +9,7 @@ const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 const FeltView := preload("res://scenes/ui/felt_view.gd")
+const Preview := preload("res://core/preview.gd")
 const Token := preload("res://scenes/ui/token_button.gd")
 
 const CAGE := Rect2(8, 28, 288, 150)
@@ -321,7 +322,18 @@ func _build_windows(run) -> void:
 					body += "\nYou own one: stack this on it to level it up."
 				for h in run.item_hints(item):
 					body += "\n" + h
+				if not item.sold:
+					var ch := Preview.cage_hints(run, item)
+					for h in ch.lines:
+						body += "\n" + h
+					felt_view.preview = {}
+					for p in ch.pockets:
+						felt_view.preview[Board.straight_key(p)] = P.CYAN
+					felt_view.queue_redraw()
 				_describe("%s  -  %s  %s" % [run.item_name(item), tag, run.price_text(item)], body)
+			tok.hover_exit = func():
+				felt_view.preview = {}
+				felt_view.queue_redraw()
 			tok.pressed.connect(_buy.bind(i))
 			row.add_child(tok)
 

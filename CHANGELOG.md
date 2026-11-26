@@ -3,6 +3,18 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.19
+- See your build on the felt:
+  - Hover a square to light every bet and chip that would score if it hits, with the Take it would add.
+  - Holding a chip from your rack, hover the felt to see every pocket it would pay on from there.
+  - Hovering a chip in your rack lights the pockets it pays on, for chips that don't care where they sit.
+- The payment is the star of the HUD: "TAKE 3 / 8   NEED 5". Before you spin, any bet that would pay the rest of the table on one hit gets a pulsing gold ring.
+- Quicker layout edits:
+  - Shift-click takes back one chip of your bet size.
+  - Ctrl-click a dozen, column, red/black or other outside box to clear every bet inside it.
+  - Alt-click pins a bet (a small red pin), so Clear leaves it on the felt.
+- The Cage reads your build. Hovering an item shows what it adds to your felt and last layout, e.g. "With your last layout: +1.4 Take a spin". A trigger chip lights the pockets it pays on, and a placed chip names your best bet to put it on.
+
 ## 0.0.18
 - Feats that tell a story, announced the moment they happen:
   - Paid in the Nick of Time: pay an Enforcer with your last ball.
