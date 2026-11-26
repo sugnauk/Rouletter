@@ -3,6 +3,11 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.7
+- Pause menu (Esc, or the MENU button at the table and in the Cage): Resume, Options, Abandon run (two clicks; counts as a loss), Quit to title (your run is kept for Continue).
+- Options: Reset progress (two clicks; keeps your options), and a Credits screen.
+- Run history: your last 10 runs on a new HISTORY tab of the Feats screen.
+
 ## 0.0.6
 - Balance: nights 2-4 ask a little more (8 / 21 / 52 / 96, Act II raised to match); Mini wheel payments x1.05 (was 1.15), Cheater's x1.25 (was 1.35).
 - The balance bot now places Bridges on corners, skips zero chips on zero-less wheels, buys Dealer perks and only pays the Pit Boss when its stack can take it.

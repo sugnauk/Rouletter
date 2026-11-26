@@ -19,6 +19,8 @@ var best_take: int = 0       ## best single-run Take (a stat)
 var feats: Array = []        ## Feats earned (core/feats.gd)
 var seen_items: Array = []   ## Almanac: content ids that have appeared in the Cage
 var used_items: Array = []   ## Almanac: content ids you have bought
+var history: Array = []      ## the last runs, newest first: {wheel, acts, nights, take, best_spin, won}
+const HISTORY_MAX := 10
 var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
@@ -79,6 +81,19 @@ func next_unlock() -> Dictionary:
 	return {}
 
 
+func add_history(entry: Dictionary) -> void:
+	history.push_front(entry)
+	while history.size() > HISTORY_MAX:
+		history.pop_back()
+
+
+## Start over: everything except the options goes back to a fresh profile.
+func reset() -> void:
+	var keep: Dictionary = settings.duplicate()
+	from_dict({})
+	settings = keep
+
+
 func note_seen(id: String) -> void:
 	if id not in seen_items:
 		seen_items.append(id)
@@ -115,7 +130,7 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 func to_dict() -> Dictionary:
 	return {"markers": markers, "unlocked": unlocked, "seen_beats": seen_beats,
 		"runs": runs, "wins": wins, "best_night": best_night,
-		"total_paid": total_paid, "best_take": best_take, "feats": feats, "seen_items": seen_items, "used_items": used_items, "act2_runs": act2_runs, "act2_wins": act2_wins, "settings": settings}
+		"total_paid": total_paid, "best_take": best_take, "feats": feats, "seen_items": seen_items, "used_items": used_items, "history": history, "act2_runs": act2_runs, "act2_wins": act2_wins, "settings": settings}
 
 
 func from_dict(d: Dictionary) -> void:
@@ -133,6 +148,7 @@ func from_dict(d: Dictionary) -> void:
 	feats = d.get("feats", [])
 	seen_items = d.get("seen_items", [])
 	used_items = d.get("used_items", [])
+	history = d.get("history", [])
 	act2_runs = int(d.get("act2_runs", 0))
 	act2_wins = int(d.get("act2_wins", 0))
 	settings = DEFAULT_SETTINGS.duplicate()

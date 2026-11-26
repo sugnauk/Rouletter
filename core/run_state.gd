@@ -470,6 +470,16 @@ func _clear_table() -> void:
 	table_cleared.emit(info)
 
 
+## Walk away mid-run: counts as a loss (Markers for nights already cleared are kept).
+func abandon() -> bool:
+	if phase != Phase.TABLE and phase != Phase.SHOP:
+		return false
+	if table.is_empty():
+		table = {"take": 0.0}
+	_lose("You walk away from the table. Mr. Vance keeps what's left of the marker.")
+	return true
+
+
 func _lose(why: String) -> void:
 	total_take += table.take
 	phase = Phase.GAME_OVER

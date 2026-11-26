@@ -108,6 +108,8 @@ func setup() -> void:
 	P.place(lb, Vector2(MID_X + 298, 186))
 
 	P.place(P.label(self, "BET CHIP", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 26))
+	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 12), P.FONT_SMALL)
+	P.place(mb, Vector2(RIGHT_X + 72, 24))
 	denom_box = HBoxContainer.new()
 	denom_box.add_theme_constant_override("separation", 4)
 	P.place(denom_box, Vector2(RIGHT_X, 36))

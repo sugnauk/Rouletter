@@ -7,6 +7,7 @@ const DialogueBox := preload("res://scenes/ui/dialogue_box.gd")
 const Backdrop := preload("res://scenes/ui/backdrop.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
 const Transition := preload("res://scenes/ui/transition.gd")
+const PauseMenu := preload("res://scenes/ui/pause_menu.gd")
 const Story := preload("res://core/story.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
@@ -24,6 +25,7 @@ const SCREENS := {
 	"journal": preload("res://scenes/screens/journal_screen.gd"),
 	"options": preload("res://scenes/screens/options_screen.gd"),
 	"feats": preload("res://scenes/screens/feats_screen.gd"),
+	"credits": preload("res://scenes/screens/credits_screen.gd"),
 }
 
 var run
@@ -36,6 +38,8 @@ var dialogue
 var fx
 var crt: CanvasLayer
 var transition
+var pause
+var options_return := ""   ## screen the Options screen goes back to (when opened mid-run)
 var fast_ui := false
 var shake_t := 0.0
 var shake_amt := 0.0
@@ -78,6 +82,9 @@ func _ready() -> void:
 	frame.add_child(fx)
 	dialogue = DialogueBox.new()
 	frame.add_child(dialogue)
+	pause = PauseMenu.new()
+	pause.main = self
+	frame.add_child(pause)
 	crt = CanvasLayer.new()
 	crt.layer = 10
 	var rect := ColorRect.new()
@@ -288,6 +295,8 @@ func _on_run_ended(won: bool) -> void:
 	delete_saved_run()
 	check_feats("end", {"won": won})
 	var paid: int = run.marker_paid()
+	profile.add_history({"wheel": run.wheel_id, "acts": run.acts, "nights": run.nights_cleared,
+		"take": int(run.total_take), "best_spin": int(run.best_spin), "won": won})
 	var res: Dictionary = profile.record_run(run.nights_cleared, run.total_take, won, run.acts, paid)
 	last_summary = {"won": won, "take": run.total_take, "nights": run.nights_cleared,
 		"paid": paid, "marker": run.marker_total(), "markers": res.markers, "feats": run_feats.duplicate(),
@@ -321,10 +330,56 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_F2:
+		if event.keycode == KEY_ESCAPE and in_run() and not pause.visible and not dialogue.is_open():
+			open_pause()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_F2:
 			set_option("crt", not profile.settings.crt)
 		elif event.keycode == KEY_F11 or (event.keycode == KEY_ENTER and event.alt_pressed):
 			toggle_fullscreen()
+
+
+# --- Pause menu ------------------------------------------------------------------------
+
+func in_run() -> bool:
+	return current in ["table", "shop"] and (run.phase == RunState.Phase.TABLE or run.phase == RunState.Phase.SHOP)
+
+
+func open_pause() -> void:
+	if current == "table" and screens.table.spinning:
+		return
+	pause.open()
+
+
+## Options, remembering where to go back to.
+func open_options(from_run: bool = false) -> void:
+	options_return = current if from_run else "title"
+	show_screen("options")
+
+
+func close_options() -> void:
+	var back := options_return if options_return != "" else "title"
+	options_return = ""
+	if back == "table" or back == "shop":
+		show_screen(back)
+	else:
+		show_screen("title")
+
+
+func reset_progress() -> void:
+	profile.reset()
+	delete_saved_run()
+	save_profile()
+
+
+func quit_to_title() -> void:
+	save_run()
+	go("title", "LAST ORDERS", "Your seat is kept for you", P.GOLD)
+
+
+func abandon_run() -> void:
+	if run.abandon():
+		route()
 
 
 ## Change one option, apply it straight away and save it.

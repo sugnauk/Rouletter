@@ -30,7 +30,7 @@ func setup() -> void:
 	continue_btn = P.button(menu, "Continue Run", func(): main.continue_run(), Vector2(140, 20))
 	for b in [["New Run", func(): main.begin_flow()], ["Pawn Shop", func(): main.show_screen("pawn")],
 			["Journal", func(): main.show_screen("journal")], ["Feats", func(): main.show_screen("feats")],
-			["Options", func(): main.show_screen("options")], ["Quit", func(): get_tree().quit()]]:
+			["Options", func(): main.open_options()], ["Quit", func(): get_tree().quit()]]:
 		P.button(menu, b[0], b[1], Vector2(140, 20))
 	P.place(P.label(self, "F2: CRT filter    F11: fullscreen", P.FONT_SMALL, P.DIM), Vector2(32, 340))
 	var ver := P.label(self, Version.label(), P.FONT_SMALL, P.CREAM)

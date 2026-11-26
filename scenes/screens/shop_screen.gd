@@ -59,6 +59,8 @@ func setup() -> void:
 	next_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	P.place(next_lbl, Vector2(8, 320), Vector2(200, 36))
 	var nb := P.button(self, "NEXT TABLE >", _next, Vector2(84, 30), P.FONT_SMALL)
+	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 14), P.FONT_SMALL)
+	P.place(mb, Vector2(594, 6))
 	nb.add_theme_stylebox_override("normal", P.box(Color("#b8862b"), P.BLACK, 1))
 	nb.add_theme_stylebox_override("hover", P.box(Color("#d9a63c"), P.CREAM, 1))
 	for s in ["font_color", "font_hover_color", "font_pressed_color"]:

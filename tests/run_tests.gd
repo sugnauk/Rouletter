@@ -24,7 +24,7 @@ func _initialize() -> void:
 		"test_link", "test_pinned_sector", "test_croupier", "test_ledger", "test_compounding_mint_respin",
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
-		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_shop", "test_lose_and_bust", "test_rent_control_target",
+		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_shop", "test_lose_and_bust", "test_rent_control_target",
 		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
@@ -672,6 +672,23 @@ func test_item_hints() -> void:
 	check(good.any(func(x): return x.begins_with("Good against The Accountant")), "inside chips flagged good against the Accountant")
 	for id in Content.TAGS:
 		check(Content.CHIPS.has(id) or Content.UPGRADES.has(id) or Content.HOUSE_RULES.has(id), "tagged item %s exists" % id)
+
+
+func test_abandon_reset_history() -> void:
+	var run = new_run()
+	var ended := []
+	run.run_ended.connect(func(w): ended.append(w))
+	check(run.abandon() and run.phase == RunState.Phase.GAME_OVER and ended == [false], "abandoning a run ends it as a loss")
+	check(not run.abandon(), "can't abandon twice")
+	var p = Profile.new()
+	p.markers = 9
+	p.feats = ["jackpot"]
+	p.settings.music = 0.2
+	for i in range(12):
+		p.add_history({"wheel": "european", "acts": 1, "nights": i, "take": 10, "best_spin": 5, "won": false})
+	check(p.history.size() == 10 and p.history[0].nights == 11, "history keeps the newest 10")
+	p.reset()
+	check(p.markers == 0 and p.feats.is_empty() and p.history.is_empty() and is_equal_approx(p.settings.music, 0.2), "reset wipes progress but keeps options")
 
 
 func test_shop() -> void:

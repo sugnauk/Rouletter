@@ -14,6 +14,8 @@ const ITEMS := [
 var main
 var buttons: Dictionary = {}
 var detail: Label
+var reset_btn: Button
+var reset_confirm := false
 
 
 func setup() -> void:
@@ -45,10 +47,16 @@ func setup() -> void:
 		buttons[v[0]] = [lbl, v[1]]
 		y += 30
 	P.place(P.label(self, "F11: fullscreen    Keys at the table: 1/2/3 chip size, Z undo, C clear, Space spin", P.FONT_SMALL, P.DIM), Vector2(16, y + 6))
-	P.place(P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 22)), Vector2(16, 326))
+	P.place(P.button(self, "Back", func(): main.close_options(), Vector2(80, 22)), Vector2(16, 326))
+	P.place(P.button(self, "Credits", func(): main.show_screen("credits"), Vector2(80, 22)), Vector2(104, 326))
+	reset_btn = P.button(self, "Reset progress", _reset, Vector2(140, 22))
+	P.place(reset_btn, Vector2(484, 326))
 
 
 func refresh() -> void:
+	reset_confirm = false
+	reset_btn.text = "Reset progress"
+	reset_btn.visible = main.options_return == "" or main.options_return == "title"
 	for k in buttons:
 		var val = main.profile.settings.get(k, false)
 		if val is bool:
@@ -56,6 +64,20 @@ func refresh() -> void:
 		else:
 			var bars := int(round(val * 10.0))
 			buttons[k][0].text = "%s  %s" % [buttons[k][1], "|".repeat(bars) + ".".repeat(10 - bars)]
+
+
+## Wipe Markers, unlocks, Feats, story and stats (options are kept). Two clicks.
+func _reset() -> void:
+	if not reset_confirm:
+		reset_confirm = true
+		reset_btn.text = "Really? Click again"
+		detail.text = "This wipes your Markers, unlocks, Feats, story pages and stats, and any saved run. Your options are kept."
+		Sfx.play("lose")
+		return
+	main.reset_progress()
+	reset_confirm = false
+	reset_btn.text = "Progress reset"
+	detail.text = "A clean slate. Mr. Vance doesn't remember you. Yet."
 
 
 func _nudge(key: String, d: float) -> void:

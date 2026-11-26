@@ -6,6 +6,7 @@ const P := preload("res://scenes/ui/palette.gd")
 const Art := preload("res://scenes/ui/art.gd")
 const Feats := preload("res://core/feats.gd")
 const Content := preload("res://core/content.gd")
+const Wheels := preload("res://core/wheels.gd")
 
 var main
 var count_lbl: Label
@@ -30,7 +31,7 @@ func setup() -> void:
 	scroll.add_child(list)
 	P.place(P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 22)), Vector2(16, 326))
 	tab_btn = P.button(self, "", func():
-		tab = "almanac" if tab == "feats" else "feats"
+		tab = {"feats": "almanac", "almanac": "history", "history": "feats"}[tab]
 		Sfx.play("click")
 		refresh(), Vector2(140, 22))
 	P.place(tab_btn, Vector2(484, 326))
@@ -39,10 +40,13 @@ func setup() -> void:
 func refresh() -> void:
 	for c in list.get_children():
 		c.queue_free()
-	tab_btn.text = "ALMANAC >" if tab == "feats" else "< FEATS"
-	head.text = "FEATS" if tab == "feats" else "ALMANAC"
+	tab_btn.text = {"feats": "ALMANAC >", "almanac": "HISTORY >", "history": "FEATS >"}[tab]
+	head.text = tab.to_upper()
 	if tab == "almanac":
 		_almanac()
+		return
+	if tab == "history":
+		_history()
 		return
 	var earned: Array = main.profile.feats
 	var n := 0
@@ -108,3 +112,21 @@ func _almanac() -> void:
 			tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 			P.place(tag, Vector2(530, 5), Vector2(60, 12))
 	count_lbl.text = "Almanac: %d / %d seen    Feats earned: %d / %d" % [seen, total, prof.feats.size(), Feats.FEATS.size()]
+
+
+func _history() -> void:
+	var h: Array = main.profile.history
+	if h.is_empty():
+		P.label(list, "No runs yet. Your last 10 runs will be listed here.", P.FONT, P.DIM)
+	for e in h:
+		var row := Panel.new()
+		row.custom_minimum_size = Vector2(596, 22)
+		row.add_theme_stylebox_override("panel", P.box(P.PANEL_HI if e.won else P.PANEL, P.GOLD if e.won else P.LINE.darkened(0.6), 1))
+		list.add_child(row)
+		P.place(P.label(row, "WON" if e.won else "LOST", P.FONT, P.GOOD if e.won else P.DANGER), Vector2(8, 5))
+		var wname: String = Wheels.get_def(e.wheel).name if Wheels.WHEELS.has(e.wheel) else e.wheel
+		var mode: String = ["", "", "  (Act II)", "  (endless)"][clampi(int(e.acts), 0, 3)]
+		P.place(P.label(row, wname + mode, P.FONT, P.CREAM), Vector2(60, 5))
+		P.place(P.label(row, "%d night%s   Take %d   best spin +%d" % [e.nights, "" if e.nights == 1 else "s", e.take, e.best_spin], P.FONT_SMALL, P.DIM), Vector2(300, 6))
+	var wins := h.filter(func(e): return e.won).size()
+	count_lbl.text = "Last %d runs: %d won" % [h.size(), wins]

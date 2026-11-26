@@ -124,7 +124,20 @@ func _process(delta: float) -> void:
 			main.dialogue.lines = [{"speaker": "Madame Oro", "text": "Portrait check."}]
 			main.dialogue._show_line()],
 		[24.3, func(): shot("17_portrait_oro")],
-		[24.5, func(): get_tree().quit()],
+		[24.5, func():
+			main.dialogue.visible = false
+			main.show_screen("credits")],
+		[24.8, func(): shot("18_credits")],
+		[24.9, func():
+			main.profile.add_history({"wheel": "european", "acts": 1, "nights": 2, "take": 140, "best_spin": 60, "won": false})
+			main.profile.add_history({"wheel": "french", "acts": 1, "nights": 4, "take": 520, "best_spin": 210, "won": true})
+			main.show_screen("feats")
+			main.screens.feats.tab = "history"
+			main.screens.feats.refresh()],
+		[25.2, func(): shot("19_history")],
+		[25.3, func(): main.pause.open()],
+		[25.5, func(): shot("20_pause")],
+		[25.7, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
