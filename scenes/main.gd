@@ -39,6 +39,7 @@ var dialogue
 var fx
 var crt: CanvasLayer
 var transition
+var veil: ColorRect    ## the warm dip between screens (show_screen)
 var pause
 var card   ## the pop-up info card for chips, rules and vouchers (scenes/ui/info_card.gd)
 var options_return := ""   ## screen the Options screen goes back to (when opened mid-run)
@@ -109,6 +110,12 @@ func _ready() -> void:
 	tl.layer = 9
 	transition = Transition.new()
 	tl.add_child(transition)
+	# A soft fade between screens (a quick dip, not a hard cut).
+	veil = ColorRect.new()
+	veil.color = Color(0.03, 0.015, 0.01, 0.0)
+	veil.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tl.add_child(veil)
 	add_child(tl)
 	run.changed.connect(_on_run_changed)
 	run.table_cleared.connect(_on_table_cleared)
@@ -193,9 +200,14 @@ func _on_run_changed() -> void:
 func show_screen(n: String) -> void:
 	for s in screens.values():
 		s.visible = false
+	var changed: bool = current != n
 	current = n
 	if card != null:
 		card.hide_card()
+	if changed and veil != null and not fast_ui and speed() < Profile.SPEEDS.size() - 1:
+		veil.color.a = 0.75
+		var tw := create_tween()
+		tw.tween_property(veil, "color:a", 0.0, 0.22)
 	screens[n].visible = true
 	_recenter()
 	screens[n].call("refresh")
