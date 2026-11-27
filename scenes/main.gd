@@ -594,8 +594,26 @@ func card_at_felt(felt_view, key: String, d: Dictionary) -> void:
 	card.show_at(fx.local(felt_view.key_global(key)), d)
 
 
-func hide_card() -> void:
+## Hover-off hides the card with a mouse. With touch there's no hover-off: a card you tapped
+## open stays until your next press (see _input), so `force` is only for real changes.
+func hide_card(force: bool = false) -> void:
+	if touch_mode and not force:
+		return
 	card.hide_card()
+
+
+var touch_mode := false   ## the last input was a finger (set by _input), not a mouse
+const CARD_TAP_GRACE := 150   ## ms: a card opened by this same tap isn't closed by it
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		touch_mode = true
+		# The next press anywhere closes a card a tap opened earlier (not the one this tap opens).
+		if event.pressed and card != null and card.visible and Time.get_ticks_msec() - card.shown_at > CARD_TAP_GRACE:
+			card.hide_card()
+	elif event is InputEventMouseMotion and event.device != InputEvent.DEVICE_ID_EMULATION:
+		touch_mode = false
 
 
 func set_option(key: String, value) -> void:

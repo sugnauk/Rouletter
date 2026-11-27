@@ -16,6 +16,7 @@ const PAD := 6.0
 var data: Dictionary = {}
 var _lines: Array = []  ## [text, colour]
 var _h := 0.0
+var shown_at := 0   ## when this card last opened (main closes a tapped card on the next press)
 
 
 func _ready() -> void:
@@ -26,6 +27,8 @@ func _ready() -> void:
 
 ## Show `d` ({icon, title, sub, body, col}) next to `at` (frame coordinates), kept on screen.
 func show_at(at: Vector2, d: Dictionary) -> void:
+	if not visible or data != d:
+		shown_at = Time.get_ticks_msec()
 	data = d
 	var font := P.font()
 	_lines = []

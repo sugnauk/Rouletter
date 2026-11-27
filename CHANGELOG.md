@@ -3,6 +3,11 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.54
+- **On a phone, a tapped info card stays open** until your next press anywhere. Lifting your finger used to close it before you could read it.
+  - With a mouse, nothing changes: cards still close when you move off.
+  - Moving a real mouse again switches straight back to hover behaviour, so touch laptops work either way.
+
 ## 0.0.53
 - **Every chip on a crowded square shows.** Several chips on one number shrink a little and fan out so each one's face stays visible (up to three, counting a bet). Any more turn the last slot into a dark "+N" token.
 - **Hovering a square lists every chip on it,** not just one: the first in full, then a row for each of the others with its icon, name, level and what it does. This works on the table and in the Cage.

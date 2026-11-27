@@ -667,7 +667,25 @@ func _portrait_plan() -> Array:
 			_close_dialogue()
 			shot("p16_chip_gallery")
 			main.screens.table._on_hover("S5")],
-		[19.4, func(): shot("p17_stacked_square")],
+		[19.4, func():
+			shot("p17_stacked_square")
+			# Touch: a tapped card ignores hover-off, and the next press anywhere closes it.
+			var t := InputEventScreenTouch.new()
+			t.pressed = false
+			main._input(t)
+			main.hide_card(true)
+			main.screens.table._on_hover("S5")
+			main.hide_card()
+			var stays: bool = main.card.visible
+			t.pressed = true
+			main._input(t)   # the same tap that opened it: still open
+			var same_tap: bool = main.card.visible
+			main.card.shown_at -= 1000
+			main._input(t)   # a later press: closed
+			print("STICKY CARD: ", "OK" if stays and same_tap and not main.card.visible else "FAIL %s %s %s" % [stays, same_tap, main.card.visible])
+			var m := InputEventMouseMotion.new()
+			main._input(m)
+			print("MOUSE MODE: ", "OK" if not main.touch_mode else "FAIL")],
 		[19.6, func(): get_tree().quit()],
 	]
 
