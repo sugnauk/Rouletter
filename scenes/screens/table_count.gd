@@ -74,6 +74,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 
 	# --- Beat 2: light up the build --------------------------------------------------
 	t.spin_score_vis = true
+	t.score_view.visible = true
 	var gross := 0.0
 	var lost := 0.0
 	var delay := 0.24

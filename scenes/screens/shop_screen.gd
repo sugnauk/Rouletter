@@ -16,7 +16,9 @@ const Portraits := preload("res://scenes/ui/portraits.gd")
 const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Placing := preload("res://scenes/ui/placing.gd")
 
-var CAGE := Rect2(8, 28, 288, 150)   ## the vendor windows (wider on a phone held upright)
+var CAGE := Rect2(8, 28, 470, 100)   ## the vendor windows: a counter across the top
+var CHOICE := Rect2(8, 28, 470, 150)  ## the pick-one panel (bonus, refine, events) over the counter
+var shop_rules: Label                ## your House Rules and perks, beside the counter
 
 var main
 var cage_view: Control
@@ -70,7 +72,7 @@ func setup() -> void:
 	dp.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.WOOD, 1))
 	P.place(dp, Vector2(8, 234), Vector2(288, 82))
 	add_child(dp)
-	desc_title = P.label(dp, "", P.FONT, P.GOLD)
+	desc_title = P.label(dp, "", P.FONT_SMALL, P.GOLD)
 	P.place(desc_title, Vector2(6, 4))
 	buy_btn = P.button(dp, "BUY", func():
 		if picked >= 0:
@@ -78,11 +80,16 @@ func setup() -> void:
 	P.place(buy_btn, Vector2(190, 60))
 	buy_btn.visible = false
 	desc_body = P.label(dp, "", P.FONT_SMALL, P.CREAM)
-	desc_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_body.add_theme_constant_override("line_spacing", -1)
+	desc_body.clip_text = true
+	desc_title.clip_text = true
+	shop_rules = P.label(self, "", P.FONT_SMALL, P.DIM)
+	shop_rules.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	shop_rules.add_theme_constant_override("line_spacing", -2)
+	shop_rules.clip_text = true
 	P.place(desc_body, Vector2(6, 18), Vector2(276, 62))
 	next_lbl = P.label(self, "", P.FONT_SMALL, P.CREAM)
 	next_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	next_lbl.clip_text = true
 	P.place(next_lbl, Vector2(8, 318), Vector2(200, 40))
 	next_lbl.add_theme_constant_override("line_spacing", -2)
 	next_lbl.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -149,49 +156,56 @@ func setup() -> void:
 func relayout(tall: bool) -> void:
 	portrait = tall
 	felt_view.vertical = tall
+	# The felt is the star here too: it fills the width under the counter.
+	felt_view.fit = Vector2(352, 300) if tall else Vector2(624, 134)
 	if felt_view.run != null:
 		felt_view.layout()
+	var fs: Vector2 = felt_view.size
 	P.place(cage_view, Vector2.ZERO, Vector2(P.W, P.H))
 	P.place(counter, Vector2.ZERO, Vector2(P.W, P.H))
+	chips_lbl.visible = false
 	if not tall:
-		CAGE = Rect2(8, 28, 288, 150)
-		P.place(service_box, Vector2(8, 184))
-		P.place(dp, Vector2(8, 234), Vector2(288, 82))
-		P.place(desc_body, Vector2(6, 18), Vector2(276, 62))
-		P.place(buy_btn, Vector2(190, 60))
-		P.place(next_lbl, Vector2(8, 318), Vector2(200, 40))
-		P.place(nb, Vector2(212, 322))
+		CAGE = Rect2(8, 28, 470, 100)
+		CHOICE = Rect2(8, 28, 470, 150)
+		P.place(service_box, Vector2(488, 30))
+		P.place(shop_rules, Vector2(488, 78), Vector2(146, 50))
+		P.place(dp, Vector2(8, 132), Vector2(624, 30))
+		P.place(desc_title, Vector2(6, 3), Vector2(500, 10))
+		P.place(desc_body, Vector2(6, 15), Vector2(500, 10))
+		P.place(buy_btn, Vector2(520, 6), Vector2(98, 18))
+		P.place(next_lbl, Vector2(290, 4), Vector2(168, 20))
+		P.place(nb, Vector2(462, 4), Vector2(96, 20))
 		P.place(mb, Vector2(594, 6))
 		P.place(speed_btn, Vector2(564, 6))
-		P.place(felt_view, Vector2(304, 32))
-		P.place(chips_lbl, Vector2(304, 152))
-		P.place(mode_box, Vector2(304, 164), Vector2(330, 0))
-		P.place(rack_lbl, Vector2(304, 188))
-		P.place(rack, Vector2(304, 198), Vector2(330, 0))
-		P.place(status_lbl, Vector2(304, 300), Vector2(330, 50))
-		P.place(buy_zones[0], Vector2(302, 184), Vector2(334, 112))
-		P.place(buy_zones[1], Vector2(6, 182), Vector2(292, 50))
+		P.place(felt_view, Vector2(floor(8 + (624 - fs.x) / 2.0), 166))
+		var by: float = 166 + fs.y + 4
+		P.place(mode_box, Vector2(8, by), Vector2(330, 0))
+		P.place(status_lbl, Vector2(8, by + 22), Vector2(330, 356 - by - 22))
+		P.place(rack_lbl, Vector2(346, by))
+		P.place(rack, Vector2(346, by + 10), Vector2(288, 0))
+		P.place(buy_zones[0], Vector2(342, by - 2), Vector2(294, 358 - by))
+		P.place(buy_zones[1], Vector2(484, 26), Vector2(152, 104))
 	else:
-		CAGE = Rect2(8, 28, 344, 150)
-		P.place(service_box, Vector2(8, 184))
-		P.place(dp, Vector2(8, 232), Vector2(344, 64))
-		P.place(desc_body, Vector2(6, 18), Vector2(332, 44))
-		P.place(buy_btn, Vector2(246, 42))
+		CAGE = Rect2(8, 28, 344, 100)
+		CHOICE = Rect2(8, 28, 344, 150)
+		P.place(service_box, Vector2(8, 134))
+		P.place(shop_rules, Vector2(98, 134), Vector2(254, 44))
+		P.place(dp, Vector2(8, 182), Vector2(344, 30))
+		P.place(desc_title, Vector2(6, 3), Vector2(232, 10))
+		P.place(desc_body, Vector2(6, 15), Vector2(232, 10))
+		P.place(buy_btn, Vector2(242, 6), Vector2(96, 18))
 		P.place(mb, Vector2(314, 6))
 		P.place(speed_btn, Vector2(284, 6))
-		P.place(felt_view, Vector2(4, 300))
-		var rx: float = 4 + felt_view.size.x + 6
-		var rw: float = 356 - rx
-		P.place(chips_lbl, Vector2(rx, 300))
-		P.place(mode_box, Vector2(rx, 310), Vector2(rw, 0))
-		var modes_h: float = ceil(5.0 / maxf(1.0, floor((rw + 4) / 66.0))) * 20.0 + 6.0
-		P.place(rack_lbl, Vector2(rx, 314 + modes_h))
-		P.place(rack, Vector2(rx, 324 + modes_h), Vector2(rw, 0))
-		P.place(status_lbl, Vector2(rx, 400 + modes_h), Vector2(rw, 200 - modes_h))
+		P.place(felt_view, Vector2(floor(4 + (352 - fs.x) / 2.0), 216))
+		var by: float = 216 + fs.y + 4
+		P.place(mode_box, Vector2(8, by), Vector2(344, 0))
+		P.place(rack_lbl, Vector2(8, by + 22))
+		P.place(rack, Vector2(8, by + 32), Vector2(344, 0))
+		P.place(status_lbl, Vector2(8, 584), Vector2(344, 22))
 		P.place(next_lbl, Vector2(8, 610), Vector2(256, 28))
-		P.place(nb, Vector2(272, 608))
-		P.place(buy_zones[0], Vector2(rx - 2, 310 + modes_h), Vector2(rw + 4, 296 - modes_h))
-		P.place(buy_zones[1], Vector2(6, 182), Vector2(348, 48))
+		P.place(nb, Vector2(272, 608), Vector2(84, 28))
+		P.place(buy_zones[0], Vector2(4, by + 20), Vector2(352, 584 - by - 20))
+		P.place(buy_zones[1], Vector2(4, 132), Vector2(352, 48))
 	if main != null and main.run != null and main.run.phase == RunState.Phase.SHOP:
 		refresh()
 
@@ -327,7 +341,7 @@ func _draw_cage() -> void:
 	Art.text(c, font, Vector2(83, 17), "THE CAGE", 8, P.CREAM, true)
 	Art.text(c, font, Vector2(170, 18), "$%d" % run.cash, 16, P.GOLD)
 	if run.overflow > 0 or "dealer" in run.shop.get("vendors", []):
-		var sx: float = 222.0 if portrait else 250.0
+		var sx: float = 222.0
 		Art.text(c, P.font(), Vector2(sx, 12), "SPARE TAKE", 8, P.DIM)
 		Art.text(c, P.font(), Vector2(sx, 22), str(run.overflow), 8, P.VIOLET)
 	for win in windows:
@@ -343,19 +357,18 @@ func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
 	for i in range(4):
 		c.draw_circle(Vector2(w.get_center().x, w.position.y + 6), 50.0 - i * 12.0, Color(1, 0.8, 0.4, 0.03 + i * 0.01), true, -1.0, false)
 	c.draw_rect(Rect2(w.get_center().x - 1, w.position.y, 2, 6), P.GOLD.darkened(0.3))
-	var counter_r := Rect2(w.position.x, w.position.y + 54, w.size.x, w.size.y - 54)
+	var counter_r := Rect2(w.position.x, w.position.y + 30, w.size.x, w.size.y - 30)
 	c.draw_rect(counter_r, Color("#5c1020") if vendor == "cashier" else Color("#123a24"))
 	for x in range(int(counter_r.position.x), int(counter_r.end.x), 3):
 		c.draw_rect(Rect2(x, counter_r.position.y, 1, counter_r.size.y), Color("#4a0c19") if vendor == "cashier" else Color("#0d2c1b"))
 	c.draw_rect(Rect2(counter_r.position, Vector2(counter_r.size.x, 3)), P.WOOD)
 	# Bars stop at the counter so the tokens sit in front of them.
 	for x in range(int(w.position.x) + 8, int(w.end.x), 18):
-		c.draw_rect(Rect2(x, w.position.y, 2, 54), P.GOLD.darkened(0.35))
-		c.draw_rect(Rect2(x, w.position.y, 1, 54), P.GOLD.lightened(0.1))
-	c.draw_rect(Rect2(w.position.x, w.position.y + 30, w.size.x, 2), P.GOLD.darkened(0.35))
+		c.draw_rect(Rect2(x, w.position.y, 2, 30), P.GOLD.darkened(0.35))
+		c.draw_rect(Rect2(x, w.position.y, 1, 30), P.GOLD.lightened(0.1))
 	# Name plate over the bars.
-	_plate(c, w, 14, Content.VENDORS[vendor].name.to_upper(), accent)
-	_plate(c, w, 38, {"cash": "CASH", "stack": "PAY IN CHIPS", "loan": "PAY LATER", "take": "PAY IN SPARE TAKE"}.get(Content.VENDORS[vendor].currency, ""), accent.darkened(0.25))
+	_plate(c, w, 3, Content.VENDORS[vendor].name.to_upper(), accent)
+	_plate(c, w, 16, {"cash": "CASH", "stack": "PAY IN CHIPS", "loan": "PAY LATER", "take": "PAY IN SPARE TAKE"}.get(Content.VENDORS[vendor].currency, ""), accent.darkened(0.25))
 
 
 func _plate(c: Control, w: Rect2, y: float, text: String, col: Color) -> void:
@@ -445,9 +458,8 @@ func refresh() -> void:
 		felt_view.run = run
 		felt_view.layout()
 		board_id = bid
-		if portrait:   # the felt's width moves the column beside it
-			relayout(true)
-			return
+		relayout(portrait)   # the felt's size moves what sits around it
+		return
 	_build_windows(run)
 	if desc_title.text == "":
 		_idle_desc(run)
@@ -474,9 +486,7 @@ func refresh() -> void:
 		if run.buy_stack():
 			Sfx.play("buy"))
 	service_box.add_child(sb)
-	var rules := P.label(service_box, "", P.FONT_SMALL, P.DIM)
-	rules.custom_minimum_size = Vector2(190, 44)
-	rules.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var rules := shop_rules
 	var rl := []
 	for r in run.felt.house_rules:
 		rl.append(Content.HOUSE_RULES[r].name)
@@ -537,15 +547,15 @@ func _refresh_choice(run) -> void:
 		return
 	choice = Panel.new()
 	choice.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.96), P.GOLD, 1))
-	P.place(choice, CAGE.position, CAGE.size)
+	P.place(choice, CHOICE.position, CHOICE.size)
 	add_child(choice)
 	var title := P.label(choice, "", P.FONT, P.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	P.place(title, Vector2(0, 6), Vector2(CAGE.size.x, 12))
+	P.place(title, Vector2(0, 6), Vector2(CHOICE.size.x, 12))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	P.place(row, Vector2(0, 26), Vector2(CAGE.size.x, 90))
+	P.place(row, Vector2(0, 26), Vector2(CHOICE.size.x, 90))
 	choice.add_child(row)
 	if refine_id >= 0:
 		var rc = run.felt.find(refine_id)
@@ -565,7 +575,7 @@ func _refresh_choice(run) -> void:
 		var cb := P.button(choice, "Cancel", func():
 			refine_id = -1
 			refresh(), Vector2(60, 16), P.FONT_SMALL)
-		P.place(cb, Vector2(CAGE.size.x - 68, CAGE.size.y - 22))
+		P.place(cb, Vector2(CHOICE.size.x - 68, CHOICE.size.y - 22))
 	elif not stash.is_empty():
 		title.text = "THE ENFORCER'S STASH: TAKE ONE"
 		for i in range(stash.size()):
@@ -578,7 +588,7 @@ func _refresh_choice(run) -> void:
 				if run.take_stash(i):
 					main.profile.note_used(it.id)
 					Sfx.play("sting" if is_rule else "buy")
-					main.fx.burst(CAGE.get_center(), 36, [P.GOLD, P.CREAM, P.VIOLET], 150.0)
+					main.fx.burst(CHOICE.get_center(), 36, [P.GOLD, P.CREAM, P.VIOLET], 150.0)
 					if not is_rule:
 						selected_item = run.inventory.size() - 1
 						mode = "place"
@@ -596,7 +606,7 @@ func _refresh_choice(run) -> void:
 				if run.take_offer(i):
 					main.profile.note_used(o.id)
 					Sfx.play("buy")
-					main.fx.burst(CAGE.get_center(), 30, [P.GOLD, P.CREAM, P.CYAN], 140.0)
+					main.fx.burst(CHOICE.get_center(), 30, [P.GOLD, P.CREAM, P.CYAN], 140.0)
 					if o.type == "chip":
 						selected_item = run.inventory.size() - 1
 						mode = "place"
@@ -605,9 +615,9 @@ func _refresh_choice(run) -> void:
 		var sk := P.button(choice, "No thanks", func():
 			run.skip_offer()
 			refresh(), Vector2(70, 16), P.FONT_SMALL)
-		P.place(sk, Vector2(CAGE.size.x - 78, CAGE.size.y - 22))
+		P.place(sk, Vector2(CHOICE.size.x - 78, CHOICE.size.y - 22))
 		var sub := P.label(choice, "Three ways to build: keep one.", P.FONT_SMALL, P.DIM)
-		P.place(sub, Vector2(8, CAGE.size.y - 20))
+		P.place(sub, Vector2(8, CHOICE.size.y - 20))
 	elif bonus.is_empty() and event != "":
 		var ev: Dictionary = Content.EVENTS[event]
 		title.text = ev.who.to_upper()
@@ -618,7 +628,7 @@ func _refresh_choice(run) -> void:
 		choice.add_child(face)
 		var said := P.label(choice, "", P.FONT_SMALL, P.CREAM)
 		said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		P.place(said, Vector2(70, 26), Vector2(CAGE.size.x - 80, 64))
+		P.place(said, Vector2(70, 26), Vector2(CHOICE.size.x - 80, 64))
 		said.text = "\"%s\"" % ev.text
 		for i in range(ev.options.size()):
 			var o: Array = ev.options[i]
@@ -631,7 +641,7 @@ func _refresh_choice(run) -> void:
 				if got != "":
 					_describe(ev.who, got)
 				refresh(), Vector2(120, 18), P.FONT_SMALL)
-			P.place(b, Vector2(12 + i * 134, CAGE.size.y - 50))
+			P.place(b, Vector2(12 + i * 134, CHOICE.size.y - 50))
 			b.mouse_entered.connect(func(): _describe(o[0], o[1]))
 	elif bonus.is_empty() and not routes.is_empty():
 		title.text = "PICK YOUR NEXT TABLE"
@@ -657,7 +667,7 @@ func _refresh_choice(run) -> void:
 			_choice_option(row, icon, head, nm, run.bonus_text(b), func():
 				if run.take_bonus(i):
 					Sfx.play("cash" if b.type == "cash" else "buy")
-					main.fx.burst(CAGE.get_center(), 24, [P.GOLD, P.CREAM], 120.0)
+					main.fx.burst(CHOICE.get_center(), 24, [P.GOLD, P.CREAM], 120.0)
 					refresh())
 
 
@@ -705,7 +715,7 @@ func _build_windows(run) -> void:
 	var SEP := 6.0 if n_tok <= 5 else 4.0
 	var tw: float = floor((CAGE.size.x - (n_tok - nv) * SEP - 16.0 * nv - GAP * (nv - 1)) / n_tok)
 	tw = clampf(tw, 36.0, 46.0)
-	var TOK := Vector2(tw, round(tw * 62.0 / 46.0))
+	var TOK := Vector2(tw, minf(round(tw * 62.0 / 46.0), CAGE.size.y - 36.0))
 	var widths := []
 	var total := 0.0
 	for v in run.shop.vendors:
@@ -723,7 +733,7 @@ func _build_windows(run) -> void:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", int(SEP))
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		P.place(row, Vector2(r.position.x, r.position.y + 62 + (62.0 - TOK.y) / 2.0), Vector2(r.size.x, TOK.y))
+		P.place(row, Vector2(r.position.x, r.position.y + 32 + (r.size.y - 32.0 - TOK.y) / 2.0), Vector2(r.size.x, TOK.y))
 		counter.add_child(row)
 		if groups[v].is_empty():
 			P.label(row, "SOLD OUT", P.FONT_SMALL, P.DIM)

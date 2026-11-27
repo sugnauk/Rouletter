@@ -51,6 +51,7 @@ var preview: Dictionary = {}     ## key -> Color: squares lit by a hover preview
 var ring_keys: Dictionary = {}
 var pinned: Dictionary = {}      ## pinned bet keys (a small pin on their chips)   ## bet keys that could clear the table on a hit (gold ring on their chips)
 var marks := false               ## colour-blind aid: a diamond on every red square
+var fit := Vector2.ZERO          ## the box the felt grows to fill (screen axes); ZERO = base size
 
 
 const ZONE := 8.0               ## width of the clickable strip on a felt line (mouse)
@@ -81,6 +82,19 @@ func layout() -> void:
 	zero_w = VZERO_W if vertical else ZERO_W
 	col_w = VCOL_W if vertical else COL_W
 	var B = run.felt.board
+	if fit != Vector2.ZERO:
+		# Grow to fill the box the screen gave us. The box is in screen axes; a vertical felt is
+		# built on its side, so its long axis is the box's height.
+		var box: Vector2 = Vector2(fit.y, fit.x) if vertical else fit
+		var bw: float = zero_w + grid_len + col_w
+		var bh: float = row_h * 3.0 + strip_h * (3.0 if run.has_feature("call_bets") else 2.0)
+		var sx: float = box.x / bw
+		var sy: float = minf(box.y / bh, sx * 1.4)   # squares can grow taller, but not into slivers
+		grid_len = floor(grid_len * sx)
+		zero_w = floor(zero_w * sx)
+		col_w = floor(col_w * sx)
+		row_h = floor(row_h * sy)
+		strip_h = floor(strip_h * sy)
 	cell_w = floor(grid_len / B.cols)   # small boards (the Mini wheel's 4 columns) widen to fill the same space
 	var grid_w: float = cell_w * B.cols
 	var nz: int = B.zeros.size()
@@ -441,10 +455,13 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	if hidden > 0:
 		entries.append({"col": P.BLACK, "kind": "more", "value": hidden, "frozen": false})
 	var is_line := line_rects.has(k)
-	var rad := 6.0 if (is_line or _is_strip(r) or not Board.is_straight(k)) else 7.0
+	# Chips grow with the squares (a bigger felt shows bigger faces).
+	var side: float = minf(r.size.x, r.size.y)
+	var rad: float = 6.0 if is_line else clampf(floor(side * (0.3 if Board.is_straight(k) else 0.36)), 6.0, 11.0)
 	var n := entries.size()
 	if n > 1 and not is_line:
-		rad = 5.0   # several chips share the square: smaller, so every face stays in view
+		# Several chips share the square: smaller, so every face stays in view.
+		rad = maxf(5.0, minf(floor((r.size.x + 4.0 - 3.0 * (n - 1)) / (n + 1.0)), rad - 1.0))
 	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
 	# Each chip overlaps the one before it by no more than its rim, so every face is visible.
 	var spacing := rad + 3.0 if n > 1 else 0.0
@@ -454,11 +471,11 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	if is_line:
 		first = r.get_center() - Vector2((n - 1) * spacing / 2.0, 0)
 	elif Board.is_straight(k):
-		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.end.y - 7.0)
+		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.end.y - rad - 1.0)
 	elif _is_strip(r):
-		first = Vector2(r.end.x - 7.0 - (n - 1) * spacing, r.get_center().y)  # strips: chips hug the right edge
+		first = Vector2(r.end.x - rad - 1.0 - (n - 1) * spacing, r.get_center().y)  # strips: chips hug the right edge
 	else:
-		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.position.y + 7.0)  # columns: chips above the label
+		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.position.y + rad + 1.0)  # columns: chips above the label
 	var fp := first.floor()
 	if ring_keys.has(k):
 		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 160.0)

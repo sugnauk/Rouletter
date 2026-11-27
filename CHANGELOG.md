@@ -3,6 +3,20 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.55
+- **The table is rebuilt around the felt.** The felt grows to fill the space beside the wheel, about twice its old size, and chips on it grow with the squares (pictures show at double size on big squares).
+  - **The text log is gone.** A spin's result now covers the tray while it counts: the pocket as a ball, the Take in big gold numbers, "x3 HITS", and an icon pill for every bet and chip that paid. It fades back to the tray a few seconds later, or as soon as you bet again.
+  - **A wooden tray under the felt** has three bays: bet chips with your stack and Undo/Clear, the rack (which glows while chips wait to be placed), and House Rules and vouchers as icons. "COMBOS n" next to the rules lists your combos when you hover it.
+  - **The Enforcer or the table's condition and side job** is now one strip over the felt: the boss's portrait, name and twist. Hover it for the full text.
+  - **Under the wheel:** balls, SPIN, the odds and the last numbers (two rows).
+  - The free-chip pick now covers only the tray, so the whole felt stays visible for its previews.
+  - Tap-to-zoom switches itself off now that the felt already fills the screen.
+  - Pressing SPIN closes any open info card.
+- **The Cage is rebuilt the same way.** The vendor counter runs across the top with reroll, Bigger Stack and your House Rules beside it. A one-line strip under it names what you're looking at, with BUY. The felt fills the full width below, with chip modes, the rack and hints in one strip at the bottom.
+  - NEXT TABLE and what the next table needs sit in the top bar.
+  - Bonus picks, refines and vendor events open as a panel over the counter.
+- Both screens use the same layout on a phone held upright: the felt stands up in the middle, with the tray (table) or modes and rack (Cage) under it.
+
 ## 0.0.54
 - **On a phone, a tapped info card stays open** until your next press anywhere. Lifting your finger used to close it before you could read it.
   - With a mouse, nothing changes: cards still close when you move off.

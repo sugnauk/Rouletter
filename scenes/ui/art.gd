@@ -20,11 +20,13 @@ static func chip(ci: CanvasItem, c: Vector2, rad: float, col: Color, kind: Strin
 			spot = P.GOLD if col.get_luminance() < 0.6 else P.WOOD_DARK
 		ci.draw_rect(Rect2(p - Vector2(1, 1), Vector2(2, 2)), spot)
 	var has_face: bool = kind != "" and kind != "bet" and MINI.has(kind) and rad >= 5.0
+	var big: bool = rad >= 9.5   # big chips show their picture at double size
+	var inlay: float = rad * (0.74 if big and has_face else 0.66)
 	# An item's inlay is dark so its picture reads on any chip colour; a bet's stays light.
-	ci.draw_circle(c, rad * 0.66, col.darkened(0.6) if has_face else col.darkened(0.18), true, -1.0, false)
-	ci.draw_circle(c, rad * 0.66, col.lightened(0.35), false, 1.0, false)
+	ci.draw_circle(c, inlay, col.darkened(0.6) if has_face else col.darkened(0.18), true, -1.0, false)
+	ci.draw_circle(c, inlay, col.lightened(0.35), false, 1.0, false)
 	if has_face:
-		face(ci, kind, c)
+		face(ci, kind, c, 2 if big else 1)
 	if frozen:
 		ci.draw_line(c - Vector2(rad, rad), c + Vector2(rad, rad), P.CYAN, 1.0, false)
 		ci.draw_line(c + Vector2(-rad, rad), c + Vector2(rad, -rad), P.CYAN, 1.0, false)
@@ -579,17 +581,17 @@ static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
 
 
 ## An item's 5x5 felt-size picture (MINI), centred on `c`. Anything without one gets a dot.
-static func face(ci: CanvasItem, id: String, c: Vector2) -> void:
-	var o := c.round() - Vector2(2, 2)
+static func face(ci: CanvasItem, id: String, c: Vector2, s: int = 1) -> void:
+	var o := c.round() - (Vector2(5, 5) if s == 2 else Vector2(2, 2))
 	if not MINI.has(id):
-		ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(3, 3)), P.CREAM)
+		ci.draw_rect(Rect2(o + Vector2(1, 1) * s, Vector2(3, 3) * s), P.CREAM)
 		return
 	var rows: Array = MINI[id]
 	for y in range(5):
 		var row: String = rows[y]
 		for x in range(5):
 			if row[x] != ".":
-				ci.draw_rect(Rect2(o + Vector2(x, y), Vector2(1, 1)), Color(SPRITE_COLOURS[row[x]]))
+				ci.draw_rect(Rect2(o + Vector2(x, y) * s, Vector2(s, s)), Color(SPRITE_COLOURS[row[x]]))
 
 
 ## A brass plaque background.
