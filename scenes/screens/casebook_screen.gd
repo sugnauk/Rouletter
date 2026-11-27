@@ -258,7 +258,8 @@ func _guide() -> void:
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.mouse_entered.connect(func(): _guide_page(g))
 	var rb := P.button(list, "REPLAY THE GUIDED FIRST RUN", func():
-		main.profile.seen_beats.erase("tutorial_done")
+		while "tutorial_done" in main.profile.seen_beats:
+			main.profile.seen_beats.erase("tutorial_done")
 		main.save_profile()
 		Sfx.play("click")
 		_show("GUIDED FIRST RUN", "Done: your next run on the European wheel will be guided again, step by step. You can skip it from any of Dolores's lines."),

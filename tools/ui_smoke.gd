@@ -24,7 +24,8 @@ func _process(delta: float) -> void:
 		return
 	var plan := [
 		[0.6, func():
-			main.profile.seen_beats.append("tutorial_done")   # the guided run has its own tour below
+			if "tutorial_done" not in main.profile.seen_beats:   # the guided run has its own tour below
+				main.profile.seen_beats.append("tutorial_done")
 			shot("01_title")],
 		[0.7, func():
 			main.profile.best_grade = 2
@@ -503,7 +504,8 @@ func _process(delta: float) -> void:
 			ts._on_hover("RED")],
 		[58.1, func(): shot("52_odds_maker")],
 		[58.2, func():
-			main.profile.seen_beats.erase("tutorial_done")
+			while "tutorial_done" in main.profile.seen_beats:
+				main.profile.seen_beats.erase("tutorial_done")
 			main.start_run("european")],
 		[59.0, func():
 			_close_dialogue()
