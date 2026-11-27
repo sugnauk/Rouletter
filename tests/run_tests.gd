@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1639,6 +1639,58 @@ func test_novel_wheels() -> void:
 	sd.felt.wheel = "triple_zero"
 	var rm: Dictionary = RunState.migrate(sd)
 	check(rm.wheel_id == "american" and rm.felt.wheel == "american", "run save: Triple Zero becomes the Zero Wheel")
+
+
+func test_run_arc() -> void:
+	# Early: Odds Maker shortens the odds on its box, for your betting chips too.
+	var om = felt("european", [["odds_maker", "RED", 4], ["bet", "RED", 2]])
+	near(Resolver.resolve_spin(om, 1).take, 4.0 * 2.0 + 2.0 * 2.0, "Odds Maker L4: red pays 2:1 to it and the bet")
+	check(Resolver.resolve_spin(om, 2).lost == 2, "...a losing bet still costs its stake")
+	var plain = felt("european", [["bet", "RED", 2]])
+	var boosted = felt("european", [["bet", "RED", 2], ["odds_maker", "BLACK", 4]])
+	near(Resolver.resolve_spin(boosted, 1).take, Resolver.resolve_spin(plain, 1).take, "...only on its own box")
+	check(Resolver.expected_value(om).net > Resolver.expected_value(felt("european", [["perm", "RED", 4], ["bet", "RED", 2]])).net, "...it raises the box's EV")
+	# Mid: Keystone, Tall Stack, High Rise.
+	var ks = felt("european", [["keystone", "S9", 1]])
+	ks.chips[0].copies = 3
+	near(Resolver.resolve_spin(ks, 9).take, 35.0 + 12.0, "Keystone: +4 per chip stacked on it")
+	var ts = felt("european", [["tall_stack", "S1", 1], ["perm", "S2", 6]])
+	near(Resolver.resolve_spin(ts, 20).take, 6.0, "Tall Stack: +1 per level of the tallest chip, every spin")
+	var hr = felt("european", [["perm", "S5", 5], ["perm", "S6", 4]])
+	hr.house_rules = ["high_rise"]
+	near(Resolver.resolve_spin(hr, 5).take, 5 * 35.0 * 2.0, "High Rise: level 5 scores x2")
+	near(Resolver.resolve_spin(hr, 6).take, 4 * 35.0, "...level 4 doesn't")
+	# Late: extra balls, Encore, Wind-Up, Second Wind.
+	var en = felt("european", [["perm", "S5", 1]])
+	en.house_rules = ["encore"]
+	near(Resolver.resolve_spin(en, 5).take, 35.0, "Encore: an ordinary ball scores normally")
+	en.extra_ball = true
+	near(Resolver.resolve_spin(en, 5).take, 70.0, "...an extra ball scores x2")
+	var wu = felt("european", [["wind_up", "S3", 1], ["respin", "S8", 1]])
+	check(Resolver.resolve_spin(wu, 8).felt_after.find(wu.chips[0].id).value == 2, "Wind-Up grows when you earn a respin")
+	check(Resolver.resolve_spin(wu, 9).felt_after.find(wu.chips[0].id).value == 1, "...not otherwise")
+	var sw = felt("european", [["bet", "S5", 1]])
+	sw.house_rules = ["second_wind"]
+	var s1 := Resolver.resolve_spin(sw, 5)
+	check(s1.respins == 1, "Second Wind: the first straight-up hit earns a ball")
+	var sw2 = s1.felt_after
+	sw2.add_chip("bet", "S5", 1)
+	check(Resolver.resolve_spin(sw2, 5).respins == 0, "...once per table")
+	# A run: night 4 has 7 balls; a respin makes the next ball an extra one.
+	var r = new_run()
+	r.night = Content.NIGHTS - 1
+	r.table_idx = 0
+	r._start_table()
+	check(r.table.spins_left == Content.UPSTAIRS_SPINS, "the last night of Act I runs 7 balls")
+	var r2 = new_run()
+	r2.felt.house_rules.append("encore")
+	r2.table.spins_used = r2.table.base_spins
+	r2.place_bet("RED", 1)
+	r2.spin(2)
+	check(r2.felt.extra_ball, "a ball past the table's count is an extra ball")
+	for id in ["odds_maker", "keystone", "tall_stack", "wind_up"]:
+		check(Content.CHIPS.has(id) and Content.CHIPS[id].desc.length() <= 60, "%s is concise" % id)
+	check(Content.place_hint("odds_maker").contains("outside box"), "Odds Maker goes on an outside box")
 
 
 func test_provisional_placement() -> void:

@@ -394,11 +394,14 @@ func _start_table() -> void:
 	felt.red_streak = 0
 	felt.hit_streak = 0
 	felt.last_pocket = -99
+	felt.second_wind_used = false
 	_wheel_twists()
 	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {}) if not boss else {}
 	if not route.is_empty():
 		target = int(ceil(target * route.target))
-	var base_spins: int = felt.board.def.get("spins", Content.SPINS) + (Content.UPSTAIRS_SPINS - Content.SPINS if upstairs() else 0)
+	# The last night of the run's first act, and every table upstairs, run an extra ball.
+	var late: bool = night >= Content.NIGHTS - 1
+	var base_spins: int = felt.board.def.get("spins", Content.SPINS) + (Content.UPSTAIRS_SPINS - Content.SPINS if late else 0)
 	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else route.get("spins", base_spins)
 	if graded(5) and table_idx >= 1:
 		spins -= 1
@@ -408,7 +411,7 @@ func _start_table() -> void:
 		spins += 1
 	if felt.has_rule("klines_watch"):
 		spins += 1
-	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
+	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0, "base_spins": spins,
 		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan,
 		"favours": favours.duplicate(), "base_target": target, "route": shop.get("route", ""),
 		"lou_bet": shop.get("lou_bet", false), "condition": "", "objective": "", "obj_ok": true, "obj_hits": 0, "obj_spins": 0,
@@ -704,6 +707,7 @@ func spin(forced_pocket: int = -99, forced_second: int = -99) -> Dictionary:
 				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
 	felt.final_spin = table.spins_left <= 1
 	felt.spin_no = table.spins_used + 1
+	felt.extra_ball = table.spins_used >= table.get("base_spins", 99)
 	var keys := {}
 	for c in felt.chips:
 		if c.is_bet():

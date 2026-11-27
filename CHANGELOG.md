@@ -3,6 +3,22 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.47
+- **The run's arc, finished:** steady odds early, stacking in the middle, then spins and combos late.
+  - **Early, better odds:** the **Odds Maker** chip sits on an outside box, and every bet there pays +0.25x per level, your betting chips included. At level 4, red pays 2 to 1.
+  - **Mid game, stacking pays:**
+    - **Keystone:** a hit pays +4 Take per chip stacked on it.
+    - **Tall Stack:** +1 Take every spin per level of your tallest chip.
+    - **High Rise** (House Rule): chips at level 5 or higher score x2. It stacks with Old Timers.
+  - **Late game, spins and combos:**
+    - **Night 4 now runs 7 balls,** like the tables upstairs, so Act I's last night gives you room to go after numbers.
+    - **Extra balls,** anything past a table's usual count (respins and so on), show as gold balls under the wheel, with an EXTRA BALL banner.
+    - **Encore** (House Rule): extra balls score x2.
+    - **Second Wind** (House Rule): your first straight-up hit at each table earns a ball.
+    - **Wind-Up:** grows a level every time you earn a respin.
+    - **Combo chain:** Respin chips and Second Wind feed Encore, Wind-Up and Keystone, and High Rise doubles the big stacks.
+- **Payments rebalanced** for night 3 (112) and night 4 (310) so overall difficulty stays where it was.
+
 ## 0.0.46
 - **Portrait mode, part 2: every screen.** The home screen, wheel select, end of run, Pawn Shop, Casebook, Options, Credits and the title card all have upright layouts now:
   - **Home:** the wheel spins at the top, with the sign and buttons beneath.

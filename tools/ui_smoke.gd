@@ -483,7 +483,24 @@ func _process(delta: float) -> void:
 			_close_dialogue()
 			main.screens.table.refresh()],
 		[56.8, func(): shot("51_carousel_table")],
-		[57.0, func(): get_tree().quit()],
+		[57.0, func():
+			main.run.start_run(16, "european", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = [{"kind": "odds_maker", "value": 1}]
+			main.run.place_chip(0, "RED")
+			main.run.felt.chips_on("RED")[0].value = 4
+			main.run.felt.house_rules = ["encore", "second_wind"]
+			main.run.table.spins_left += 1   # a respin: the last ball is an extra one
+			main.run.place_bet("RED", 3)
+			main.show_screen("table")],
+		[57.8, func():
+			_close_dialogue()
+			var ts = main.screens.table
+			ts.refresh()
+			ts.felt_view.hover_key = "RED"
+			ts._on_hover("RED")],
+		[58.1, func(): shot("52_odds_maker")],
+		[58.2, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()

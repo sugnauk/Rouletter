@@ -60,6 +60,8 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			Sfx.play("jackpot")
 		else:
 			fx.pop_text(p2 - Vector2(0, 10), "%s %s" % [B.label(res.pocket2), B.colour_name(res.pocket2).to_upper()], P.GOLD, 0.8)
+	if run.felt.extra_ball:
+		fx.banner("EXTRA BALL", P.CYAN, 0.9, 150, 8)
 	if res.zero_tax:
 		fx.banner("ORO TAKES 10%", P.DANGER, 1.2, 140, 8)
 		before *= 1.0 - Content.ZERO_TAX

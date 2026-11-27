@@ -10,7 +10,7 @@ const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
 const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
 const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
 ## Take target of each night's first table (nights 5-8 are Act II only).
-const NIGHT_BASE := [9, 32, 105, 240, 380, 520, 690, 895]
+const NIGHT_BASE := [9, 32, 112, 310, 380, 520, 690, 895]
 const TABLE_MULT := [1.0, 1.4, 1.95]      ## Floor / High Roller / Enforcer
 const SPINS := 6
 const TWIN_MULT := 3.0                  ## Twin Ball: both balls in one pocket
@@ -230,6 +230,19 @@ const CHIPS := {
 	"streak_rider": {"name": "Streak Rider", "desc": "Its box wins: grows a level (up to 8).", "more": "Up to 8 levels per chip stacked.",
 		"price": 5, "unlock": 0, "even_only": true, "trigger": {"on": "hit", "grow": 1, "cap": 8},
 		"note": "Rides a colour or a parity streak, the run gamblers swear by at the wheel."},
+	"odds_maker": {"name": "Odds Maker", "desc": "Bets on its box pay +0.25x per level.", "per": "level",
+		"more": "Your betting chips there too: at level 4, red pays 2 to 1.",
+		"price": 5, "unlock": 0, "box_only": true,
+		"note": "Shortens the house's odds on the one place it's always been generous: the outside boxes."},
+	"keystone": {"name": "Keystone", "desc": "Hit: +4 Take per chip stacked on it.", "per": "stack",
+		"price": 6, "unlock": 0,
+		"note": "The tall stack in the middle of the layout: the more you pile on, the more it holds up."},
+	"tall_stack": {"name": "Tall Stack", "desc": "+1 Take a spin per level of your tallest chip.",
+		"price": 6, "unlock": 0,
+		"note": "Pays for the one towering pile every table regular builds."},
+	"wind_up": {"name": "Wind-Up", "desc": "Grows a level every time you earn a respin.", "per": "stack",
+		"price": 6, "unlock": 0,
+		"note": "Every extra ball winds the spring a little tighter."},
 	"odd_fellow": {"name": "Odd Fellow", "desc": "Any odd number hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "odd", "take": 2.0},
 		"note": "Plays the parity boxes from a single square."},
@@ -314,6 +327,7 @@ const RARITY := {
 	"conductor": "legendary", "relay": "rare", "fuse": "rare", "crowd_pleaser": "rare", "purist": "rare",
 	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
 	"night_owl": "rare", "far_side": "rare", "heart_of_gold": "rare", "golden_goose": "rare", "square_deal": "rare",
+	"keystone": "rare", "tall_stack": "rare", "wind_up": "rare", "high_rise": "rare", "encore": "rare", "second_wind": "rare",
 	"zero_tolerance": "rare", "double_down": "rare", "patron": "rare", "late_bloomer": "rare", "veterans": "legendary",
 	"jar": "rare", "wheel_spoke": "rare", "echo": "legendary", "ace": "legendary", "green_thumb": "rare",
 	"diamond": "rare", "magnetized": "rare", "twin_square": "rare", "spoke": "rare", "repeat_box": "rare", "lucky_colour": "rare",
@@ -356,6 +370,10 @@ const SIGNPOST_CASH := 2
 const EVEN_KEYS := ["RED", "BLACK", "ODD", "EVEN", "LOW", "HIGH"]
 const COMPED_CASH := 3
 const KING_STEP := 0.5                   ## Kingmaker: +0.5x per level past the first
+const ODDS_STEP := 0.25                  ## Odds Maker: +payout per level on its box
+const KEYSTONE_BONUS := 4.0              ## Keystone: +Take per chip stacked, on a hit
+const TALL_STACK_STEP := 1.0             ## Tall Stack: +Take per level of your tallest chip
+const HIGH_RISE_LEVEL := 5
 
 
 ## Build families, for "works with your ..." hints in the Cage.
@@ -376,6 +394,8 @@ const TAGS := {
 	"corner_office": ["inside"], "big_spender": ["cash"], "patron": ["spins"], "late_bloomer": ["multiplier", "spins"],
 	"veterans": ["numbers", "multiplier"],
 	"pinned": ["wheel"], "wildcard_zero": ["zero"], "momentum": ["multiplier"], "hot_hand": ["multiplier"],
+	"odds_maker": ["outside", "even", "box"], "keystone": ["numbers", "grow"], "tall_stack": ["grow"], "wind_up": ["numbers", "spins", "grow"],
+	"high_rise": ["grow", "multiplier"], "encore": ["spins", "multiplier"], "second_wind": ["spins", "numbers"],
 	"croupier": ["numbers"], "mint": ["cash"], "respin": ["spins"], "rent_control": ["easy"],
 	"black_cat": ["numbers"], "penny": ["cash", "numbers"], "snowball": ["numbers"], "sentinel": ["zero"],
 	"crown": ["outside", "multiplier"], "lamp": ["cash", "numbers"], "silk": ["outside"], "sweet_spot": ["numbers", "inside"],
@@ -395,7 +415,7 @@ const TAGS := {
 	"gold_trim": ["outside", "cash"], "fat_box": ["outside"], "repeat_box": ["outside", "multiplier"], "lucky_colour": ["even"],
 }
 const TAG_NAMES := {"numbers": "single numbers", "inside": "inside bets", "even": "even-money bets", "outside": "outside bets",
-	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers", "box": "box chips"}
+	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers", "box": "box chips", "grow": "growing chips", "spins": "extra spins"}
 ## How each Enforcer rule meets your purchases: tags that help or are useless against it.
 const COUNTERS := {
 	"no_outside": {"good": ["numbers", "inside"], "bad": ["outside", "even"]},
@@ -480,9 +500,9 @@ const LOU_PAYOUT := 9
 
 ## The Almanac's categories: [title, source table name, ids]. Every item appears exactly once.
 const ALMANAC := [
-	["BOX CHIPS", "CHIPS", ["even_stevens", "box_office", "coin_purse", "streak_rider"]],
+	["BOX CHIPS", "CHIPS", ["even_stevens", "box_office", "coin_purse", "streak_rider", "odds_maker"]],
 	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "red_herring", "street_light", "wheel_spoke", "hedge", "croupier", "collector", "ledger"]],
-	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "seedling", "echo"]],
+	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "seedling", "echo", "keystone", "tall_stack", "wind_up"]],
 	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "ace", "crown", "bridge"]],
 	["CHAIN CHIPS", "CHIPS", ["conductor", "relay", "fuse"]],
 	["ZERO CHIPS", "CHIPS", ["wildcard_zero", "sentinel", "green_thumb"]],
@@ -496,7 +516,7 @@ const ALMANAC := [
 	["SAFETY RULES", "HOUSE_RULES", ["la_partage", "en_prison", "insurance", "zero_tolerance", "rent_control", "patron", "bankroll"]],
 	["MONEY RULES", "HOUSE_RULES", ["comped", "compound_interest", "big_spender"]],
 	["BRIDGE RULES", "HOUSE_RULES", ["outside_connection", "inside_track", "colour_coded", "rainy_day"]],
-	["SCALING RULES", "HOUSE_RULES", ["crowd_pleaser", "purist", "high_stakes"]],
+	["SCALING RULES", "HOUSE_RULES", ["crowd_pleaser", "purist", "high_stakes", "high_rise", "encore", "second_wind"]],
 	["TROPHIES", "HOUSE_RULES", ["sals_whistle", "oros_coin", "accountants_book", "velvet_rope", "klines_watch"]],
 	["DEALER FAVOURS", "FAVOURS", ["extra_spin", "fat_stack", "head_start"]],
 	["DEALER VOUCHERS", "VOUCHERS", ["comp_card", "vip_rack", "patience", "house_credit"]],
@@ -637,6 +657,12 @@ const HOUSE_RULES := {
 		"price": 9, "unlock": 0, "note": "The more you've built, the louder the room gets."},
 	"purist": {"name": "Purist", "desc": "x2 on a spin where every winning bet was a straight-up.",
 		"price": 8, "unlock": 0, "note": "No hedging, no splits: just numbers."},
+	"high_rise": {"name": "High Rise", "desc": "Chips at level 5 or higher score x2.", "more": "Stacks with Old Timers.",
+		"price": 8, "unlock": 0, "note": "The penthouse stacks: chips piled high enough get the top-floor rate."},
+	"encore": {"name": "Encore", "desc": "Extra balls score x2.", "more": "An extra ball is any past the table's usual count: respins, Second Wind...",
+		"price": 7, "unlock": 0, "note": "The crowd wants one more spin, and pays to see it."},
+	"second_wind": {"name": "Second Wind", "desc": "First straight-up hit each table: +1 ball.", "more": "Once per table.",
+		"price": 7, "unlock": 0, "note": "A number hit buys you another go at the wheel."},
 	"high_stakes": {"name": "High Stakes", "desc": "x1.5 on spins with 15 or more betting chips riding.",
 		"price": 7, "unlock": 0, "note": "Push the pile in and the house pays attention."},
 	"rainy_day": {"name": "Rainy Day Fund", "desc": "A spin that scores no Take pays +$2.",

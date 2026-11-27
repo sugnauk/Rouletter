@@ -755,10 +755,15 @@ func _draw_balls(c: Control) -> void:
 	Art.text(c, font, Vector2(4, 10), label, 8, P.DANGER if td.spins_left <= 1 else P.CREAM)
 	var x0: float = 8.0 + font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
 	var step: float = minf(10.0, (c.size.x - x0 - 4.0) / maxf(1.0, total))
+	# Balls past the table's usual count (respins, Second Wind) are gold: Encore doubles them.
+	var extra_left: int = mini(td.spins_left, maxi(0, total - maxi(td.get("base_spins", total), td.spins_used)))
 	for i in range(total):
 		var p := Vector2(x0 + 4 + i * step, 6).floor()
-		if i < td.spins_left:
+		if i < td.spins_left - extra_left:
 			Art.icon(c, "spin", p, 1)
+		elif i < td.spins_left:
+			c.draw_circle(p, 3.5, P.GOLD, true, -1.0, false)
+			c.draw_circle(p, 3.5, P.WOOD_DARK, false, 1.0, false)
 		else:
 			c.draw_circle(p, 3.5, P.DIM.darkened(0.4), false, 1.0, false)
 

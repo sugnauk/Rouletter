@@ -168,6 +168,9 @@ func bot_bet(run) -> void:
 	var keys := []
 	if need <= run.table.stack * 1.2 and run.can_bet_on("DOZ1"):
 		keys = ["DOZ1"]
+		for c in run.felt.perm_chips():   # an Odds Maker's box pays better: bet there
+			if c.kind == "odds_maker" and run.can_bet_on(c.bet):
+				keys = [c.bet]
 	else:
 		# Novel wheels: a crooked wheel's fat pockets, or the Carousel's hot arc, come first.
 		var fav := []
@@ -226,7 +229,7 @@ func place_inventory(run) -> void:
 						key = Board.straight_key(n)
 						break
 			elif Content.CHIPS[item.kind].get("box_only", false):
-				key = "ODD"
+				key = "RED" if item.kind == "odds_maker" else "ODD"
 			elif Content.CHIPS[item.kind].get("coldoz_only", false):
 				key = "DOZ%d" % (1 + run.felt.perm_chips().size() % 3)
 				if not B.has_bet(key):

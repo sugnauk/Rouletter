@@ -203,6 +203,10 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 						if not pc.is_bet():
 							_value(res, pc, c.copies)
 							res.log.chips.append("Ledger: chip on %s grows to %d" % [B.label(m), pc.value])
+			"keystone":
+				var kb: float = Content.KEYSTONE_BONUS * c.copies * (0.5 if c.flaw == "cracked" else 1.0)
+				take += kb
+				_bonus(res, c, kb, "keystone")
 			"respin":
 				res.respins += c.copies
 				res.log.chips.append("Respin: +%d spin%s" % [c.copies, "" if c.copies == 1 else "s"])
@@ -246,6 +250,14 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			_bonus(res, c, st, "steady")
 		var covered: bool = pocket in B.bet(c.bet).numbers
 		match c.kind:
+			"tall_stack":
+				var tallest := 0
+				for oc in w.perm_chips():
+					tallest = maxi(tallest, oc.value)
+				var ts: float = Content.TALL_STACK_STEP * tallest * c.copies * crack
+				if ts > 0.0:
+					take += ts
+					_bonus(res, c, ts, "tall stack")
 			"street_light":
 				if own > 0 and pocket > 0 and pocket != own and Board.grid_col(pocket) == Board.grid_col(own):
 					_bonus(res, c, Content.STREET_LIGHT_BONUS * c.value * crack, "street light")
@@ -469,6 +481,11 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		take *= 2.0
 		res.log.rules.append("Last Call: the final spin scores double")
 		_mult(res, 2.0, "Last Call")
+	# Encore: an extra ball (past the table's usual count) scores double.
+	if take > 0.0 and w.extra_ball and w.has_rule("encore"):
+		take *= 2.0
+		res.log.rules.append("Encore: an extra ball, x2")
+		_mult(res, 2.0, "Encore")
 	# Carousel: the ball landed inside the gold arc.
 	if take > 0.0 and pocket in w.arc_pockets():
 		take *= Content.ARC_MULT
@@ -503,6 +520,18 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 	w.red_streak = res.red_streak
 	w.hit_streak = res.hit_streak
 	w.last_pocket = pocket
+	# Second Wind: the first straight-up hit at a table earns a ball.
+	if w.has_rule("second_wind") and not w.second_wind_used and res.events.any(func(e): return e.kind == "win" and e.label == "straight"):
+		res.respins += 1
+		w.second_wind_used = true
+		res.log.rules.append("Second Wind: a straight-up hit, +1 ball")
+		_event(res, "push", pkey, 0.0, "second wind +1 ball")
+	# Wind-Up: every respin earned winds it a level tighter.
+	if res.respins > 0:
+		for wc in w.perm_chips():
+			if wc.kind == "wind_up":
+				_value(res, wc, res.respins * wc.copies)
+				res.log.chips.append("Wind-Up on %s grows to %d" % [wc.bet, wc.value])
 	if w.has_rule("velvet_rope"):
 		res.stack += Content.VELVET_ROPE_CHIPS
 		res.log.rules.append("Velvet Rope: +%d chips to your stack" % Content.VELVET_ROPE_CHIPS)
@@ -675,7 +704,7 @@ static func _losses(r: Dictionary) -> Dictionary:
 static func _returned(r: Dictionary) -> Dictionary:
 	var out := {}
 	for e in r.events:
-		if (e.kind == "win" and e.get("chip", "") == "bet") or (e.kind == "push" and e.key != ""):
+		if (e.kind == "win" and e.get("chip", "") == "bet") or (e.kind == "push" and e.key != "" and e.label != "second wind +1 ball"):
 			out[e.key] = true
 	return out
 
@@ -702,6 +731,10 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	if w.bet_upgrades.get(c.bet, "") == "hot":
 		payout += 1.0
 		res.log.upgrades.append("Hot %s: +1x" % c.bet)
+	for om in w.chips_on(c.bet):
+		if om.kind == "odds_maker" and om.id != w.frozen_id:
+			payout += Content.ODDS_STEP * om.value
+			res.log.chips.append("Odds Maker on %s: +%s" % [c.bet, _fmt(Content.ODDS_STEP * om.value)])
 	if w.has_rule("satin_gloves") and b.type in ["red", "black", "odd", "even", "low", "high"]:
 		payout += 0.5
 		res.log.rules.append("Satin Gloves: %s pays 1.5:1" % c.bet)
@@ -735,6 +768,9 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 	if w.has_rule("veterans") and not c.is_bet() and c.value >= 3:
 		amount *= 1.5
 		res.log.rules.append("Old Timers: level %d chip x1.5" % c.value)
+	if w.has_rule("high_rise") and not c.is_bet() and c.value >= Content.HIGH_RISE_LEVEL:
+		amount *= 2.0
+		res.log.rules.append("High Rise: level %d chip x2" % c.value)
 	if up == "sweet_spot":
 		amount *= 1.5
 		res.log.upgrades.append("Sweet Spot %s: x1.5" % B.label(pocket))

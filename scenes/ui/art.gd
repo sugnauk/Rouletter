@@ -55,6 +55,13 @@ const GLYPHS := {
 ## Pixel sprites for items that used to be lettered tiles: 12 rows of 12 characters.
 ## Colours: see SPRITE_COLOURS ('.' is transparent).
 const SPRITES := {
+	"odds_maker": ["............", "..yyyyyyyy..", ".yykkkkkkyy.", ".yk.rrrr.ky.", ".yk.r..r.ky.", ".yk.rrrr.ky.", ".yk.r..r.ky.", ".yk.r..r.ky.", ".yykkkkkkyy.", "..yyyyyyyy..", "....G..G....", "...GGGGGG..."],
+	"keystone": ["....yyyy....", "...yggggy...", "..yggggggy..", "..ywwwwwwy..", "..yggggggy..", "..ywwwwwwy..", "..yggggggy..", "..ywwwwwwy..", "..yggggggy..", "..yyyyyyyy..", "............", "............"],
+	"tall_stack": ["....rrrr....", "....wwww....", "....BBBB....", "....rrrr....", "....wwww....", "....BBBB....", "....rrrr....", "....wwww....", "....BBBB....", "....rrrr....", "...dddddd...", "............"],
+	"wind_up": ["............", "....kkkk....", "...k.yy.k...", "..k.y..y.k..", "..k.y.yy.k..", "..k..yy..k..", "...k....k...", "....kkkk....", ".....kk.....", "....kkkk....", "...kk..kk...", "............"],
+	"high_rise": [".....y......", ".....k......", "....kkk.....", "....kwk.....", "...kkkkk....", "...kwkwk....", "...kkkkk....", "..kkwkwkk...", "..kkkkkkk...", "..kwkwkwk...", "..kkkkkkk...", "dddddddddddd"],
+	"encore": ["............", "..y......y..", "...y....y...", "....yyyy....", "...yGGGGy...", "..yGwwwwGy..", "..yGwwwwGy..", "...yGGGGy...", "....yyyy....", "...y....y...", "..y......y..", "............"],
+	"second_wind": ["............", "..cccc......", ".c....c.....", "......c.....", "..ccccc.....", "...........c", "..cccccccccc", "...........c", "..cccccc....", ".c......c...", "..cccccc....", "............"],
 	"even_stevens": ["....kkkk....", "..kkrrkkkk..", ".krrrrkkkkk.", ".krrrrkkkkk.", "krrrrrkkkkkk", "krrrrrkwkkkk", "krrrrwkkkkkk", "krrrrrkkkkkk", ".krrrrkkkkk.", ".krrrrkkkkk.", "..kkrrkkkk..", "....kkkk...."],
 	"box_office": ["............", "yyyyyyyyyyyy", "yggggggggggy", "yg.kk.kk..gy", ".ygkk.kk.gy.", "..ygggggggy.", "..ygggggggy.", ".yg.yyyy.gy.", "yg..yyyy..gy", "yggggggggggy", "yyyyyyyyyyyy", "............"],
 	"coin_purse": ["....bbbb....", "...b....b...", "..bbbbbbbb..", ".bbbbbbbbbb.", ".bbbyyyybbb.", "bbbyykkyybbb", "bbbyykyyybbb", "bbbyykkyybbb", "bbbbyyyybbbb", ".bbbbbbbbbb.", "..bbbbbbbb..", "............"],
