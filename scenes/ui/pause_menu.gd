@@ -11,6 +11,12 @@ var abandon_btn: Button
 var fast_btn: Button
 var confirm := false
 var info: Label
+var panel: Panel
+
+
+## Stay centred in the play area (landscape or portrait).
+func relayout() -> void:
+	panel.position = (Vector2(P.W, P.H) / 2.0 - panel.size / 2.0).floor()
 
 
 func _ready() -> void:
@@ -23,7 +29,7 @@ func _ready() -> void:
 	shade.size = Vector2(8640, 8360)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(shade)
-	var panel := Panel.new()
+	panel = Panel.new()
 	panel.add_theme_stylebox_override("panel", P.box(P.PANEL, P.GOLD, 2))
 	P.place(panel, Vector2(200, 66), Vector2(240, 228))
 	add_child(panel)

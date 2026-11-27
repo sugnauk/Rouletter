@@ -22,6 +22,7 @@ func _ready() -> void:
 			fast_ui = true
 			var driver: Node = load("res://tools/ui_smoke.gd").new()
 			driver.set("out_dir", a.substr(6))
+			driver.set("portrait", "portrait" in OS.get_cmdline_user_args())
 			add_child(driver)
 	profile.load_from()
 

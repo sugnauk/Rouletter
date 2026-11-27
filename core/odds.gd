@@ -7,13 +7,22 @@ const Resolver := preload("res://core/resolver.gd")
 
 
 ## Per-spin Take distribution: {take_bucket(int): probability}.
+## Crooked pockets are weighted by width; on the Twin Ball wheel every pair of balls counts.
 static func spin_distribution(felt) -> Dictionary:
 	var dist := {}
 	var pockets: Array = felt.board.pockets
-	var p := 1.0 / pockets.size()
+	var res := {}
 	for pocket in pockets:
-		var t := int(floor(Resolver.resolve_spin(felt, pocket).take))
-		dist[t] = dist.get(t, 0.0) + p
+		res[pocket] = Resolver.resolve_spin(felt, pocket)
+	if not felt.board.def.get("twin", false):
+		for pocket in pockets:
+			var t := int(floor(res[pocket].take))
+			dist[t] = dist.get(t, 0.0) + felt.pocket_chance(pocket)
+		return dist
+	for a in pockets:
+		for b in pockets:
+			var t := int(floor(Resolver.combine_twin(felt, res[a], res[b]).take))
+			dist[t] = dist.get(t, 0.0) + felt.pocket_chance(a) * felt.pocket_chance(b)
 	return dist
 
 

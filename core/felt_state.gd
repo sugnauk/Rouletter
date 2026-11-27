@@ -21,6 +21,10 @@ var final_spin := false                ## this spin is the table's last (Last Ca
 var spin_no := 0                       ## which spin of the table this is, 1-based (Double Down, Late Bloomer)
 var last_pocket: int = -99
 var next_id: int = 1
+var weights: Dictionary = {}           ## Crooked Wheel: pocket -> width (missing = 1); payouts follow
+var extra_ball := false               ## this spin is past the table's usual count of balls (Encore)
+var second_wind_used := false          ## Second Wind already paid out at this table
+var arc_start: int = -1                ## Carousel: index into the wheel order where the hot arc begins (-1 = none)
 
 
 func _init(wheel_id: String = "european", shared_board = null) -> void:
@@ -45,6 +49,10 @@ func copy():
 	f.spin_no = spin_no
 	f.last_pocket = last_pocket
 	f.next_id = next_id
+	f.weights = weights.duplicate()
+	f.arc_start = arc_start
+	f.extra_ball = extra_ball
+	f.second_wind_used = second_wind_used
 	return f
 
 
@@ -56,7 +64,8 @@ func to_dict() -> Dictionary:
 	return {"wheel": board.wheel_id, "chips": cs, "square_upgrades": square_upgrades.duplicate(),
 		"bet_upgrades": bet_upgrades.duplicate(), "house_rules": house_rules.duplicate(),
 		"wheel_rules": wheel_rules.duplicate(), "boss_rule": boss_rule, "condition": condition, "frozen_id": frozen_id,
-		"red_streak": red_streak, "hit_streak": hit_streak, "last_pocket": last_pocket, "next_id": next_id}
+		"red_streak": red_streak, "hit_streak": hit_streak, "last_pocket": last_pocket, "next_id": next_id,
+		"weights": weights.duplicate(), "arc_start": arc_start, "second_wind_used": second_wind_used}
 
 
 static func from_dict(d: Dictionary):
@@ -78,7 +87,54 @@ static func from_dict(d: Dictionary):
 	f.hit_streak = d.hit_streak
 	f.last_pocket = d.last_pocket
 	f.next_id = d.next_id
+	f.weights = d.get("weights", {}).duplicate()
+	f.arc_start = int(d.get("arc_start", -1))
+	f.second_wind_used = bool(d.get("second_wind_used", false))
 	return f
+
+
+## How wide a pocket is (Crooked Wheel); 1 everywhere else.
+func weight(p: int) -> int:
+	return int(weights.get(p, 1))
+
+
+func total_weight() -> int:
+	var t := 0
+	for p in board.pockets:
+		t += weight(p)
+	return t
+
+
+## The chance the ball lands in pocket `p` on one ball.
+func pocket_chance(p: int) -> float:
+	return float(weight(p)) / total_weight()
+
+
+## What a bet pays, x:1. Fair minus the zeros: the number pockets' width over the bet's width,
+## minus one. With no crooked pockets this is the board's usual payout.
+func payout_of(key: String) -> float:
+	var b: Dictionary = board.bet(key)
+	if weights.is_empty():
+		return b.payout
+	var num_w := 0
+	for n in range(1, board.numbers + 1):
+		num_w += weight(n)
+	var cw := 0
+	for p in b.numbers:
+		cw += weight(p)
+	return float(num_w) / maxf(1.0, cw) - 1.0
+
+
+## Carousel: the pockets inside the hot arc (`offset` arcs ahead: 1 = where it goes next).
+func arc_pockets(offset: int = 0) -> Array:
+	if arc_start < 0:
+		return []
+	var out := []
+	var o: Array = board.order
+	var start: int = (arc_start + offset * Content.ARC_STEP) % o.size()
+	for i in range(Content.ARC_LEN):
+		out.append(o[(start + i) % o.size()])
+	return out
 
 
 ## Is this Enforcer twist in force? (The Owner's table combines several.)
@@ -140,6 +196,15 @@ func bet_stakes() -> int:
 
 func clear_bets() -> void:
 	chips = perm_chips()
+
+
+## Betting chips (not permanent ones) on a spot.
+func bet_value_on(key: String) -> int:
+	var t := 0
+	for c in chips_on(key):
+		if c.is_bet():
+			t += c.value
+	return t
 
 
 func value_on(key: String) -> int:

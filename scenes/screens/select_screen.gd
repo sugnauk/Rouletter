@@ -34,6 +34,8 @@ var seed_lbl: Label
 var browse: Array = []
 var ch_level := 0          ## challenge level (0 = I); each adds two marker grades
 var level_btn: Button     ## the < > buttons (hidden when a mode fixes the wheel)
+var panel: Panel
+var back_btn
 
 
 func setup() -> void:
@@ -83,7 +85,7 @@ func setup() -> void:
 	dots.draw.connect(_draw_dots)
 	add_child(dots)
 	# Details on the right.
-	var panel := Panel.new()
+	panel = Panel.new()
 	P.place(panel, Vector2(344, 50), Vector2(280, 262))
 	add_child(panel)
 	index_lbl = P.label(panel, "", P.FONT_SMALL, P.DIM)
@@ -118,7 +120,54 @@ func setup() -> void:
 	grade_lbl = P.button(grade_box, "", func(): pass, Vector2(180, 24), P.FONT_SMALL)
 	P.button(grade_box, ">", func(): _grade(1), Vector2(22, 24))
 	P.place(go_btn, Vector2(504, 322))
-	P.place(P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 24)), Vector2(16, 322))
+	back_btn = P.button(self, "Back", func(): main.show_screen("title"), Vector2(80, 24))
+	P.place(back_btn, Vector2(16, 322))
+
+
+## Portrait: the same selector, stacked: modes, the wheel between its arrows, the details,
+## then grade / act / DEAL ME IN at the bottom.
+func relayout(tall: bool) -> void:
+	if tall:
+		P.place(mode_btn, Vector2(16, 44))
+		P.place(kit_btn, Vector2(206, 44))
+		P.place(seed_lbl, Vector2(16, 66))
+		P.place(seed_edit, Vector2(46, 62), Vector2(110, 14))
+		P.place(wheel_view, Vector2(70, 82), Vector2(220, 220))
+		P.place(browse[0], Vector2(16, 160))
+		P.place(browse[1], Vector2(310, 160))
+		P.place(lock_lbl, Vector2(16, 304), Vector2(328, 14))
+		P.place(dots, Vector2(16, 320), Vector2(328, 8))
+		P.place(panel, Vector2(16, 332), Vector2(328, 220))
+		for l in [style_lbl, desc_lbl, stat_lbl]:
+			l.size.x = 312
+			l.custom_minimum_size.x = 312
+		P.place(desc_lbl, Vector2(8, 56), Vector2(312, 84))
+		P.place(stat_lbl, Vector2(8, 140), Vector2(312, 78))
+		P.place(grade_box, Vector2(16, 558))
+		P.place(level_btn, Vector2(16, 558))
+		P.place(act_btn, Vector2(16, 586))
+		P.place(go_btn, Vector2(226, 586))
+		P.place(back_btn, Vector2(16, 614))
+	else:
+		P.place(mode_btn, Vector2(344, 4))
+		P.place(kit_btn, Vector2(486, 4))
+		P.place(seed_lbl, Vector2(344, 28))
+		P.place(seed_edit, Vector2(374, 23), Vector2(110, 14))
+		P.place(wheel_view, Vector2(58, 48), Vector2(232, 232))
+		P.place(browse[0], Vector2(16, 132))
+		P.place(browse[1], Vector2(298, 132))
+		P.place(lock_lbl, Vector2(16, 286), Vector2(316, 14))
+		P.place(dots, Vector2(16, 304), Vector2(316, 8))
+		P.place(panel, Vector2(344, 50), Vector2(280, 262))
+		P.place(style_lbl, Vector2(8, 42), Vector2(264, 12))
+		P.place(desc_lbl, Vector2(8, 56), Vector2(264, 100))
+		P.place(stat_lbl, Vector2(8, 160), Vector2(264, 100))
+		P.place(grade_box, Vector2(102, 322))
+		P.place(level_btn, Vector2(126, 322))
+		P.place(act_btn, Vector2(334, 322))
+		P.place(go_btn, Vector2(504, 322))
+		P.place(back_btn, Vector2(16, 322))
+	dots.queue_redraw()
 
 
 func _deal() -> void:

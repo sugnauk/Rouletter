@@ -164,6 +164,9 @@ const TIPS := {
 		{"speaker": "Dolores", "text": "People talk to you in the Cage now. Offers come and go: take what helps, pass on the rest."}]},
 	"refine": {"id": "tip_refine", "lines": [
 		{"speaker": "Dolores", "text": "One of your number chips has some levels on it. The Cashier can REFINE it ($6), giving it a second act. TRADE swaps a chip for a related one."}]},
+	"odds": {"id": "tip_odds", "lines": [
+		{"speaker": "Dolores", "text": "A word on the odds, sugar. A chip on red, black or a column comes in about half the time, or a third. A single number comes in once in thirty-seven."},
+		{"speaker": "Dolores", "text": "Start steady on the boxes and build them up. Numbers pay big, but they want spins and backing: the rooms upstairs give you both."}]},
 	"level": {"id": "tip_level", "lines": [
 		{"speaker": "Dolores", "text": "You've already got one of those on the felt. Put this one right on top of it and it levels up. You lose nothing: a stack does everything both chips would do apart."}]},
 }

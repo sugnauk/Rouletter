@@ -18,6 +18,11 @@ var detail: Label
 var reset_btn: Button
 var reset_confirm := false
 var fit_lbl: Button
+var panel: Panel
+var keys_lbl: Label
+var keys_y := 0
+var back_btn
+var credits_btn
 
 
 func setup() -> void:
@@ -30,7 +35,7 @@ func setup() -> void:
 		P.place(b, Vector2(16, y))
 		buttons[it[0]] = [b, it[1]]
 		y += 28
-	var panel := Panel.new()
+	panel = Panel.new()
 	P.place(panel, Vector2(292, 50), Vector2(332, 114))
 	add_child(panel)
 	detail = P.label(panel, "Hover an option.", P.FONT_SMALL, P.CREAM)
@@ -60,11 +65,34 @@ func setup() -> void:
 	for c in [fminus, fit_lbl]:
 		c.mouse_entered.connect(func(): detail.text = fit_tip)
 	y += 28
-	P.place(P.label(self, "F11: fullscreen    Keys at the table: 1/2/3 chip size, Z undo, C clear, Space spin", P.FONT_SMALL, P.DIM), Vector2(16, y + 6))
-	P.place(P.button(self, "Back", func(): main.close_options(), Vector2(80, 22)), Vector2(16, 326))
-	P.place(P.button(self, "Credits", func(): main.show_screen("credits"), Vector2(80, 22)), Vector2(104, 326))
+	keys_lbl = P.label(self, "F11: fullscreen    Keys at the table: 1/2/3 chip size, Z undo, C clear, Space spin", P.FONT_SMALL, P.DIM)
+	keys_y = y + 6
+	P.place(keys_lbl, Vector2(16, keys_y))
+	back_btn = P.button(self, "Back", func(): main.close_options(), Vector2(80, 22))
+	P.place(back_btn, Vector2(16, 326))
+	credits_btn = P.button(self, "Credits", func(): main.show_screen("credits"), Vector2(80, 22))
+	P.place(credits_btn, Vector2(104, 326))
 	reset_btn = P.button(self, "Reset progress", _reset, Vector2(140, 22))
 	P.place(reset_btn, Vector2(484, 326))
+
+
+## Portrait: the explanation panel moves under the list, the buttons to the bottom.
+func relayout(tall: bool) -> void:
+	keys_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if tall else TextServer.AUTOWRAP_OFF
+	if tall:
+		P.place(panel, Vector2(16, keys_y + 40), Vector2(328, 114))
+		P.place(detail, Vector2(8, 8), Vector2(312, 100))
+		P.place(keys_lbl, Vector2(16, keys_y), Vector2(328, 30))
+		P.place(back_btn, Vector2(16, 606))
+		P.place(credits_btn, Vector2(104, 606))
+		P.place(reset_btn, Vector2(204, 606))
+	else:
+		P.place(panel, Vector2(292, 50), Vector2(332, 114))
+		P.place(detail, Vector2(8, 8), Vector2(316, 100))
+		P.place(keys_lbl, Vector2(16, keys_y), Vector2(600, 10))
+		P.place(back_btn, Vector2(16, 326))
+		P.place(credits_btn, Vector2(104, 326))
+		P.place(reset_btn, Vector2(484, 326))
 
 
 func refresh() -> void:

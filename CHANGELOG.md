@@ -3,6 +3,111 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.47
+- **The run's arc, finished:** steady odds early, stacking in the middle, then spins and combos late.
+  - **Early, better odds:** the **Odds Maker** chip sits on an outside box, and every bet there pays +0.25x per level, your betting chips included. At level 4, red pays 2 to 1.
+  - **Mid game, stacking pays:**
+    - **Keystone:** a hit pays +4 Take per chip stacked on it.
+    - **Tall Stack:** +1 Take every spin per level of your tallest chip.
+    - **High Rise** (House Rule): chips at level 5 or higher score x2. It stacks with Old Timers.
+  - **Late game, spins and combos:**
+    - **Night 4 now runs 7 balls,** like the tables upstairs, so Act I's last night gives you room to go after numbers.
+    - **Extra balls,** anything past a table's usual count (respins and so on), show as gold balls under the wheel, with an EXTRA BALL banner.
+    - **Encore** (House Rule): extra balls score x2.
+    - **Second Wind** (House Rule): your first straight-up hit at each table earns a ball.
+    - **Wind-Up:** grows a level every time you earn a respin.
+    - **Combo chain:** Respin chips and Second Wind feed Encore, Wind-Up and Keystone, and High Rise doubles the big stacks.
+- **Payments rebalanced** for night 3 (112) and night 4 (310) so overall difficulty stays where it was.
+
+## 0.0.46
+- **Portrait mode, part 2: every screen.** The home screen, wheel select, end of run, Pawn Shop, Casebook, Options, Credits and the title card all have upright layouts now:
+  - **Home:** the wheel spins at the top, with the sign and buttons beneath.
+  - **Wheel select:** the same layout you know, stacked: modes, the wheel between its arrows, the details, then DEAL ME IN.
+  - **Pawn Shop:** narrower lanes with more room between rows, Feats on two lines each.
+  - **Casebook:** the list on top and the detail panel underneath.
+- Turning the phone mid-run re-lays out every screen on the spot.
+
+## 0.0.45
+- **Portrait mode, part 1: the table and the Cage.** Hold your phone upright and the game re-lays itself out. Rotate back and the landscape layout returns.
+  - **The felt stands up** like a real table seen from the end: numbers run down in three roomy columns, with the outside boxes along the left. The squares are bigger than in landscape, which makes them easier to hit with a thumb.
+  - **Table:**
+    - the payment bar across the top;
+    - the wheel beside BALLS, SPIN, your stack and the odds;
+    - the felt with your bet chips, rack, rules and side job beside it;
+    - the count underneath.
+  - **Cage:**
+    - the counter across the full width, then the description;
+    - the felt with your modes and rack beside it;
+    - NEXT TABLE at the bottom.
+  - Drag-to-buy, dialogue, cards, banners, the free-chip pick and the pause menu all fit the upright screen.
+  - **Other screens** (title, wheel select, Pawn Shop, Casebook...) still show the landscape layout, centred, until part 2.
+- The web build and phones no longer lock to landscape.
+
+## 0.0.44
+- **New wheels that change how a spin works,** not just how many zeros there are:
+  - **Twin Ball:**
+    - Two balls drop every spin (the second one is gold), and a bet wins if either lands on it.
+    - A lost stake is only charged once.
+    - Both balls in one pocket is **TWIN!**: the spin's Take x3.
+    - Four spins a table, with bigger payments.
+  - **Crooked Wheel:**
+    - Four pockets are three times as wide. You can see them on the wheel, and they're marked x3 on the felt.
+    - They come in far more often, and their payouts follow the true odds, so every bet stays fair.
+    - They move to new numbers at every table: chase them or stay put.
+  - **Carousel:**
+    - A gold arc of seven pockets glows on the wheel and steps round after every spin. A ball inside it doubles the spin.
+    - The felt underlines the arc and, faintly, where it's going next.
+    - Momentum is built in, and you start with a Kingmaker.
+- **Fewer look-alikes:**
+  - American and Triple Zero are merged into the **Zero Wheel** (0, 00 and 000, with a Sentinel, a Wildcard Zero and +$2).
+  - Sunrise has given way to the Carousel.
+  - Now every wheel in the selector plays differently.
+- **Saves and Feats:**
+  - Old saves, unlocks and Feats carry across.
+  - New Feats: Seeing Double (Twin Ball), Bent Pins (Crooked), Carousel Rider.
+- **Hit chances** account for crooked pockets and both balls.
+
+## 0.0.43
+- **Start steady, hunt numbers later.** A single number hits 1 spin in 37, so a lone number chip often went whole tables without scoring. The run now grows from safe bets into big ones on its own, without any gating by night:
+  - **Four new box chips** sit on the outside boxes. They hit about half the time (or a third) but pay small:
+    - **Even Stevens:** its box wins, +2 Take.
+    - **Box Office:** its column or dozen wins, +3 Take.
+    - **Coin Purse:** its box wins, +$1.
+    - **Streak Rider:** its box wins, it grows a level (up to 8).
+  - Box chips stack and level like any chip, but they can't keep up with later payments on their own. Number chips, stacking, respins and multipliers are where the big Take is.
+  - **The opening pick** always includes one option for the outside boxes.
+  - **Kits:** the European kit is now Box Office + Magnet, and the French kit trades its Hedge for Even Stevens.
+  - **Upstairs tables (Act II and endless) run 7 balls,** so there's room to chase numbers and combos. Their payments are 15% bigger to match.
+- **See the odds:**
+  - every chip's info card says how often it pays ("Pays on 18 of 37 spins (49%)");
+  - hovering a spot shows "hits 18 in 37";
+  - Dolores explains the odds at your first table.
+
+## 0.0.42
+- **Drag to buy, Balatro-style.** Drag an item off the Cage counter:
+  - **A chip onto the felt:** bought and placed in one move. It stays free to move until the spin.
+  - **A felt upgrade onto a lit spot:** bought and laid there.
+  - **Anything onto the glowing "DROP HERE TO BUY" box** over your rack and House Rules: bought into the rack, rules or perks.
+  - **If you can't afford it,** it won't lift, and its card says why.
+  - Click, then BUY still works.
+- **See where a chip can go.** While you hold or drag a chip, every spot it fits pulses gold (green where it would level up a twin), and everywhere else is dimmed. The status line says the rule in words, e.g. "Goes on an even-money box: red, black, odd, even, high or low."
+- **Info cards everywhere:** free chips, everything on the Cage counter, opening, bonus and stash picks, Refine paths, and Pawn Shop and Casebook tiles. The same card shows:
+  - the one-line effect;
+  - where it goes and how it scales;
+  - the fine print;
+  - how it fits your build;
+  - its price.
+- **Shorter descriptions:** every chip, rule, upgrade, favour and voucher is now one short line. The rules detail lives on the card.
+- **Table HUD:**
+  - the balls count sits under the wheel ("BALLS 4/6");
+  - cash is just "$4";
+  - your betting-chip stack lies right under the felt;
+  - the speed and MENU buttons moved up into the top bar;
+  - the LOG button is gone (click the score panel's receipt for the full calculation);
+  - "where it pays" previews now clearly recolour the felt.
+- **The Take bar fills as the count plays.** Each win pours in with rising coin ticks, a multiplier surges it, a loss drains it. A sparkling leading edge, "HALFWAY", and a gold flash and "PAID!" the moment you cross the payment. (Fastest speed still does one quick fill.)
+- **Hedge fixed:** it never pays its box's odds now (it was paying on a hit as well). It's insurance: every spin its box misses, +2 Take per level.
+
 ## 0.0.41
 - Placements aren't final until the next spin. Any chip you place, in the Cage or at the table, can be picked back up for free until you spin:
   - **In the Cage:** click it (or right-click it) and it's back in your hand, ready to put somewhere else. MOVE is also free for these chips.

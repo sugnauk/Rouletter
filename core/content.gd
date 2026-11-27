@@ -10,9 +10,16 @@ const TABLE_NAMES := ["Floor", "High Roller", "Enforcer"]
 const TABLE_NAMES_ACT2 := ["Private Room", "Velvet Room", "Enforcer"]
 const ACT2_NIGHTS := 8                  ## Act II runs go on upstairs for nights 5-8
 ## Take target of each night's first table (nights 5-8 are Act II only).
-const NIGHT_BASE := [9, 32, 105, 240, 330, 450, 600, 780]
+const NIGHT_BASE := [9, 32, 112, 310, 380, 520, 690, 895]
 const TABLE_MULT := [1.0, 1.4, 1.95]      ## Floor / High Roller / Enforcer
 const SPINS := 6
+const TWIN_MULT := 3.0                  ## Twin Ball: both balls in one pocket
+const ARC_LEN := 7                      ## Carousel: pockets in the hot arc...
+const ARC_STEP := 5                     ## ...how far it moves after each spin...
+const ARC_MULT := 2.0                   ## ...and what a ball inside it does to the spin
+const CROOKED_FAT := 4                  ## Crooked Wheel: fat pockets per table...
+const CROOKED_WIDTH := 3                ## ...and how much wider they are
+const UPSTAIRS_SPINS := 7               ## Act II tables (the floor above) and endless: room to hunt numbers
 const START_STACK := 25                 ## betting chips handed out at each table
 const START_CASH := 4
 const CLEAR_CASH := [3, 4, 6]            ## base cash for clearing each table type
@@ -61,17 +68,17 @@ const FAVOURS := {
 	"fat_stack": {"name": "Fat Stack", "icon": "stack", "price": 3,
 		"desc": "+8 betting chips at the next table."},
 	"head_start": {"name": "Head Start", "icon": "momentum", "price": 6,
-		"desc": "The next table starts with 20% of its payment already on the meter."},
+		"desc": "Next table starts 20% paid."},
 }
 const VOUCHERS := {
 	"comp_card": {"name": "Comp Card", "icon": "cash", "price": 10,
-		"desc": "For the rest of the run: +$2 every time you clear a table."},
+		"desc": "+$2 per table cleared, all run."},
 	"vip_rack": {"name": "VIP Rack", "icon": "call_bets", "price": 12,
-		"desc": "For the rest of the run: +1 House Rule slot."},
+		"desc": "+1 House Rule slot, all run."},
 	"patience": {"name": "Patience", "icon": "spin", "price": 16,
-		"desc": "For the rest of the run: +1 spin at every table."},
+		"desc": "+1 spin at every table, all run."},
 	"house_credit": {"name": "House Credit", "icon": "loan", "price": 12,
-		"desc": "For the rest of the run: cash prices in the Cage are $1 cheaper (never below $1)."},
+		"desc": "Cage cash prices $1 cheaper, all run.", "more": "Never below $1."},
 }
 const FAT_STACK := 8
 const HEAD_START := 0.2
@@ -128,160 +135,187 @@ const MARKERS_VICTORY := 3
 
 # --- Chips (permanent; bought in the shop, placed at a table) -------------------------
 const CHIPS := {
-	"perm": {"name": "Permanent", "desc": "Stays on the felt for the whole run. Pays its odds into your Take whenever it hits.",
+	"perm": {"name": "Permanent", "desc": "Pays its odds whenever it hits.", "more": "Stays on the felt for the whole run.",
 		"price": 4, "unlock": 0, "any_bet": true,
 		"note": "The core idea: a bet that is never collected."},
-	"magnet": {"name": "Magnet", "desc": "If the ball lands one grid square away, it slides onto the winner.",
+	"magnet": {"name": "Magnet", "desc": "Ball one square away? It slides onto this.", "more": "Only from a square directly next to it on the felt.",
 		"price": 6, "unlock": 0,
 		"note": "Uses the physical 3xN felt layout only a roulette table has."},
-	"compounding": {"name": "Compounding", "desc": "+1 value every spin (per chip stacked).",
+	"compounding": {"name": "Compounding", "desc": "+1 level every spin.", "per": "stack",
 		"price": 6, "unlock": 0,
 		"note": "'Let it ride' on a bet nobody ever collects."},
-	"croupier": {"name": "Croupier", "desc": "When it hits, +1 Take for each betting chip that lost this spin.",
+	"croupier": {"name": "Croupier", "desc": "Hit: +1 Take per losing betting chip.",
 		"price": 5, "unlock": 0,
 		"note": "The rake sweeping the losers off the layout, paid to you."},
-	"wildcard_zero": {"name": "Wildcard Zero", "desc": "Sits on a zero. When any zero hits: outside bets push and +6 Take (per chip stacked).",
+	"wildcard_zero": {"name": "Wildcard Zero", "desc": "Zero hits: outside bets push, +6 Take.", "per": "stack", "more": "Outside bets get their chips back instead of losing.",
 		"price": 6, "unlock": 0, "zero_only": true,
 		"note": "Targets the green pockets, the literal source of the house edge."},
 	"mint": {"name": "Mint", "desc": "+$1 every spin, hit or miss.",
 		"price": 5, "unlock": 0,
 		"note": "A comp from the pit for staying at the table."},
-	"respin": {"name": "Respin", "desc": "When it hits, +1 spin at this table (per chip stacked).",
+	"respin": {"name": "Respin", "desc": "Hit: +1 spin at this table.", "per": "stack",
 		"price": 6, "unlock": 0,
 		"note": "Buys time against the payment clock."},
-	"ledger": {"name": "Ledger", "desc": "When it hits, +1 value to your permanent chips on adjacent squares (per chip stacked).",
+	"ledger": {"name": "Ledger", "desc": "Hit: chips next to it gain a level.", "per": "stack",
 		"price": 6, "unlock": 2,
 		"note": "Growth spreads along felt neighbours, the same geometry splits and corners use."},
-	"collector": {"name": "Collector", "desc": "When it hits, +1 Take per value of your other chips in its dozen or column (per chip stacked).",
+	"collector": {"name": "Collector", "desc": "Hit: +1 Take per level in its dozen and column.", "per": "stack", "more": "Counts your other chips' levels.",
 		"price": 6, "unlock": 2,
 		"note": "Pays off roulette's own groupings when you crowd them."},
-	"bridge": {"name": "Bridge", "desc": "Sits on a split, corner, street or line. When it hits, +1 Take per number it covers.",
+	"bridge": {"name": "Bridge", "desc": "Hit: +1 Take per number it covers.",
 		"price": 5, "unlock": 0, "line_only": true,
 		"note": "Lives on the felt's lines, the inside bets only a roulette layout has."},
-	"mirror": {"name": "Mirror", "desc": "Also scores when its mirror number hits (the one the same distance from the far end: 1 and 36, 2 and 35...).",
+	"mirror": {"name": "Mirror", "desc": "Also scores when its mirror number hits.", "more": "Mirror = the same distance from the far end (1 and 36, 2 and 35...).",
 		"price": 6, "unlock": 0,
 		"note": "Uses the numbering of the layout itself: every number has a twin at the other end."},
-	"porch_light": {"name": "Porch Light", "desc": "When a wheel neighbour of its number hits, scores half.",
+	"porch_light": {"name": "Porch Light", "desc": "A wheel neighbour hits: scores half.",
 		"price": 6, "unlock": 0,
 		"note": "Rewards the wheel's physical order, not the felt's: the 'neighbours' gamblers chase."},
-	"black_cat": {"name": "Black Cat", "desc": "Whenever any black number hits, +2 Take (per level).",
+	"black_cat": {"name": "Black Cat", "desc": "Any black number hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0,
 		"note": "Superstition turned upside down: the black numbers bring the luck."},
-	"penny": {"name": "Lucky Penny", "desc": "When it hits, +$2 cash (per level).",
+	"penny": {"name": "Lucky Penny", "desc": "Hit: +$2.", "per": "level",
 		"price": 4, "unlock": 0,
 		"note": "A coin that pays the gambler, not the house."},
-	"snowball": {"name": "Snowball", "desc": "When it hits, it grows 2 levels (per chip stacked).",
+	"snowball": {"name": "Snowball", "desc": "Hit: grows 2 levels.", "per": "stack",
 		"price": 6, "unlock": 0,
 		"note": "'Let it ride', but only when it wins."},
-	"street_light": {"name": "Street Light", "desc": "Whenever another number in its street (its row of three) hits, +3 Take (per level).",
+	"street_light": {"name": "Street Light", "desc": "Another number in its street hits: +3 Take.", "per": "level",
 		"price": 5, "unlock": 0,
 		"note": "Lights up the three-number street a straight bet sits in."},
-	"red_herring": {"name": "Red Herring", "desc": "Whenever any red number hits, +2 Take (per level).",
+	"red_herring": {"name": "Red Herring", "desc": "Any red number hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0,
 		"note": "The Black Cat's cousin, for the other colour."},
-	"jar": {"name": "Jackpot Jar", "desc": "Grows a level every spin it misses. When it hits it pays, then empties back to one level per chip stacked.",
+	"jar": {"name": "Jackpot Jar", "desc": "Grows each miss. Hit: pays, then empties.", "per": "stack", "more": "Empties back to one level per chip stacked.",
 		"price": 6, "unlock": 0,
 		"note": "Saving up for the one big night."},
-	"hedge": {"name": "Hedge", "desc": "Sits on an even-money box (red, black, odd, even, high, low). Every spin it misses, +1 Take (per level).",
-		"price": 5, "unlock": 0, "even_only": true,
+	"hedge": {"name": "Hedge", "desc": "Pays nothing on a hit. Each miss: +2 Take.", "per": "level", "more": "Insurance, not a bet: it never pays its box's odds.",
+		"price": 5, "unlock": 0, "even_only": true, "pays_odds": false,
 		"note": "Pays you a little for being wrong: a hedge, built into the felt."},
-	"wheel_spoke": {"name": "Wheel Spoke", "desc": "When the ball lands 1 or 2 pockets from its number on the wheel, +4 Take (per level).",
+	"wheel_spoke": {"name": "Wheel Spoke", "desc": "Ball 1-2 pockets away on the wheel: +4 Take.", "per": "level",
 		"price": 6, "unlock": 2,
 		"note": "Plays the wheel's order, the way a 'neighbours' bet does."},
-	"echo": {"name": "Echo", "desc": "When it hits, every other permanent chip you own gains a level (per chip stacked).",
+	"echo": {"name": "Echo", "desc": "Hit: all your other chips gain a level.", "per": "stack",
 		"price": 9, "unlock": 3,
 		"note": "One hit that ripples across the whole felt."},
-	"ace": {"name": "Ace of Spades", "desc": "Sits on a black number only. When it hits, the spin's Take x2. Each chip stacked on it multiplies again; other levels add +0.5.",
+	"ace": {"name": "Ace of Spades", "desc": "Hit: the spin's Take x2.", "more": "Each chip stacked multiplies again; other levels add +0.5.",
 		"price": 9, "unlock": 3, "black_only": true,
 		"note": "The death card of the deck, dealt onto roulette's black squares."},
-	"tip_jar": {"name": "Tip Jar", "desc": "+$1 for every betting chip that loses (up to $5 a spin, per level).",
+	"tip_jar": {"name": "Tip Jar", "desc": "+$1 per losing betting chip (max $5).", "more": "Up to $5 a spin, per level.",
 		"price": 5, "unlock": 0,
 		"note": "The croupier's tip box, emptied into your pocket."},
-	"green_thumb": {"name": "Green Thumb", "desc": "Sits on a zero. Grows a level every time any zero hits (per chip stacked).",
+	"green_thumb": {"name": "Green Thumb", "desc": "Any zero hits: grows a level.", "per": "stack",
 		"price": 5, "unlock": 0, "zero_only": true,
 		"note": "Grows on the green, the one colour the house owns."},
-	"signpost": {"name": "Signpost", "desc": "Sits on a split, corner, street or line. When it hits, +$2 cash (per level).",
+	"signpost": {"name": "Signpost", "desc": "Hit: +$2.", "per": "level",
 		"price": 5, "unlock": 0, "line_only": true,
 		"note": "Marks a crossroads on the felt's lines, and charges a toll."},
-	"sentinel": {"name": "Sentinel", "desc": "Sits on a zero. Whenever a zero hits, +8 Take (per level).",
+	"sentinel": {"name": "Sentinel", "desc": "Any zero hits: +8 Take.", "per": "level",
 		"price": 5, "unlock": 0, "zero_only": true,
 		"note": "Guards the green pockets, where the house edge lives."},
-	"crown": {"name": "Column Crown", "desc": "Sits on a column bet. When its column hits, the spin's Take x1.25. Each chip stacked on it multiplies again; other levels add +0.25.",
+	"crown": {"name": "Column Crown", "desc": "Its column hits: the spin's Take x1.25.", "more": "Each chip stacked multiplies again; other levels add +0.25.",
 		"price": 7, "unlock": 2, "column_only": true,
 		"note": "Turns one of the long 2:1 boxes into a multiplier."},
-	"odd_fellow": {"name": "Odd Fellow", "desc": "Whenever an odd number hits, +2 Take (per level).",
+	# Box chips: sit on the outside boxes, hit about half the time (or a third), pay small. The
+	# reliable start of a build; they can't keep up with later payments alone.
+	"even_stevens": {"name": "Even Stevens", "desc": "Its box wins: +2 Take.", "per": "level",
+		"price": 4, "unlock": 0, "even_only": true, "trigger": {"on": "hit", "take": 2.0},
+		"note": "A sure-ish thing: the even-money boxes are the closest roulette gets to a coin flip."},
+	"box_office": {"name": "Box Office", "desc": "Its column or dozen wins: +3 Take.", "per": "level",
+		"price": 5, "unlock": 0, "coldoz_only": true, "trigger": {"on": "hit", "take": 3.0},
+		"note": "Sells tickets to a third of the wheel: the 2:1 columns and dozens only a roulette felt has."},
+	"coin_purse": {"name": "Coin Purse", "desc": "Its box wins: +$1.", "per": "level",
+		"price": 4, "unlock": 0, "box_only": true, "trigger": {"on": "hit", "cash": 1},
+		"note": "Small change from the outside boxes, every time they come in."},
+	"streak_rider": {"name": "Streak Rider", "desc": "Its box wins: grows a level (up to 8).", "more": "Up to 8 levels per chip stacked.",
+		"price": 5, "unlock": 0, "even_only": true, "trigger": {"on": "hit", "grow": 1, "cap": 8},
+		"note": "Rides a colour or a parity streak, the run gamblers swear by at the wheel."},
+	"odds_maker": {"name": "Odds Maker", "desc": "Bets on its box pay +0.25x per level.", "per": "level",
+		"more": "Your betting chips there too: at level 4, red pays 2 to 1.",
+		"price": 5, "unlock": 0, "box_only": true,
+		"note": "Shortens the house's odds on the one place it's always been generous: the outside boxes."},
+	"keystone": {"name": "Keystone", "desc": "Hit: +4 Take per chip stacked on it.", "per": "stack",
+		"price": 6, "unlock": 0,
+		"note": "The tall stack in the middle of the layout: the more you pile on, the more it holds up."},
+	"tall_stack": {"name": "Tall Stack", "desc": "+1 Take a spin per level of your tallest chip.",
+		"price": 6, "unlock": 0,
+		"note": "Pays for the one towering pile every table regular builds."},
+	"wind_up": {"name": "Wind-Up", "desc": "Grows a level every time you earn a respin.", "per": "stack",
+		"price": 6, "unlock": 0,
+		"note": "Every extra ball winds the spring a little tighter."},
+	"odd_fellow": {"name": "Odd Fellow", "desc": "Any odd number hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "odd", "take": 2.0},
 		"note": "Plays the parity boxes from a single square."},
-	"even_keel": {"name": "Even Keel", "desc": "Whenever an even number hits, +2 Take (per level).",
+	"even_keel": {"name": "Even Keel", "desc": "Any even number hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "even", "take": 2.0},
 		"note": "Steady as she goes, on every even ball."},
-	"low_roller": {"name": "Low Roller", "desc": "Whenever a number from the low half hits (1-18 on a full wheel), +2 Take (per level).",
+	"low_roller": {"name": "Low Roller", "desc": "Any low-half number hits: +2 Take.", "per": "level", "more": "1-18 on a full wheel.",
 		"price": 5, "unlock": 0, "trigger": {"on": "low", "take": 2.0},
 		"note": "The cheap seats, paid out."},
-	"penthouse": {"name": "Penthouse", "desc": "Whenever a number from the high half hits (19-36 on a full wheel), +2 Take (per level).",
+	"penthouse": {"name": "Penthouse", "desc": "Any high-half number hits: +2 Take.", "per": "level", "more": "19-36 on a full wheel.",
 		"price": 5, "unlock": 0, "trigger": {"on": "high", "take": 2.0},
 		"note": "Top floor, top half."},
-	"dozen_watch": {"name": "Dozen Watch", "desc": "Whenever another number in its dozen hits, +2 Take (per level).",
+	"dozen_watch": {"name": "Dozen Watch", "desc": "Another number in its dozen hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "dozen", "take": 2.0},
 		"note": "Keeps an eye on its twelve neighbours."},
-	"pillar": {"name": "Pillar", "desc": "Whenever another number in its column hits, +2 Take (per level).",
+	"pillar": {"name": "Pillar", "desc": "Another number in its column hits: +2 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "column", "take": 2.0},
 		"note": "Holds up one of the felt's long columns."},
-	"night_owl": {"name": "Night Owl", "desc": "+1 Take every spin, hit or miss (per level).",
+	"night_owl": {"name": "Night Owl", "desc": "+1 Take every spin.", "per": "level",
 		"price": 7, "unlock": 0, "trigger": {"on": "every", "take": 1.0},
 		"note": "Always awake at the table."},
-	"piggy_bank": {"name": "Piggy Bank", "desc": "+$1 every spin it misses (per level).",
+	"piggy_bank": {"name": "Piggy Bank", "desc": "+$1 every spin it misses.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "miss", "cash": 1},
 		"note": "Saves a coin every time you lose."},
-	"clover": {"name": "Four-Leaf Clover", "desc": "When the ball lands within 3 pockets of its number on the wheel, +2 Take (per level).",
+	"clover": {"name": "Four-Leaf Clover", "desc": "Ball within 3 wheel pockets: +2 Take.", "per": "level",
 		"price": 6, "unlock": 0, "trigger": {"on": "wheel", "arg": 3, "take": 2.0},
 		"note": "Luck spread wide around one pocket of the wheel."},
-	"doorbell": {"name": "Doorbell", "desc": "When a grid neighbour of its number hits, +3 Take (per level).",
+	"doorbell": {"name": "Doorbell", "desc": "A grid neighbour hits: +3 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "grid", "take": 3.0},
 		"note": "Rings when the ball lands next door on the felt."},
-	"prime_time": {"name": "Prime Time", "desc": "Whenever a prime number hits (2, 3, 5, 7, 11...), +3 Take (per level).",
+	"prime_time": {"name": "Prime Time", "desc": "Any prime number hits: +3 Take.", "per": "level",
 		"price": 6, "unlock": 2, "trigger": {"on": "set", "arg": [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31], "take": 3.0},
 		"note": "Mathematics on the felt."},
-	"square_deal": {"name": "Square Deal", "desc": "Whenever a perfect square hits (1, 4, 9, 16, 25, 36), +5 Take (per level).",
+	"square_deal": {"name": "Square Deal", "desc": "1, 4, 9, 16, 25 or 36 hits: +5 Take.", "per": "level",
 		"price": 6, "unlock": 2, "trigger": {"on": "set", "arg": [1, 4, 9, 16, 25, 36], "take": 5.0},
 		"note": "A fair deal, squared."},
-	"teen_idol": {"name": "Teen Idol", "desc": "Whenever 13 to 19 hits, +3 Take (per level).",
+	"teen_idol": {"name": "Teen Idol", "desc": "13 to 19 hits: +3 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "set", "arg": [13, 14, 15, 16, 17, 18, 19], "take": 3.0},
 		"note": "Seven teenage numbers in a row on the felt."},
-	"fibonacci": {"name": "Fibonacci", "desc": "Whenever 1, 2, 3, 5, 8, 13, 21 or 34 hits, +4 Take (per level).",
+	"fibonacci": {"name": "Fibonacci", "desc": "1, 2, 3, 5, 8, 13, 21 or 34 hits: +4 Take.", "per": "level",
 		"price": 6, "unlock": 2, "trigger": {"on": "set", "arg": [1, 2, 3, 5, 8, 13, 21, 34], "take": 4.0},
 		"note": "The sequence every system-better swears by."},
-	"nickel": {"name": "Nickel", "desc": "Whenever a number ending in 5 or 0 hits, +3 Take (per level).",
+	"nickel": {"name": "Nickel", "desc": "A number ending in 5 or 0 hits: +3 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "set", "arg": [5, 10, 15, 20, 25, 30, 35], "take": 3.0},
 		"note": "Pays on the round-ish numbers."},
-	"seventh_heaven": {"name": "Seventh Heaven", "desc": "Whenever a number containing a 7 hits, +4 Take (per level).",
+	"seventh_heaven": {"name": "Seventh Heaven", "desc": "A number with a 7 in it hits: +4 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "set", "arg": [7, 17, 27], "take": 4.0},
 		"note": "For the gambler's favourite digit."},
-	"last_digit": {"name": "Last Digit", "desc": "Whenever a number ending in the same digit as its own hits, +4 Take (per level).",
+	"last_digit": {"name": "Last Digit", "desc": "A number with its last digit hits: +4 Take.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "digit", "take": 4.0},
 		"note": "Matches the last digit, a classic 'finals' bet."},
-	"far_side": {"name": "Far Side", "desc": "When the ball lands directly across the wheel from its number (the farthest pockets), +10 Take (per level).",
+	"far_side": {"name": "Far Side", "desc": "Ball lands opposite it on the wheel: +10 Take.", "per": "level",
 		"price": 6, "unlock": 2, "trigger": {"on": "opposite", "take": 10.0},
 		"note": "Bets on the pocket opposite on the wheel, the farthest one."},
-	"seedling": {"name": "Seedling", "desc": "Grows a level every spin it misses, up to level 5 (per chip stacked).",
+	"seedling": {"name": "Seedling", "desc": "Grows a level each miss (up to 5).", "per": "stack",
 		"price": 5, "unlock": 0, "trigger": {"on": "miss", "grow": 1, "cap": 5},
 		"note": "Plant it early; it pays later."},
-	"golden_goose": {"name": "Golden Goose", "desc": "When it hits, +$5 cash (per level).",
+	"golden_goose": {"name": "Golden Goose", "desc": "Hit: +$5.", "per": "level",
 		"price": 7, "unlock": 0, "trigger": {"on": "hit", "cash": 5},
 		"note": "Lays a golden egg each time."},
-	"heart_of_gold": {"name": "Heart of Gold", "desc": "When it hits, +10 Take (per level) on top of its payout.",
+	"heart_of_gold": {"name": "Heart of Gold", "desc": "Hit: +10 Take on top of its payout.", "per": "level",
 		"price": 7, "unlock": 0, "trigger": {"on": "hit", "take": 10.0},
 		"note": "A generous chip with a big bonus."},
-	"spare_key": {"name": "Spare Key", "desc": "Whenever a zero hits, +$4 cash (per level).",
+	"spare_key": {"name": "Spare Key", "desc": "Any zero hits: +$4.", "per": "level",
 		"price": 5, "unlock": 0, "trigger": {"on": "zero", "cash": 4},
 		"note": "For the night the green comes up."},
-	"conductor": {"name": "Conductor", "desc": "When it hits, every multiplier chip you own (Kingmaker, Ace, Crown) fires too, wherever it sits.",
+	"conductor": {"name": "Conductor", "desc": "Hit: all your multiplier chips fire too.", "more": "Multipliers: Kingmaker, Ace of Spades, Column Crown.",
 		"price": 9, "unlock": 0, "note": "Strikes up the whole band at once."},
-	"relay": {"name": "Relay", "desc": "When it hits, every other permanent chip on a number scores half its straight-up pay too.",
+	"relay": {"name": "Relay", "desc": "Hit: your other number chips score half too.", "more": "Each scores half its straight-up pay.",
 		"price": 8, "unlock": 0, "note": "Passes the win down the line."},
-	"fuse": {"name": "Fuse", "desc": "Each spin, +2 Take for every level your other chips gained that spin (per level of Fuse).",
+	"fuse": {"name": "Fuse", "desc": "+2 Take per level your other chips gain.",
 		"price": 7, "unlock": 0, "note": "Growth chips light it; it turns growing into scoring."},
-	"kingmaker": {"name": "Kingmaker", "desc": "When it hits, the whole spin's Take is x1.5. Each chip stacked on it multiplies again; other levels add +0.5.",
+	"kingmaker": {"name": "Kingmaker", "desc": "Hit: the whole spin's Take x1.5.", "more": "Each chip stacked multiplies again; other levels add +0.5.",
 		"price": 7, "unlock": 0,
 		"note": "A crowned number: one pocket that makes the whole spin."},
 }
@@ -293,6 +327,7 @@ const RARITY := {
 	"conductor": "legendary", "relay": "rare", "fuse": "rare", "crowd_pleaser": "rare", "purist": "rare",
 	"compounding": "rare", "wildcard_zero": "rare", "respin": "rare", "ledger": "rare", "collector": "rare",
 	"night_owl": "rare", "far_side": "rare", "heart_of_gold": "rare", "golden_goose": "rare", "square_deal": "rare",
+	"keystone": "rare", "tall_stack": "rare", "wind_up": "rare", "high_rise": "rare", "encore": "rare", "second_wind": "rare",
 	"zero_tolerance": "rare", "double_down": "rare", "patron": "rare", "late_bloomer": "rare", "veterans": "legendary",
 	"jar": "rare", "wheel_spoke": "rare", "echo": "legendary", "ace": "legendary", "green_thumb": "rare",
 	"diamond": "rare", "magnetized": "rare", "twin_square": "rare", "spoke": "rare", "repeat_box": "rare", "lucky_colour": "rare",
@@ -328,13 +363,17 @@ const CROWN_MULT := 1.25
 const LAMP_CASH := 3
 const STREET_LIGHT_BONUS := 3.0
 const RED_HERRING_BONUS := 2.0
-const HEDGE_BONUS := 1.0
+const HEDGE_BONUS := 2.0
 const SPOKE_CHIP_BONUS := 4.0
 const TIP_JAR_CAP := 5
 const SIGNPOST_CASH := 2
 const EVEN_KEYS := ["RED", "BLACK", "ODD", "EVEN", "LOW", "HIGH"]
 const COMPED_CASH := 3
 const KING_STEP := 0.5                   ## Kingmaker: +0.5x per level past the first
+const ODDS_STEP := 0.25                  ## Odds Maker: +payout per level on its box
+const KEYSTONE_BONUS := 4.0              ## Keystone: +Take per chip stacked, on a hit
+const TALL_STACK_STEP := 1.0             ## Tall Stack: +Take per level of your tallest chip
+const HIGH_RISE_LEVEL := 5
 
 
 ## Build families, for "works with your ..." hints in the Cage.
@@ -355,11 +394,14 @@ const TAGS := {
 	"corner_office": ["inside"], "big_spender": ["cash"], "patron": ["spins"], "late_bloomer": ["multiplier", "spins"],
 	"veterans": ["numbers", "multiplier"],
 	"pinned": ["wheel"], "wildcard_zero": ["zero"], "momentum": ["multiplier"], "hot_hand": ["multiplier"],
+	"odds_maker": ["outside", "even", "box"], "keystone": ["numbers", "grow"], "tall_stack": ["grow"], "wind_up": ["numbers", "spins", "grow"],
+	"high_rise": ["grow", "multiplier"], "encore": ["spins", "multiplier"], "second_wind": ["spins", "numbers"],
 	"croupier": ["numbers"], "mint": ["cash"], "respin": ["spins"], "rent_control": ["easy"],
 	"black_cat": ["numbers"], "penny": ["cash", "numbers"], "snowball": ["numbers"], "sentinel": ["zero"],
 	"crown": ["outside", "multiplier"], "lamp": ["cash", "numbers"], "silk": ["outside"], "sweet_spot": ["numbers", "inside"],
 	"last_call": ["multiplier"], "comped": ["cash"], "insurance": ["even", "outside"], "high_society": ["outside"],
 	"black_tie": ["numbers"],
+	"even_stevens": ["even", "box"], "box_office": ["outside", "box"], "coin_purse": ["outside", "even", "cash", "box"], "streak_rider": ["even", "box"],
 	"street_light": ["numbers"], "red_herring": ["numbers"], "jar": ["numbers"], "hedge": ["even"],
 	"wheel_spoke": ["wheel", "neighbours"], "echo": ["numbers", "multiplier"], "ace": ["numbers", "multiplier"],
 	"tip_jar": ["cash"], "green_thumb": ["zero"], "signpost": ["inside", "cash"],
@@ -373,7 +415,7 @@ const TAGS := {
 	"gold_trim": ["outside", "cash"], "fat_box": ["outside"], "repeat_box": ["outside", "multiplier"], "lucky_colour": ["even"],
 }
 const TAG_NAMES := {"numbers": "single numbers", "inside": "inside bets", "even": "even-money bets", "outside": "outside bets",
-	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers"}
+	"neighbours": "neighbouring numbers", "wheel": "the wheel's order", "zero": "zeros", "multiplier": "multipliers", "box": "box chips", "grow": "growing chips", "spins": "extra spins"}
 ## How each Enforcer rule meets your purchases: tags that help or are useless against it.
 const COUNTERS := {
 	"no_outside": {"good": ["numbers", "inside"], "bad": ["outside", "even"]},
@@ -458,8 +500,9 @@ const LOU_PAYOUT := 9
 
 ## The Almanac's categories: [title, source table name, ids]. Every item appears exactly once.
 const ALMANAC := [
+	["BOX CHIPS", "CHIPS", ["even_stevens", "box_office", "coin_purse", "streak_rider", "odds_maker"]],
 	["SCORING CHIPS", "CHIPS", ["perm", "magnet", "mirror", "porch_light", "black_cat", "red_herring", "street_light", "wheel_spoke", "hedge", "croupier", "collector", "ledger"]],
-	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "seedling", "echo"]],
+	["GROWTH CHIPS", "CHIPS", ["compounding", "snowball", "jar", "seedling", "echo", "keystone", "tall_stack", "wind_up"]],
 	["MODIFIER CHIPS", "CHIPS", ["kingmaker", "ace", "crown", "bridge"]],
 	["CHAIN CHIPS", "CHIPS", ["conductor", "relay", "fuse"]],
 	["ZERO CHIPS", "CHIPS", ["wildcard_zero", "sentinel", "green_thumb"]],
@@ -473,7 +516,7 @@ const ALMANAC := [
 	["SAFETY RULES", "HOUSE_RULES", ["la_partage", "en_prison", "insurance", "zero_tolerance", "rent_control", "patron", "bankroll"]],
 	["MONEY RULES", "HOUSE_RULES", ["comped", "compound_interest", "big_spender"]],
 	["BRIDGE RULES", "HOUSE_RULES", ["outside_connection", "inside_track", "colour_coded", "rainy_day"]],
-	["SCALING RULES", "HOUSE_RULES", ["crowd_pleaser", "purist", "high_stakes"]],
+	["SCALING RULES", "HOUSE_RULES", ["crowd_pleaser", "purist", "high_stakes", "high_rise", "encore", "second_wind"]],
 	["TROPHIES", "HOUSE_RULES", ["sals_whistle", "oros_coin", "accountants_book", "velvet_rope", "klines_watch"]],
 	["DEALER FAVOURS", "FAVOURS", ["extra_spin", "fat_stack", "head_start"]],
 	["DEALER VOUCHERS", "VOUCHERS", ["comp_card", "vip_rack", "patience", "house_credit"]],
@@ -503,39 +546,39 @@ static func rarity_of(id: String) -> String:
 # --- Felt upgrades -------------------------------------------------------------------
 ## target: "number" (any pocket) or "outside" (column/dozen)
 const UPGRADES := {
-	"gilded": {"name": "Gilded Number", "desc": "Straight bets here pay +1/7 more (35:1 becomes 40:1).", "target": "number",
+	"gilded": {"name": "Gilded Number", "desc": "Straight bets here pay 40:1.", "more": "Normally 35:1.", "target": "number",
 		"price": 6, "unlock": 0, "note": "Rewrites a printed payout on the felt."},
 	"hot": {"name": "Hot Column/Dozen", "desc": "+1x payout on this column or dozen.", "target": "outside",
 		"price": 6, "unlock": 0, "note": "Turns a 2:1 outside box into 3:1."},
-	"link": {"name": "Neighbour Link", "desc": "When this number hits, your chips on adjacent squares pay 25% of a straight.", "target": "number",
+	"link": {"name": "Neighbour Link", "desc": "Hit: chips next to it pay 25% of a straight.", "target": "number",
 		"price": 6, "unlock": 0, "note": "A 'neighbours' call bet made physical on the layout."},
 	"double_felt": {"name": "Double Felt", "desc": "Chips on this number score double.", "target": "number",
 		"price": 7, "unlock": 0, "note": "Thick felt for a favourite number."},
-	"pinned": {"name": "Pinned Pocket", "desc": "When this number hits, call bets (Voisins/Tiers/Orphelins) score double.", "target": "number",
+	"pinned": {"name": "Pinned Pocket", "desc": "Hit: call bets score double.", "more": "Call bets: Voisins, Tiers and Orphelins.", "target": "number",
 		"price": 6, "unlock": 2, "note": "Ties the felt to the wheel: a pocket that anchors its sector."},
-	"diamond": {"name": "Diamond Square", "desc": "When this number hits, your permanent chips on it gain a level.", "target": "number",
+	"diamond": {"name": "Diamond Square", "desc": "Hit: your chips on it gain a level.", "target": "number",
 		"price": 7, "unlock": 0, "note": "A square that polishes whatever sits on it."},
-	"magnetized": {"name": "Magnetized Square", "desc": "Your chips on this number also score half when a grid neighbour hits.", "target": "number",
+	"magnetized": {"name": "Magnetized Square", "desc": "Chips here also score half on a neighbour.", "target": "number",
 		"price": 6, "unlock": 0, "note": "A Magnet built into the felt itself."},
-	"twin_square": {"name": "Twin Square", "desc": "Your chips on this number also score when its mirror number hits (1 and 36, 2 and 35...).", "target": "number",
+	"twin_square": {"name": "Twin Square", "desc": "Chips here also score on its mirror number.", "target": "number",
 		"price": 6, "unlock": 0, "note": "Stitches a square to its twin at the far end of the layout."},
-	"spoke": {"name": "Spoke Square", "desc": "When this number hits, your chips on its two wheel neighbours score half.", "target": "number",
+	"spoke": {"name": "Spoke Square", "desc": "Hit: chips on its wheel neighbours score half.", "target": "number",
 		"price": 6, "unlock": 2, "note": "Ties a square of the felt to its neighbours on the wheel."},
-	"gold_trim": {"name": "Gold Trim", "desc": "This column or dozen pays +0.5x and +$1 cash when it hits.", "target": "outside",
+	"gold_trim": {"name": "Gold Trim", "desc": "Pays +0.5x and +$1 when it hits.", "target": "outside",
 		"price": 6, "unlock": 0, "note": "Gilt edging for one of the long boxes."},
-	"fat_box": {"name": "Fat Box", "desc": "Winning chips on this column or dozen score +2 Take each.", "target": "outside",
+	"fat_box": {"name": "Fat Box", "desc": "Winning chips here score +2 Take each.", "target": "outside",
 		"price": 5, "unlock": 0, "note": "A bigger box pays bigger, chip by chip."},
-	"repeat_box": {"name": "Repeat Box", "desc": "Bets on this column or dozen score double if the last ball also landed in it.", "target": "outside",
+	"repeat_box": {"name": "Repeat Box", "desc": "Hits twice in a row: bets here score double.", "target": "outside",
 		"price": 7, "unlock": 2, "note": "Rewards the streaks gamblers swear by."},
-	"lucky_colour": {"name": "Lucky Colour", "desc": "This even-money box (red, black, odd, even, high or low) pays 2 to 1.", "target": "even",
+	"lucky_colour": {"name": "Lucky Colour", "desc": "This box pays 2 to 1.", "target": "even",
 		"price": 7, "unlock": 0, "note": "One 'safe' box that pays like a column."},
-	"lamp": {"name": "Lucky Lamp", "desc": "When this number hits, +$3 cash.", "target": "number",
+	"lamp": {"name": "Lucky Lamp", "desc": "Hit: +$3.", "target": "number",
 		"price": 5, "unlock": 0, "note": "A lamp over one square of the felt that pays the player."},
-	"silk": {"name": "Silk Box", "desc": "Losing bets on this column or dozen go back to your stack instead of costing Take.", "target": "outside",
+	"silk": {"name": "Silk Box", "desc": "Losing bets here go back to your stack.", "target": "outside",
 		"price": 6, "unlock": 0, "note": "A safety net woven into one outside box."},
-	"sweet_spot": {"name": "Sweet Spot", "desc": "When this number hits, every bet covering it scores x1.5.", "target": "number",
+	"sweet_spot": {"name": "Sweet Spot", "desc": "Hit: every bet covering it scores x1.5.", "target": "number",
 		"price": 7, "unlock": 2, "note": "One square where every kind of bet pays better."},
-	"cornerstone": {"name": "Cornerstone", "desc": "When this number hits, your split, corner, street and line bets on it score double.", "target": "number",
+	"cornerstone": {"name": "Cornerstone", "desc": "Hit: inside bets on it score double.", "target": "number",
 		"price": 6, "unlock": 0, "note": "Rewards building inside bets around one square of the grid."},
 }
 
@@ -547,11 +590,11 @@ const HOUSE_RULES := {
 		"price": 7, "unlock": 0, "note": "Plays on the gambler's belief in streaks; the odds stay fair."},
 	"rent_control": {"name": "Rent Control", "desc": "Every payment due is 10% smaller.",
 		"price": 8, "unlock": 0, "note": "Haggling with the Owner over the vig."},
-	"thirteen": {"name": "Thirteen", "desc": "13 is cursed and pays nothing; its grid neighbours score double.",
+	"thirteen": {"name": "Thirteen", "desc": "13 pays nothing; its neighbours score double.",
 		"price": 6, "unlock": 0, "note": "Superstition around a specific number on the layout."},
-	"en_prison": {"name": "En Prison", "desc": "On a zero, losing even-money bets stay on the felt for the next spin.",
+	"en_prison": {"name": "En Prison", "desc": "On a zero, losing even-money bets stay put.", "more": "They ride again on the next spin.",
 		"price": 6, "unlock": 2, "note": "A real French-table rule: the bet is 'imprisoned'."},
-	"hot_hand": {"name": "Hot Hand", "desc": "If the ball repeats the last number, that spin's Take is tripled.",
+	"hot_hand": {"name": "Hot Hand", "desc": "Same number twice in a row: Take x3.",
 		"price": 8, "unlock": 3, "note": "Every roulette player has seen a number hit twice."},
 	"dealer_signature": {"name": "Dealer's Signature", "desc": "Hits within 3 wheel pockets of the last ball score +50%.",
 		"price": 7, "unlock": 3, "note": "The myth that a croupier's throw lands in the same sector."},
@@ -559,23 +602,23 @@ const HOUSE_RULES := {
 		"price": 6, "unlock": 0, "note": "Rewrites the printed odds of the inside bets."},
 	"sevens": {"name": "Lucky Sevens", "desc": "Straight-up hits on 7, 17 and 27 score double.",
 		"price": 6, "unlock": 0, "note": "The oldest superstition on the floor, printed onto the felt."},
-	"satin_gloves": {"name": "Satin Gloves", "desc": "Even-money bets (red/black, odd/even, high/low) pay 1.5 to 1.",
+	"satin_gloves": {"name": "Satin Gloves", "desc": "Even-money bets pay 1.5 to 1.",
 		"price": 7, "unlock": 0, "note": "The high-limit room's courtesy: better odds on the 'safe' bets."},
 	"last_call": {"name": "Last Call", "desc": "The last spin at every table scores double.",
 		"price": 7, "unlock": 0, "note": "The bar's closing: everyone bets bigger on the final ball."},
 	"comped": {"name": "Comped Drinks", "desc": "+$3 every time you clear a table.",
 		"price": 5, "unlock": 0, "note": "The house keeps its regulars happy."},
-	"insurance": {"name": "Insurance", "desc": "Your biggest losing bet each spin doesn't count against your Take.",
+	"insurance": {"name": "Insurance", "desc": "Your biggest losing bet each spin is free.", "more": "It doesn't count against your Take.",
 		"price": 7, "unlock": 0, "note": "Named for the real side bet that protects a hand."},
 	"high_society": {"name": "High Society", "desc": "Column and dozen bets pay +1x.",
 		"price": 7, "unlock": 2, "note": "The high-limit room's better odds on the long boxes."},
 	"black_tie": {"name": "Black Tie", "desc": "Straight-up hits on black numbers score x1.5.",
 		"price": 6, "unlock": 0, "note": "A dress code for the felt: black is formal, and it pays."},
-	"zero_tolerance": {"name": "Zero Tolerance", "desc": "When a zero hits, your losing bets go back to your stack instead of costing Take.",
+	"zero_tolerance": {"name": "Zero Tolerance", "desc": "Zero hits: losing bets go back to your stack.",
 		"price": 7, "unlock": 2, "note": "A house that forgives the green pocket."},
 	"bankroll": {"name": "Bankroll", "desc": "+1 betting chip back to your stack every spin.",
 		"price": 6, "unlock": 0, "note": "The house tops up your rack."},
-	"compound_interest": {"name": "Compound Interest", "desc": "When you clear a table, +$1 for every $10 you're holding.",
+	"compound_interest": {"name": "Compound Interest", "desc": "Clear a table: +$1 per $10 held.",
 		"price": 6, "unlock": 0, "note": "Your cash earns interest in the Cage."},
 	"double_down": {"name": "Double Down", "desc": "The first spin at every table scores double.",
 		"price": 7, "unlock": 0, "note": "Come out swinging."},
@@ -589,14 +632,14 @@ const HOUSE_RULES := {
 		"price": 7, "unlock": 2, "note": "The longer you sit, the better it gets."},
 	"veterans": {"name": "Old Timers", "desc": "Permanent chips at level 3 or higher score x1.5.",
 		"price": 8, "unlock": 2, "note": "Respect for the chips that have been around."},
-	"momentum": {"name": "Momentum", "desc": "Each scoring spin in a row adds +25% to the next one's Take. A blank spin resets it.",
+	"momentum": {"name": "Momentum", "desc": "+25% per scoring spin in a row.", "more": "A blank spin resets it.",
 		"price": 8, "unlock": 2, "note": "The gambler's 'hot table', paid out as a growing multiplier."},
 	# Bridges: one way of betting feeds another.
-	"outside_connection": {"name": "Outside Connection", "desc": "When a dozen or column bet wins, +1 Take per level of every permanent chip on a number inside it.",
+	"outside_connection": {"name": "Outside Connection", "desc": "Dozen/column wins: +1 Take per chip level inside.",
 		"price": 6, "unlock": 0, "note": "Bridges outside bets and number chips."},
-	"inside_track": {"name": "Inside Track", "desc": "When a split, street, corner or line bet wins, the permanent chip on the winning number gains a level (up to 5).",
+	"inside_track": {"name": "Inside Track", "desc": "Inside bet wins: the chip on the number levels up.", "more": "Up to level 5.",
 		"price": 7, "unlock": 0, "note": "Bridges inside bets and number chips."},
-	"colour_coded": {"name": "Colour Coded", "desc": "When red or black wins, +1 Take per level of every permanent chip on a number of that colour.",
+	"colour_coded": {"name": "Colour Coded", "desc": "Red/black wins: +1 Take per chip level on it.",
 		"price": 6, "unlock": 0, "note": "Bridges even-money bets and number chips."},
 	# Trophies: only from an Enforcer's stash, never sold in the Cage.
 	"sals_whistle": {"name": "Sal's Whistle", "desc": "Every 3rd spin at a table scores x1.5.", "price": 0, "unlock": 0, "trophy": true,
@@ -610,10 +653,16 @@ const HOUSE_RULES := {
 	"klines_watch": {"name": "Kline's Watch", "desc": "+1 spin at every table.", "price": 0, "unlock": 0, "trophy": true,
 		"note": "He was always early. Now you are too."},
 	# Scaling rules: they grow with the build.
-	"crowd_pleaser": {"name": "Crowd Pleaser", "desc": "Every scoring spin x(1 + 0.05 per level of permanent chips on your felt).",
+	"crowd_pleaser": {"name": "Crowd Pleaser", "desc": "Scoring spins x(1 + 0.05 per chip level).", "more": "Counts every level of permanent chip on your felt.",
 		"price": 9, "unlock": 0, "note": "The more you've built, the louder the room gets."},
 	"purist": {"name": "Purist", "desc": "x2 on a spin where every winning bet was a straight-up.",
 		"price": 8, "unlock": 0, "note": "No hedging, no splits: just numbers."},
+	"high_rise": {"name": "High Rise", "desc": "Chips at level 5 or higher score x2.", "more": "Stacks with Old Timers.",
+		"price": 8, "unlock": 0, "note": "The penthouse stacks: chips piled high enough get the top-floor rate."},
+	"encore": {"name": "Encore", "desc": "Extra balls score x2.", "more": "An extra ball is any past the table's usual count: respins, Second Wind...",
+		"price": 7, "unlock": 0, "note": "The crowd wants one more spin, and pays to see it."},
+	"second_wind": {"name": "Second Wind", "desc": "First straight-up hit each table: +1 ball.", "more": "Once per table.",
+		"price": 7, "unlock": 0, "note": "A number hit buys you another go at the wheel."},
 	"high_stakes": {"name": "High Stakes", "desc": "x1.5 on spins with 15 or more betting chips riding.",
 		"price": 7, "unlock": 0, "note": "Push the pile in and the house pays attention."},
 	"rainy_day": {"name": "Rainy Day Fund", "desc": "A spin that scores no Take pays +$2.",
@@ -622,7 +671,7 @@ const HOUSE_RULES := {
 
 # --- Unlockable table features --------------------------------------------------------------
 const FEATURES := {
-	"call_bets": {"name": "Call Bets", "desc": "Adds Voisins, Tiers and Orphelins to the felt: bets on arcs of the wheel.",
+	"call_bets": {"name": "Call Bets", "desc": "Adds Voisins, Tiers and Orphelins bets.", "more": "Bets on arcs of the wheel.",
 		"unlock": 2, "note": "Real French call bets; finally makes wheel order matter."},
 }
 
@@ -704,3 +753,46 @@ static func targets_for(night: int) -> Array:
 	for m in TABLE_MULT:
 		out.append(int(round(base * m)))
 	return out
+
+
+## Where an item goes on the felt, in plain words (info cards, the status line while holding it).
+## Works for chip kinds and felt upgrades; "" for anything that isn't placed.
+static func place_hint(kind: String) -> String:
+	if CHIPS.has(kind):
+		var spec: Dictionary = CHIPS[kind]
+		if spec.get("zero_only", false):
+			return "Goes on a zero."
+		if spec.get("even_only", false):
+			return "Goes on an even-money box: red, black, odd, even, high or low."
+		if spec.get("black_only", false):
+			return "Goes on a black number."
+		if spec.get("column_only", false):
+			return "Goes on a column bet."
+		if spec.get("coldoz_only", false):
+			return "Goes on a column or a dozen."
+		if spec.get("box_only", false):
+			return "Goes on an outside box: a column, dozen, red, black, odd, even, high or low."
+		if spec.get("line_only", false):
+			return "Goes on a line: a split, street, corner or six-line."
+		if spec.get("any_bet", false):
+			return "Goes on any number or bet."
+		return "Goes on any number."
+	if UPGRADES.has(kind):
+		match UPGRADES[kind].target:
+			"outside":
+				return "Goes on a column or dozen."
+			"even":
+				return "Goes on an even-money box."
+		return "Goes on a number."
+	return ""
+
+
+## How an item's effect grows, from its "per" field ("" when it doesn't scale).
+static func scale_hint(kind: String) -> String:
+	var spec: Dictionary = CHIPS.get(kind, {})
+	match spec.get("per", ""):
+		"level":
+			return "Scales with its level."
+		"stack":
+			return "Scales with chips stacked on it."
+	return ""

@@ -28,23 +28,23 @@ const WHEELS := {
 	"french": {
 		"felt": "#1d3f6e", "rail": "#5a3a1e",
 		"name": "French Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
-		"rules": ["la_partage"], "cash": 0, "kit": [{"kind": "perm", "value": 2}, {"kind": "hedge", "value": 1}], "unlock": 0, "target": 0.85,
+		"rules": ["la_partage"], "cash": 0, "kit": [{"kind": "perm", "value": 2}, {"kind": "even_stevens", "value": 1}], "unlock": 0, "target": 0.85,
 		"style": "SAFETY NET: outside bets that rarely sting",
-		"desc": "Single zero, La Partage built in (even-money bets lose only half on zero). A Permanent x2 and a Hedge for your red/black box. Forgiving.",
+		"desc": "Single zero, La Partage built in (even-money bets lose only half on zero). A Permanent x2 and an Even Stevens for a red/black box. Forgiving.",
 	},
 	"european": {
 		"felt": "#0f5233", "rail": "#7a5a2a",
 		"name": "European Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
-		"rules": [], "cash": 0, "kit": [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}], "unlock": 0,
+		"rules": [], "cash": 0, "kit": [{"kind": "box_office", "value": 1}, {"kind": "magnet", "value": 1}], "unlock": 0,
 		"style": "NUMBERS: a few straight-ups that hit hard",
-		"desc": "The classic single-zero wheel. A Magnet and a Permanent chip: pick your numbers and make them count.",
+		"desc": "The classic single-zero wheel. A Box Office for a column or dozen and a Magnet: start steady, then pick your numbers.",
 	},
 	"american": {
 		"felt": "#1d6b38", "rail": "#6b2a1e",
-		"name": "American Wheel", "numbers": 36, "zeros": [0, -1], "order": AMERICAN_ORDER, "red": RED_36,
-		"rules": [], "cash": 4, "kit": [{"kind": "sentinel", "value": 1}], "unlock": 3,
-		"style": "ZERO CHIPS: make the house's pockets yours",
-		"desc": "Two zeros: worse odds, but 00 is a second home for zero chips. A Sentinel to guard one, and +$4.",
+		"name": "Zero Wheel", "numbers": 36, "zeros": [0, -1, -2], "order": TRIPLE_ORDER, "red": RED_36,
+		"rules": [], "cash": 2, "kit": [{"kind": "sentinel", "value": 1}, {"kind": "wildcard_zero", "value": 1}], "unlock": 3,
+		"style": "ZERO ECONOMY: three green pockets, all yours",
+		"desc": "0, 00 and 000: the worst odds in the house, but zero chips fire three times as often. A Sentinel, a Wildcard Zero and +$2.",
 	},
 	"mini": {
 		"felt": "#4a2a6a", "rail": "#3a2a4a",
@@ -53,19 +53,29 @@ const WHEELS := {
 		"style": "INSIDE BETS: splits, corners and streets",
 		"desc": "Thirteen pockets on a 3x4 felt. Hits come often but pay small; a Bridge makes your splits and corners count.",
 	},
-	"triple_zero": {
-		"felt": "#1e1e26", "rail": "#4a4a52",
-		"name": "Triple Zero", "numbers": 36, "zeros": [0, -1, -2], "order": TRIPLE_ORDER, "red": RED_36,
-		"rules": [], "cash": 0, "kit": [{"kind": "wildcard_zero", "value": 1}, {"kind": "spare_key", "value": 1}], "unlock": 6,
-		"style": "ZERO ECONOMY: every zero is payday",
-		"desc": "0, 00 and 000. The worst odds in the casino, but zero chips trigger three times as often. Wildcard Zero and a Spare Key.",
+	"twin": {
+		"felt": "#0f4a5a", "rail": "#2a4a5a",
+		"name": "Twin Ball", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
+		"rules": [], "cash": 0, "kit": [{"kind": "croupier", "value": 1}, {"kind": "bridge", "value": 1}], "unlock": 4,
+		"twin": true, "spins": 4, "target": 1.5,
+		"style": "TWO BALLS: cover more, combo harder",
+		"desc": "Two balls drop every spin. A bet wins if either lands on it; a lost stake is only charged once. Both in one pocket: x3. Four spins a table, and payments 50% bigger.",
 	},
-	"sunrise": {
-		"felt": "#7a3a12", "rail": "#8a5a2a",
-		"name": "Sunrise Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
-		"rules": ["momentum"], "cash": 0, "kit": [{"kind": "kingmaker", "value": 1}], "unlock": 5, "target": 1.15,
-		"style": "MULTIPLIERS: stack them, then land the big one",
-		"desc": "The last wheel before dawn. Momentum built in and a Kingmaker to start, but payments are 15% bigger.",
+	"crooked": {
+		"felt": "#5a4a12", "rail": "#3a2a10",
+		"name": "Crooked Wheel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
+		"rules": [], "cash": 0, "kit": [{"kind": "magnet", "value": 1}, {"kind": "doorbell", "value": 1}], "unlock": 5,
+		"crooked": true, "target": 1.0,
+		"style": "CHASE THE FAT POCKETS: they move every table",
+		"desc": "Four pockets are three times as wide (marked x3), so they come in far more often and pay less. They move to new numbers at every table.",
+	},
+	"carousel": {
+		"felt": "#6a1f4a", "rail": "#8a5a2a",
+		"name": "Carousel", "numbers": 36, "zeros": [0], "order": EURO_ORDER, "red": RED_36,
+		"rules": ["momentum"], "cash": 0, "kit": [{"kind": "kingmaker", "value": 1}], "unlock": 6,
+		"carousel": true, "target": 1.2,
+		"style": "THE HOT ARC: bet where it's going",
+		"desc": "A gold arc of seven pockets glows on the wheel and steps round after every spin. A ball inside it doubles the spin. Momentum built in, and a Kingmaker.",
 	},
 	"no_zero": {
 		"felt": "#5a0f1e", "rail": "#2a1a14",
@@ -76,7 +86,9 @@ const WHEELS := {
 	},
 }
 
-const ORDER := ["french", "european", "american", "mini", "triple_zero", "sunrise", "no_zero"]
+const ORDER := ["french", "european", "american", "mini", "twin", "crooked", "carousel", "no_zero"]
+## Wheels retired in 0.0.44, and what saves that mention them become.
+const RETIRED := {"triple_zero": "american", "sunrise": "carousel"}
 
 
 static func get_def(id: String) -> Dictionary:

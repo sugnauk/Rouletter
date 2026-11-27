@@ -13,6 +13,10 @@ const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
 
 var t   ## the table screen
+var _pour_tw: Tween = null   ## the meter filling towards the running score
+var _target := 1.0
+var _last_tick := 0
+var _meter_at := Vector2.ZERO
 
 
 func _init(table) -> void:
@@ -32,7 +36,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 	var felt_view = t.felt_view
 	var before: float = ctx.before
 	var target: int = ctx.target
-	var meter_at := Vector2(t.MID_X + 150, 12)
+	var meter_at: Vector2 = t.meter_center()
 
 	# --- Beat 1: reveal -------------------------------------------------------------
 	var pkey := Board.straight_key(res.pocket)
@@ -46,9 +50,24 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 		fx.burst(pocket_pos, 26, [P.GOLD, P.CREAM, P.RED])
 	else:
 		fx.pop_text(pocket_pos - Vector2(0, 10), "%s %s" % [B.label(res.pocket), B.colour_name(res.pocket).to_upper()], P.CREAM, 0.8)
+	if res.has("pocket2"):   # Twin Ball: the gold ball's pocket too
+		var k2 := Board.straight_key(res.pocket2)
+		felt_view.flash(k2, 1.4)
+		var p2: Vector2 = fx.local(felt_view.key_global(k2))
+		if res.pocket2 == res.pocket:
+			fx.banner("TWIN!", P.GOLD, 1.3, 112, 24)
+			fx.burst(p2, 40, [P.GOLD, P.CREAM, P.CYAN], 150.0)
+			Sfx.play("jackpot")
+		else:
+			fx.pop_text(p2 - Vector2(0, 10), "%s %s" % [B.label(res.pocket2), B.colour_name(res.pocket2).to_upper()], P.GOLD, 0.8)
+	if run.felt.extra_ball:
+		fx.banner("EXTRA BALL", P.CYAN, 0.9, 150, 8)
 	if res.zero_tax:
 		fx.banner("ORO TAKES 10%", P.DANGER, 1.2, 140, 8)
 		before *= 1.0 - Content.ZERO_TAX
+	t.shown_take = before
+	_target = maxf(1.0, target)
+	_meter_at = meter_at
 	await _wait(0.3)
 
 	# --- Beat 2: light up the build --------------------------------------------------
@@ -108,6 +127,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 		t.spin_score = maxf(0.0, gross - lost)
 		t.score_pop = 1.0
 		t.score_view.queue_redraw()
+		_pour(before + t.spin_score, e.kind == "mult")
 		await _wait(delay)
 		delay = maxf(0.08, delay * 0.82)
 	if res.respins > 0:
@@ -159,10 +179,16 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			Engine.time_scale = 0.45 * t.main.base_time_scale()
 			await t.get_tree().create_timer(0.35, true, false, true).timeout
 			t.main.apply_speed()
+		# The meter has mostly filled during the build; settle it on the real Take.
+		if _pour_tw != null and _pour_tw.is_valid():
+			_pour_tw.kill()
 		var tw: Tween = t.create_tween()
-		tw.tween_method(func(v: float): t.shown_take = v, before, after, 0.55 * (0.4 if t.fast() else 1.0)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		var settle: float = 0.55 if t.fast() or absf(after - t.shown_take) > 0.25 * _target else 0.3
+		tw.tween_method(_set_take, t.shown_take, after, settle * (0.4 if t.fast() else 1.0)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		await tw.finished
 	else:
+		if _pour_tw != null and _pour_tw.is_valid():
+			_pour_tw.kill()
 		t.shown_take = after
 		near_miss(res)
 	if res.get("tempo_cut", 0.0) > 0.0:
@@ -171,6 +197,41 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 	if run.phase == RunState.Phase.TABLE and run.table.target > target:
 		fx.pop_text(meter_at + Vector2(0, 14), "PAYMENT +%d" % (run.table.target - target), P.DANGER, 1.0)
 	await _wait(0.6 if exceptional else 0.25)
+
+
+## Pour the payment meter towards `to` as the build lights up: each win fills a little more,
+## a multiplier surges it, a loss drains it back. Fastest speed skips this (one fill at the end).
+func _pour(to: float, surge: bool = false) -> void:
+	if t.fast() or is_equal_approx(to, t.shown_take):
+		return
+	if _pour_tw != null and _pour_tw.is_valid():
+		_pour_tw.kill()
+	var dur: float = clampf(0.22 + absf(to - t.shown_take) / _target * 0.6, 0.22, 0.45)
+	if surge:
+		dur = 0.5
+	_pour_tw = t.create_tween()
+	_pour_tw.tween_method(_set_take, t.shown_take, to, dur).set_trans(Tween.TRANS_BACK if surge else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+## One step of the meter: coin ticks rising in pitch as it fills, a pulse at halfway, a flash when paid.
+func _set_take(v: float) -> void:
+	var old: float = t.shown_take
+	t.shown_take = v
+	if v > old:
+		t.meter_pulse = maxf(t.meter_pulse, 0.45)
+		var now := Time.get_ticks_msec()
+		if now - _last_tick > 55:
+			_last_tick = now
+			Sfx.play("cash", 1.0 + 0.8 * clampf(v / _target, 0.0, 1.0))
+		if old < _target * 0.5 and v >= _target * 0.5 and v < _target:
+			t.meter_pulse = 1.0
+			t.main.fx.pop_text(_meter_at + Vector2(0, 16), "HALFWAY", P.CREAM, 0.6)
+		if old < _target and v >= _target:
+			t.meter_pulse = 1.0
+			t.meter_paid_flash = 1.0
+			t.main.fx.pop_text(_meter_at + Vector2(0, 16), "PAID!", P.GOLD, 1.0)
+			t.main.fx.burst(_meter_at + Vector2(150, 0), 30, [P.GOLD, P.CREAM, P.GOOD], 130.0)
+			Sfx.play("buy", 1.2)
 
 
 ## A one-line summary of where the spin's Take came from.

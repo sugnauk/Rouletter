@@ -38,9 +38,11 @@ const FEATS := {
 	"euro_win": {"name": "Continental", "desc": "Win a run on the European wheel.", "reward": 1, "on": "end", "wheel": "european"},
 	"graded": {"name": "Paper Climber", "desc": "Win a run on a Grade 3 marker or higher.", "reward": 2, "on": "end"},
 	"vance_paper": {"name": "Vance's Own", "desc": "Win a run on the Grade 9 marker.", "reward": 5, "on": "end"},
-	"hard_way": {"name": "The Hard Way", "desc": "Win a run on the American, Triple Zero or Cheater's wheel.", "reward": 2, "on": "end"},
+	"hard_way": {"name": "The Hard Way", "desc": "Win a run on the Zero Wheel, the Crooked Wheel or the Cheater's Wheel.", "reward": 2, "on": "end"},
 	"mini_win": {"name": "Small Wonder", "desc": "Win a run on the Mini wheel.", "reward": 2, "on": "end", "wheel": "mini"},
-	"sunrise_win": {"name": "Dawn Patrol", "desc": "Win a run on the Sunrise wheel.", "reward": 2, "on": "end", "wheel": "sunrise"},
+	"carousel_win": {"name": "Carousel Rider", "desc": "Win a run on the Carousel.", "reward": 2, "on": "end", "wheel": "carousel"},
+	"twin_win": {"name": "Seeing Double", "desc": "Win a run on the Twin Ball wheel.", "reward": 2, "on": "end", "wheel": "twin"},
+	"crooked_win": {"name": "Bent Pins", "desc": "Win a run on the Crooked Wheel.", "reward": 2, "on": "end", "wheel": "crooked"},
 	"grand_tour": {"name": "Grand Tour", "desc": "Win a run on every wheel.", "reward": 5, "on": "end"},
 	"ch_no_outside": {"name": "Nothing on the Outside", "desc": "Win the No Outside Bets challenge.", "reward": 3, "on": "end", "challenge": "no_outside"},
 	"ch_fence_run": {"name": "Fell Off a Truck", "desc": "Win The Fence's Run challenge.", "reward": 3, "on": "end", "challenge": "fence_run"},
@@ -142,7 +144,7 @@ static func _met(id: String, f: Dictionary, ctx: Dictionary) -> bool:
 		"vance_paper":
 			return ctx.won and run.grade >= 8
 		"hard_way":
-			return ctx.won and run.wheel_id in ["american", "triple_zero", "no_zero"]
+			return ctx.won and run.wheel_id in ["american", "crooked", "no_zero"]
 	if f.has("challenge"):
 		return ctx.won and run.challenge == f.challenge
 	if id == "grand_tour":

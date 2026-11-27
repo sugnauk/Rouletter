@@ -129,13 +129,41 @@ func _recenter() -> void:
 	var fit: float = clampf(float(profile.settings.get("fit", 1.0)), Profile.FIT_MIN, 1.0) if profile != null else 1.0
 	var vis_pos := Vector2(0, size.y * visible_frac.top)
 	var vis_size := Vector2(size.x * visible_frac.width, size.y * visible_frac.height)
-	var s: float = minf(1.0, minf(vis_size.x / 640.0, vis_size.y / 360.0)) * fit
+	_set_portrait(vis_size.y > vis_size.x * 1.05 and _screen_has_portrait())
+	var dim := Vector2(P.W, P.H)
+	# Landscape never scales up (the window always gives at least 640x360); portrait fills the width.
+	var s: float = minf(vis_size.x / dim.x, vis_size.y / dim.y) * fit
+	if not P.portrait:
+		s = minf(1.0, s)
 	var clipped: bool = visible_frac.height < 0.999 or visible_frac.top > 0.001
 	frame.scale = Vector2(s, s)
-	var used := Vector2(640, 360) * s
+	var used := dim * s
 	var x: float = vis_pos.x + (vis_size.x - used.x) / 2.0
 	var y: float = vis_pos.y + ((vis_size.y - used.y) / 2.0 if not (clipped or fit < 0.999) else 0.0)
 	frame.position = Vector2(x, y).floor()
+
+
+## Does the screen on show have a portrait layout yet? (Screens without one keep landscape.)
+func _screen_has_portrait() -> bool:
+	return screens.has(current) and screens[current].has_method("relayout")
+
+
+## Switch the play area between 640x360 and 360x640, and re-lay out everything on it.
+func _set_portrait(on: bool) -> void:
+	if on == P.portrait and frame.size == Vector2(P.W, P.H):
+		return
+	P.portrait = on
+	P.W = 360.0 if on else 640.0
+	P.H = 640.0 if on else 360.0
+	frame.size = Vector2(P.W, P.H)
+	for k in screens:
+		if screens[k].has_method("relayout"):
+			screens[k].relayout(on)
+	for o in [dialogue, pause]:
+		if o != null:
+			o.relayout()
+	if card != null:
+		card.hide_card()
 
 
 ## Web only: ask the page how much of the canvas is actually visible.
@@ -168,6 +196,7 @@ func show_screen(n: String) -> void:
 	if card != null:
 		card.hide_card()
 	screens[n].visible = true
+	_recenter()
 	screens[n].call("refresh")
 	if n == "table" or n == "shop":
 		save_run()

@@ -35,6 +35,15 @@ var hud: Control
 var history_view: Control
 var score_view: Control
 var gauge_view: Control
+var balls_view: Control   ## "BALLS 4/6" under the wheel
+var portrait := false     ## laid out for a phone held upright (see relayout)
+var felt_home := Vector2(MID_X, 32)
+var bet_lbl: Label
+var rack_lbl: Label
+var rules_lbl: Label
+var menu_btn
+var zoom_lbl: Label
+var stack_view: Control   ## your betting-chip stack, lying under the felt
 var spin_btn: Button
 var clear_btn: Button
 var undo_btn: Button
@@ -57,6 +66,7 @@ var selected_item := -1
 var spinning := false
 var shown_take := 0.0
 var meter_pulse := 0.0
+var meter_paid_flash := 0.0     ## the gold flash when the meter crosses the payment line
 var board_id := ""
 var announced := ""
 var table_key := ""
@@ -90,7 +100,8 @@ func setup() -> void:
 	hud = _canvas(Vector2(0, 0), Vector2(640, 24), _draw_hud)
 
 	wheel_view = WheelView.new()
-	P.place(wheel_view, Vector2(4, 24), Vector2(176, 176))
+	P.place(wheel_view, Vector2(4, 24), Vector2(176, 166))
+	balls_view = _canvas(Vector2(4, 190), Vector2(176, 13), _draw_balls)
 	add_child(wheel_view)
 	spin_btn = P.button(self, "SPIN", _on_spin, Vector2(168, 22), P.FONT)
 	spin_btn.add_theme_font_override("font", P.title_font())
@@ -107,6 +118,7 @@ func setup() -> void:
 	clear_btn = P.button(self, "CLEAR", _on_clear, Vector2(44, 14), P.FONT_SMALL)
 	P.place(clear_btn, Vector2(MID_X + 284, 134))
 	gauge_view = _canvas(Vector2(4, 232), Vector2(176, 124), _draw_gauges)
+	stack_view = _canvas(Vector2(MID_X, 134), Vector2(232, 14), _draw_stack)
 
 	felt_view = FeltView.new()
 	P.place(felt_view, Vector2(MID_X, 32))
@@ -136,19 +148,18 @@ func setup() -> void:
 	log_box.add_theme_stylebox_override("normal", P.box(Color(0.03, 0.06, 0.04, 0.96), P.LINE.darkened(0.4)))
 	P.place(log_box, Vector2(MID_X, 184), Vector2(330, 170))
 	add_child(log_box)
-	var lb := P.button(self, "LOG", func(): log_box.visible = not log_box.visible, Vector2(30, 12), P.FONT_SMALL)
-	P.place(lb, Vector2(MID_X + 298, 186))
 
-	P.place(P.label(self, "BET CHIP", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 26))
-	var mb := P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 12), P.FONT_SMALL)
-	P.place(mb, Vector2(RIGHT_X + 72, 24))
+	bet_lbl = P.label(self, "BET CHIP", P.FONT_SMALL, P.DIM)
+	P.place(bet_lbl, Vector2(RIGHT_X, 26))
+	menu_btn = P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 12), P.FONT_SMALL)
+	P.place(menu_btn, Vector2(RIGHT_X + 72, 6))
 	# Fast-forward: Normal > Fast >> Fastest >>> (F on the keyboard).
 	speed_btn = P.button(self, ">", func():
 		main.cycle_speed()
 		speed_btn.text = Profile.SPEEDS[main.speed()].label, Vector2(26, 12), P.FONT_SMALL)
 	speed_btn.tooltip_text = ""
 	speed_btn.mouse_entered.connect(func(): _status("Game speed: %s. Click (or press F) to change." % Profile.SPEEDS[main.speed()].name))
-	P.place(speed_btn, Vector2(RIGHT_X + 44, 24))
+	P.place(speed_btn, Vector2(RIGHT_X + 44, 6))
 	denom_box = HBoxContainer.new()
 	denom_box.add_theme_constant_override("separation", 4)
 	P.place(denom_box, Vector2(RIGHT_X, 36))
@@ -163,14 +174,16 @@ func setup() -> void:
 			Sfx.play("click")
 			_refresh_tokens())
 		denom_box.add_child(t)
-	P.place(P.label(self, "RACK", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 70))
+	rack_lbl = P.label(self, "RACK", P.FONT_SMALL, P.DIM)
+	P.place(rack_lbl, Vector2(RIGHT_X, 70))
 	rack_grid = GridContainer.new()
 	rack_grid.columns = 4
 	rack_grid.add_theme_constant_override("h_separation", 4)
 	rack_grid.add_theme_constant_override("v_separation", 4)
 	P.place(rack_grid, Vector2(RIGHT_X, 80))
 	add_child(rack_grid)
-	P.place(P.label(self, "HOUSE RULES", P.FONT_SMALL, P.DIM), Vector2(RIGHT_X, 146))
+	rules_lbl = P.label(self, "HOUSE RULES", P.FONT_SMALL, P.DIM)
+	P.place(rules_lbl, Vector2(RIGHT_X, 146))
 	rules_flow = VBoxContainer.new()
 	rules_flow.add_theme_constant_override("separation", 2)
 	P.place(rules_flow, Vector2(RIGHT_X, 156), Vector2(RIGHT_W, 0))
@@ -213,8 +226,89 @@ func setup() -> void:
 	var zl := P.label(zoom_bg, "TAP TO BET   -   HOLD TO TAKE BACK   -   TAP OUTSIDE TO CLOSE", P.FONT_SMALL, P.CREAM)
 	zl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	P.place(zl, Vector2(4000, 4000 + 30), Vector2(640, 10))
+	zoom_lbl = zl
 	add_child(zoom_bg)
 	move_child(felt_view, -1)
+
+
+## Landscape (640x360) or portrait (360x640). Portrait stacks the table up the phone: the
+## payment bar on top, the wheel beside SPIN, the felt standing upright with the rack and rules
+## beside it, and the count underneath.
+func relayout(tall: bool) -> void:
+	portrait = tall
+	felt_view.vertical = tall
+	if felt_view.run != null:
+		felt_view.layout()
+	if not tall:
+		P.place(hud, Vector2.ZERO, Vector2(640, 24))
+		P.place(wheel_view, Vector2(4, 24), Vector2(176, 166))
+		P.place(balls_view, Vector2(4, 190), Vector2(176, 13))
+		P.place(spin_btn, Vector2(8, 204), Vector2(168, 22))
+		P.place(undo_btn, Vector2(MID_X + 236, 134))
+		P.place(clear_btn, Vector2(MID_X + 284, 134))
+		P.place(gauge_view, Vector2(4, 232), Vector2(176, 124))
+		P.place(stack_view, Vector2(MID_X, 134), Vector2(232, 14))
+		felt_home = Vector2(MID_X, 32)
+		P.place(status_lbl, Vector2(MID_X, 150), Vector2(330, 10))
+		P.place(history_view, Vector2(MID_X, 162), Vector2(330, 18))
+		P.place(score_view, Vector2(MID_X, 184), Vector2(330, 170))
+		P.place(log_box, Vector2(MID_X, 184), Vector2(330, 170))
+		P.place(bet_lbl, Vector2(RIGHT_X, 26))
+		P.place(menu_btn, Vector2(RIGHT_X + 72, 6))
+		P.place(speed_btn, Vector2(RIGHT_X + 44, 6))
+		P.place(denom_box, Vector2(RIGHT_X, 36))
+		P.place(rack_lbl, Vector2(RIGHT_X, 70))
+		P.place(rack_grid, Vector2(RIGHT_X, 80))
+		rack_grid.columns = 4
+		P.place(rules_lbl, Vector2(RIGHT_X, 146))
+		P.place(rules_flow, Vector2(RIGHT_X, 156), Vector2(RIGHT_W, 0))
+		P.place(boss_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
+		P.place(job_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
+	else:
+		P.place(hud, Vector2.ZERO, Vector2(360, 44))
+		P.place(wheel_view, Vector2(4, 46), Vector2(122, 122))
+		P.place(balls_view, Vector2(130, 48), Vector2(226, 13))
+		P.place(spin_btn, Vector2(132, 64), Vector2(222, 22))
+		P.place(stack_view, Vector2(130, 90), Vector2(226, 14))
+		P.place(gauge_view, Vector2(130, 108), Vector2(226, 62))
+		felt_home = Vector2(4, 172)
+		var rx: float = 4 + felt_view.size.x + 6
+		var rw: float = 356 - rx
+		P.place(bet_lbl, Vector2(rx, 172))
+		P.place(denom_box, Vector2(rx, 182))
+		P.place(rack_lbl, Vector2(rx, 214))
+		P.place(rack_grid, Vector2(rx, 224))
+		rack_grid.columns = maxi(1, int((rw + 4) / 29))
+		P.place(rules_lbl, Vector2(rx, 284))
+		P.place(rules_flow, Vector2(rx, 294), Vector2(rw, 0))
+		P.place(boss_panel, Vector2(rx, 382), Vector2(rw, 96))
+		P.place(job_panel, Vector2(rx, 382), Vector2(rw, 96))
+		P.place(menu_btn, Vector2(316, 4))
+		P.place(speed_btn, Vector2(286, 4))
+		P.place(undo_btn, Vector2(4, 482))
+		P.place(clear_btn, Vector2(52, 482))
+		P.place(status_lbl, Vector2(100, 484), Vector2(256, 10))
+		P.place(history_view, Vector2(4, 498), Vector2(352, 18))
+		P.place(score_view, Vector2(4, 520), Vector2(352, 116))
+		P.place(log_box, Vector2(4, 520), Vector2(352, 116))
+	if not zoomed:
+		felt_view.position = felt_home
+	zoom_lbl.size.x = P.W
+	if overlays != null:
+		overlays.relayout()
+	queue_redraw()
+	for c in [hud, balls_view, stack_view, gauge_view, history_view, score_view]:
+		c.queue_redraw()
+
+
+## Where betting chips fly from and back to: the stack.
+func stack_at() -> Vector2:
+	return stack_view.position + Vector2(60, 7)
+
+
+## The middle of the payment bar (for coins flying into it).
+func meter_center() -> Vector2:
+	return Vector2(180, 31) if portrait else Vector2(MID_X + 150, 12)
 
 
 func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
@@ -227,6 +321,9 @@ func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
 
 
 func _hint() -> String:
+	if selected_item >= 0 and selected_item < main.run.inventory.size():
+		var kind: String = main.run.inventory[selected_item].kind
+		return "Holding %s. %s" % [Content.CHIPS[kind].name, Content.place_hint(kind)]
 	if DisplayServer.is_touchscreen_available():
 		return "Tap: bet %d   Hold: edit (take back, -chip, pin, clear area)" % bet_size
 	return "Click: bet %d  Right: take back  Shift: -%d  Ctrl: clear area  Alt: pin" % [bet_size, bet_size]
@@ -330,12 +427,20 @@ func _mark_clearing() -> void:
 
 
 ## Where the betting stack sits (the chip towers in the left column), for chips flying to/from it.
-const STACK_AT := Vector2(110, 330)
 
 
 ## Chips going back from a square to the stack.
 func _chips_home(key: String) -> void:
-	main.fx.fly(main.fx.local(felt_view.key_global(key)), STACK_AT, P.CREAM, 2)
+	main.fx.fly(main.fx.local(felt_view.key_global(key)), stack_at(), P.CREAM, 2)
+
+
+## The novel wheels' state on the wheel drawing: crooked widths, the Carousel's arc.
+func _sync_wheel(run) -> void:
+	wheel_view.weights = run.felt.weights
+	wheel_view.arc = run.felt.arc_pockets()
+	wheel_view.next_arc = run.felt.arc_pockets(1)
+	wheel_view.twin = run.felt.board.def.get("twin", false)
+	wheel_view.queue_redraw()
 
 
 func _status(s: String) -> void:
@@ -346,6 +451,7 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	meter_pulse = maxf(0.0, meter_pulse - delta * 2.5)
+	meter_paid_flash = maxf(0.0, meter_paid_flash - delta * 1.2)
 	score_pop = maxf(0.0, score_pop - delta * 5.0)
 	var cash: int = main.run.cash
 	if shown_cash < 0.0:
@@ -376,6 +482,8 @@ func _process(delta: float) -> void:
 	else:
 		spin_btn.modulate = Color.WHITE
 	hud.queue_redraw()
+	stack_view.queue_redraw()
+	balls_view.queue_redraw()
 	if spinning:
 		score_view.queue_redraw()
 
@@ -393,16 +501,20 @@ func refresh() -> void:
 		felt_view.layout()
 		wheel_view.board = run.felt.board
 		board_id = bid
-	var tk := "%d-%d-%d" % [run.rng.seed_value, run.night, run.table_idx]
+		if portrait:   # the felt's width (call bets) moves the column beside it
+			relayout(true)
+	var tk := "%d-%s-%d-%d" % [run.run_seed, run.wheel_id, run.night, run.table_idx]
 	if tk != table_key:
 		table_key = tk
 		history = []
 		score_rows = []
 		spin_score_vis = false
 		wheel_view.result = -99
+		wheel_view.result2 = -99
 		log_box.clear()
 		log_box.append_text("[color=#f2c14e]%s[/color]\n" % run.message)
 	felt_view.targets = []
+	_sync_wheel(run)
 	felt_view.queue_redraw()
 	var t: Dictionary = run.table
 	if not spinning:
@@ -595,10 +707,12 @@ func _draw_hud(c: Control) -> void:
 		return
 	var t: Dictionary = run.table
 	var font := P.title_font()
-	Art.plaque(c, Rect2(4, 3, 176, 18))
-	Art.text(c, font, Vector2(92, 16), "NIGHT %d  %s" % [run.night + 1, run.table_name().to_upper()], 8, P.CREAM, true)
+	# Portrait: the night plaque and cash on one row, the payment bar full width under them.
+	var plaque := Rect2(4, 3, 200, 18) if portrait else Rect2(4, 3, 176, 18)
+	Art.plaque(c, plaque)
+	Art.text(c, font, Vector2(plaque.get_center().x, 16), "NIGHT %d  %s" % [run.night + 1, run.table_name().to_upper()], 8, P.CREAM, true)
 	# Take meter.
-	var mr := Rect2(MID_X, 3, 300, 18)
+	var mr := Rect2(4, 23, 352, 18) if portrait else Rect2(MID_X, 3, 330, 18)
 	Art.plaque(c, mr, true)
 	var inner := Rect2(mr.position + Vector2(3, 3), mr.size - Vector2(6, 6))
 	c.draw_rect(inner, P.BLACK)
@@ -606,6 +720,16 @@ func _draw_hud(c: Control) -> void:
 	var fill := Color("#e0a82e").lerp(P.CREAM, meter_pulse * 0.6)
 	c.draw_rect(Rect2(inner.position, Vector2(floor(inner.size.x * k), inner.size.y)), fill)
 	c.draw_rect(Rect2(inner.position, Vector2(floor(inner.size.x * k), 2)), fill.lightened(0.4))
+	if meter_pulse > 0.05 and k > 0.0 and k < 1.0:   # the bright leading edge, sparkling as it fills
+		var ex: float = inner.position.x + floor(inner.size.x * k)
+		c.draw_rect(Rect2(ex - 2, inner.position.y, 2, inner.size.y), Color(1, 1, 1, meter_pulse))
+		var ms := Time.get_ticks_msec() / 60
+		for i in range(4):
+			var sx: float = ex - 1 + ((ms * 7 + i * 13) % 7) - 3
+			var sy: float = inner.position.y - 3 + ((ms * 5 + i * 11) % (int(inner.size.y) + 6))
+			c.draw_rect(Rect2(sx, sy, 1, 1), Color(P.CREAM, meter_pulse))
+	if meter_paid_flash > 0.0:
+		c.draw_rect(inner, Color(P.CREAM, meter_paid_flash * 0.7))
 	for i in range(1, 10):
 		var x: float = inner.position.x + floor(inner.size.x * i / 10.0)
 		c.draw_rect(Rect2(x, inner.position.y, 1, inner.size.y), Color(0, 0, 0, 0.35))
@@ -614,18 +738,60 @@ func _draw_hud(c: Control) -> void:
 		c.draw_rect(mr.grow(1), Color(P.GOLD, 0.5 + 0.5 * g), false, 2.0)
 		c.draw_rect(mr.grow(3), Color(P.GOLD, 0.25 * g), false, 1.0)
 	var mtxt: String = ("PAID!  %d / %d" % [int(shown_take), t.target]) if shown_take >= t.target else ("TAKE %d / %d   NEED %d" % [int(shown_take), t.target, int(ceil(t.target - shown_take))])
-	Art.text(c, font, Vector2(mr.get_center().x, 16), mtxt, 8, P.CREAM if k < 0.55 else P.WOOD_DARK, true)
-	# Spins as balls.
-	var total: int = t.spins_used + t.spins_left
+	Art.text(c, font, Vector2(mr.get_center().x, mr.position.y + 13), mtxt, 8, P.CREAM if k < 0.55 else P.WOOD_DARK, true)
+	# Cash.
+	Art.text(c, font, Vector2(212, 16) if portrait else Vector2(RIGHT_X + 2, 16), "$%d" % int(round(shown_cash if shown_cash >= 0.0 else run.cash)), 8, P.CREAM if shown_cash >= 0.0 and int(shown_cash) != run.cash else P.GOLD)
+
+
+## The balls left at this table, as a row under the wheel.
+func _draw_balls(c: Control) -> void:
+	var run = main.run
+	if run.table.is_empty():
+		return
+	var td: Dictionary = run.table
+	var total: int = td.spins_used + td.spins_left
+	var font := P.font()
+	var label := "BALLS %d/%d" % [td.spins_left, total]
+	Art.text(c, font, Vector2(4, 10), label, 8, P.DANGER if td.spins_left <= 1 else P.CREAM)
+	var x0: float = 8.0 + font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var step: float = minf(10.0, (c.size.x - x0 - 4.0) / maxf(1.0, total))
+	# Balls past the table's usual count (respins, Second Wind) are gold: Encore doubles them.
+	var extra_left: int = mini(td.spins_left, maxi(0, total - maxi(td.get("base_spins", total), td.spins_used)))
 	for i in range(total):
-		var p := Vector2(MID_X + 308 + i * 9, 12)
-		if i < t.spins_left:
+		var p := Vector2(x0 + 4 + i * step, 6).floor()
+		if i < td.spins_left - extra_left:
 			Art.icon(c, "spin", p, 1)
+		elif i < td.spins_left:
+			c.draw_circle(p, 3.5, P.GOLD, true, -1.0, false)
+			c.draw_circle(p, 3.5, P.WOOD_DARK, false, 1.0, false)
 		else:
 			c.draw_circle(p, 3.5, P.DIM.darkened(0.4), false, 1.0, false)
-	# Cash.
-	Art.icon(c, "cash", Vector2(RIGHT_X + 52, 12), 1)
-	Art.text(c, font, Vector2(RIGHT_X + 62, 16), "$%d" % int(round(shown_cash if shown_cash >= 0.0 else run.cash)), 8, P.CREAM if shown_cash >= 0.0 and int(shown_cash) != run.cash else P.GOLD)
+
+
+## The betting-chip stack, lying on its side under the felt: one sliver per chip, in casino
+## denominations (blue 10, red 5, white 1), with the count.
+func _draw_stack(c: Control) -> void:
+	var run = main.run
+	if run.table.is_empty():
+		return
+	var stack: int = run.table.stack
+	var font := P.font()
+	Art.text(c, font, Vector2(0, 10), "STACK", 8, P.DIM)
+	Art.text(c, P.title_font(), Vector2(30, 11), "%d" % stack, 8, P.CREAM if stack > 0 else P.DANGER)
+	var x := 54.0
+	var counts := {10: stack / 10, 5: (stack % 10) / 5, 1: stack % 5}
+	for d in [10, 5, 1]:
+		for j in range(counts[d]):
+			if x > c.size.x - 3:
+				break
+			var col: Color = Art.denom_color(d)
+			c.draw_rect(Rect2(x, 1, 3, 12), col.darkened(0.5))
+			c.draw_rect(Rect2(x, 2, 3, 10), col)
+			c.draw_rect(Rect2(x, 6, 3, 2), Color(1, 1, 1, 0.3))
+			x += 4.0
+		x += 4.0
+	if stack == 0:
+		Art.text(c, font, Vector2(54, 10), "EMPTY", 8, P.DANGER)
 
 
 func _draw_gauges(c: Control) -> void:
@@ -648,23 +814,6 @@ func _draw_gauges(c: Control) -> void:
 	Art.text(c, font, Vector2(168 - font.get_string_size(owed, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 46), owed, 8, P.DANGER.lerp(P.GOLD, clampf(float(mp) / mt, 0.0, 1.0)))
 	c.draw_rect(Rect2(4, 49, 168, 4), P.BLACK)
 	c.draw_rect(Rect2(5, 50, floor(166.0 * clampf(float(mp) / mt, 0.0, 1.0)), 2), P.GOLD)
-	# The stack as a physical tower of chips.
-	var stack: int = run.table.stack
-	Art.text(c, font, Vector2(4, 66), "STACK", 8, P.DIM)
-	Art.text(c, P.title_font(), Vector2(4, 82), "%d" % stack, 8, P.CREAM)
-	# Break the stack into casino denominations (blue 10, red 5, white 1), at most 10 chips per tower.
-	var counts := {10: stack / 10, 5: (stack % 10) / 5, 1: stack % 5}
-	var ti := 0
-	for d in [10, 5, 1]:
-		var left: int = counts[d]
-		while left > 0 and ti < 6:
-			var in_tower := mini(10, left)
-			for j in range(in_tower):
-				Art.chip(c, Vector2(56 + ti * 19, 114 - j * 3), 7.0, Art.denom_color(d))
-			left -= in_tower
-			ti += 1
-	if stack == 0:
-		Art.text(c, font, Vector2(56, 100), "EMPTY", 8, P.DANGER)
 
 
 func _draw_history(c: Control) -> void:
@@ -693,23 +842,24 @@ func _draw_score(c: Control) -> void:
 	var font := P.font()
 	var tfont := P.title_font()
 	if not spin_score_vis and score_rows.is_empty():
-		Art.text(c, tfont, Vector2(165, 40), "PLACE YOUR BETS", 8, P.GOLD, true)
+		Art.text(c, tfont, Vector2(c.size.x / 2.0, 40), "PLACE YOUR BETS", 8, P.GOLD, true)
 		var tips := ["Take = what a spin pays minus what it lost.",
 			"Permanent chips are never lost: they score every hit.",
 			"Covering everything scores nothing. Pick your shots.",
 			"Reach the payment before the balls run out."]
 		for i in range(tips.size()):
-			Art.text(c, font, Vector2(165, 66 + i * 14), tips[i], 8, P.DIM, true)
+			Art.text(c, font, Vector2(c.size.x / 2.0, 66 + i * 14), tips[i], 8, P.DIM, true)
 		return
 	var big := "+%d" % int(round(spin_score))
 	var size := 16 if score_pop < 0.5 else 24
-	Art.text(c, tfont, Vector2(165, 30), big, size, P.GOLD if spin_score > 0 else P.DIM, true)
+	Art.text(c, tfont, Vector2(c.size.x / 2.0, 30), big, size, P.GOLD if spin_score > 0 else P.DIM, true)
 	if hits >= 2:
 		var hue := fmod(Time.get_ticks_msec() / 900.0, 1.0)
 		var cc := Color.from_hsv(hue, 0.45, 1.0) if hits >= 4 else P.CYAN
 		Art.text(c, font, Vector2(c.size.x - 12 - font.get_string_size("x%d HITS" % hits, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 14), "x%d HITS" % hits, 8, cc)
 	var y := 52.0
-	for row in score_rows.slice(maxi(0, score_rows.size() - 8)):
+	var fit_rows: int = maxi(1, int((c.size.y - 52.0 - 26.0) / 14.0) + 1)
+	for row in score_rows.slice(maxi(0, score_rows.size() - fit_rows)):
 		var col: Color = {"win": P.GOOD, "bonus": P.CYAN, "loss": P.DANGER, "mult": P.VIOLET, "cash": P.GOLD, "push": P.DIM}.get(row.kind, P.CREAM)
 		var ic: String = {"win": "bet", "bonus": "perm", "loss": "bet", "mult": "red_streak", "cash": "cash", "push": "bet"}.get(row.kind, "bet")
 		if row.has("icon") and row.icon != "":
@@ -723,8 +873,8 @@ func _draw_score(c: Control) -> void:
 	if receipt != "" and not spinning:
 		c.draw_rect(Rect2(4, c.size.y - 26, c.size.x - 8, 1), P.LINE.darkened(0.5))
 		var rw := font.get_string_size(receipt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-		Art.text(c, font, Vector2(165, c.size.y - 15), receipt if rw < c.size.x - 12 else receipt.substr(0, 60) + "...", 8, P.CREAM, true)
-		Art.text(c, font, Vector2(165, c.size.y - 5), "click for the full calculation", 8, P.DIM, true)
+		Art.text(c, font, Vector2(c.size.x / 2.0, c.size.y - 15), receipt if rw < c.size.x - 12 else receipt.substr(0, 60) + "...", 8, P.CREAM, true)
+		Art.text(c, font, Vector2(c.size.x / 2.0, c.size.y - 5), "click for the full calculation", 8, P.DIM, true)
 
 
 # --- Input ------------------------------------------------------------------------
@@ -738,7 +888,7 @@ func _zoom() -> void:
 	zoomed = true
 	zoom_bg.visible = true
 	felt_view.scale = Vector2(ZOOM, ZOOM)
-	felt_view.position = ((Vector2(640, 360) - felt_view.size * ZOOM) / 2.0 + Vector2(0, 12)).floor()
+	felt_view.position = ((Vector2(P.W, P.H) - felt_view.size * ZOOM) / 2.0 + Vector2(0, 12)).floor()
 	Sfx.play("click")
 
 
@@ -748,7 +898,7 @@ func _unzoom() -> void:
 	zoomed = false
 	zoom_bg.visible = false
 	felt_view.scale = Vector2.ONE
-	felt_view.position = Vector2(MID_X, 32)
+	felt_view.position = felt_home
 
 
 func _on_bet_clicked(key: String, button: int) -> void:
@@ -789,7 +939,7 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	if run.place_bet(key, amt):
 		bet_history.append({"key": key, "amount": amt})
 		felt_view.pop(key)
-		main.fx.fly(STACK_AT, main.fx.local(felt_view.key_global(key)), Art.denom_color(amt), 1)
+		main.fx.fly(stack_at(), main.fx.local(felt_view.key_global(key)), Art.denom_color(amt), 1)
 		Sfx.play("chip_place")
 	elif run.is_called_spin():
 		_status("Big Sal calls this spin. No new bets.")
@@ -846,17 +996,19 @@ func _on_spin() -> void:
 	spin_score = 0.0
 	spin_score_vis = false
 	receipt = ""
-	var pockets: Array = run.felt.board.pockets
-	var pocket: int = pockets[run.rng.range_i(0, pockets.size() - 1)]
-	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9)
+	var pocket: int = run._draw_pocket()
+	var pocket2: int = run._draw_pocket() if run.felt.board.def.get("twin", false) else -99
+	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9, pocket2)
 	await wheel_view.spin_done
 	Sfx.play("ball_drop")
 	var ctx := {"before": run.table.take, "target": run.table.target, "spins_before": run.table.spins_left,
 		"stakes": run.felt.bet_stakes(), "layout": run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return [c.bet, c.value])}
-	var res: Dictionary = run.spin(pocket)
+	var res: Dictionary = run.spin(pocket, pocket2)
 	main.check_feats("spin", {"res": res, "staked": ctx.stakes, "target": ctx.target, "before": ctx.before,
 		"spins_before": ctx.spins_before, "cleared": run.phase == RunState.Phase.SHOP or run.phase == RunState.Phase.VICTORY})
 	history.append(pocket)
+	if pocket2 != -99:
+		history.append(pocket2)
 	history_view.queue_redraw()
 	await count.play(res, ctx)
 	_log(res)

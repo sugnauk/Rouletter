@@ -45,6 +45,16 @@ func _ready() -> void:
 	hint = P.label(panel, "click / space", P.FONT_SMALL, P.DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	P.place(hint, Vector2(456, 68), Vector2(152, 10))
+	relayout()
+
+
+## Sit along the bottom of the play area, whichever way up the screen is.
+func relayout() -> void:
+	var tall: bool = P.portrait
+	var ph: float = 116.0 if tall else 84.0
+	P.place(panel, Vector2(8 if tall else 12, P.H - ph - 10), Vector2(P.W - (16 if tall else 24), ph))
+	P.place(text_lbl, Vector2(82, 22), Vector2(panel.size.x - 94, ph - 34))
+	P.place(hint, Vector2(panel.size.x - 160, ph - 16), Vector2(152, 10))
 
 
 func say(new_lines: Array, done: Callable = Callable()) -> void:

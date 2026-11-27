@@ -10,6 +10,7 @@ var out_dir := "user://"
 var t := 0.0
 var step := 0
 var main
+var portrait := false   ## `-- portrait`: a short tour of the portrait layouts (run at a tall window)
 
 
 func _process(delta: float) -> void:
@@ -18,6 +19,9 @@ func _process(delta: float) -> void:
 		main = get_tree().current_scene
 		return
 	var run = main.run
+	if portrait:
+		_run_plan(_portrait_plan())
+		return
 	var plan := [
 		[0.6, func(): shot("01_title")],
 		[0.7, func():
@@ -29,9 +33,12 @@ func _process(delta: float) -> void:
 		[2, func(): shot("03_select")],
 		[2.1, func(): main.start_run("european")],
 		[2.3, func():
-			run.place_chip(0, "S30")
-			while not run.inventory.is_empty():
-				run.place_chip(0, "S8")
+			run.place_chip(0, "DOZ1")   # the European kit: Box Office, then a Magnet
+			var g := 0
+			while not run.inventory.is_empty() and g < 10:
+				g += 1
+				if not run.place_chip(0, "S30"):
+					run.inventory.remove_at(0)
 			run.place_bet("S17", 5)
 			run.place_bet("DOZ2", 5)
 			run.place_bet("RED", 3)],
@@ -339,11 +346,299 @@ func _process(delta: float) -> void:
 			r.shop.event = ""
 			main.show_screen("shop")],
 		[42.5, func(): shot("38_mini_cage")],
-		[42.7, func(): get_tree().quit()],
+		[42.6, func():
+			main.run.start_run(10, "european", main.profile.unlocked)
+			main.show_screen("table")],
+		[43.6, func():
+			_close_dialogue()
+			var ts = main.screens.table
+			ts.refresh()
+			var toks := _tokens(ts.overlays.offer_panel) if ts.overlays.offer_panel != null else []
+			if not toks.is_empty():
+				toks[0].hover_target.call("")],
+		[43.9, func(): shot("39_free_chip_card")],
+		[44.0, func():
+			main.hide_card()
+			var r = main.run
+			r.table_offer = []
+			r.inventory = []
+			r.table.take = r.table.target
+			r.spin(5)
+			r.shop.bonus = []
+			r.shop.routes = []
+			r.shop.event = ""
+			r.shop.offer = []
+			r.cash = 40
+			r.shop.vendors = ["cashier"]
+			r.shop.stock = [
+				{"type": "chip", "id": "hedge", "price": 5, "vendor": "cashier", "currency": "cash", "sold": false},
+				{"type": "chip", "id": "kingmaker", "price": 9, "vendor": "cashier", "currency": "cash", "sold": false},
+				{"type": "upgrade", "id": "lucky_colour", "price": 5, "vendor": "cashier", "currency": "cash", "sold": false},
+				{"type": "rule", "id": "momentum", "price": 7, "vendor": "cashier", "currency": "cash", "sold": false}]
+			main.show_screen("shop")],
+		[44.6, func():
+			_close_dialogue()
+			var toks := _tokens(main.screens.shop.counter)
+			toks[0].hover_target.call("")],
+		[44.9, func(): shot("40_cage_card")],
+		[45.0, func():
+			main.hide_card()
+			main.screens.shop._start_stock_drag(0)
+			main.screens.shop.felt_view.hover_key = "RED"],
+		[45.3, func(): shot("41_drag_hedge")],
+		[45.4, func():
+			var sh = main.screens.shop
+			sh._on_stock_dropped(0, "RED")
+			sh._start_stock_drag(2)],
+		[45.7, func(): shot("42_drag_upgrade")],
+		[45.8, func():
+			var sh = main.screens.shop
+			sh._end_stock_drag()
+			main.run.inventory = [{"kind": "ace", "value": 1}]
+			sh.selected_item = 0
+			sh.mode = "place"
+			sh.refresh()],
+		[46.1, func(): shot("43_holding_ace")],
+		[46.2, func():
+			var r = main.run
+			r.inventory = []
+			main.screens.shop.selected_item = -1
+			r.cash = 40
+			r.shop.stock = [{"type": "chip", "id": "black_cat", "price": 5, "vendor": "cashier", "currency": "cash", "sold": false}]
+			main.screens.shop.refresh()],
+		[46.4, func():
+			var tok = _tokens(main.screens.shop.counter)[0]
+			_mouse(tok.global_position + tok.size / 2.0, true)],
+		[46.45, func():
+			var tok = _tokens(main.screens.shop.counter)[0]
+			_mouse(tok.global_position + tok.size / 2.0 + Vector2(12, 4), null)],
+		[46.5, func(): _mouse(main.screens.shop.felt_view.key_global("S20") + Vector2(-20, 0), null)],
+		[46.55, func(): _mouse(main.screens.shop.felt_view.key_global("S20"), null)],
+		[46.6, func(): shot("44_real_drag")],
+		[46.7, func(): _mouse(main.screens.shop.felt_view.key_global("S20"), false)],
+		[46.9, func():
+			var on: Array = main.run.felt.chips_on("S20").filter(func(c): return c.kind == "black_cat")
+			print("DRAG-TO-BUY: ", ("OK placed on 20, cash %d" % main.run.cash) if not on.is_empty() else "FAILED")
+			shot("45_after_drag")],
+		[47.2, func():
+			main.run.start_run(11, "european", main.profile.unlocked)
+			main.run.table_offer = []
+			main.show_screen("table")],
+		[48.0, func():
+			_close_dialogue()
+			var ts = main.screens.table
+			ts.refresh()
+			main.run.place_chip(0, "COL2")
+			ts.refresh()
+			ts.felt_view.hover_key = "COL2"
+			ts._on_hover("COL2")],
+		[48.3, func(): shot("46_box_office_card")],
+		[48.4, func():
+			main.hide_card()
+			var r = main.run
+			r.night = 4
+			r.table_idx = 0
+			r._start_table()
+			main.screens.table.refresh()],
+		[48.8, func():
+			_close_dialogue()
+			shot("47_upstairs_balls")],
+		[49.0, func():
+			main.profile.unlocked.append_array(["twin", "crooked", "carousel"])
+			main.show_screen("select")
+			main.screens.select.selected = "twin"
+			main.screens.select.refresh()],
+		[49.4, func(): shot("48_select_twin")],
+		[49.5, func():
+			main.run.start_run(12, "twin", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.run.place_bet("RED", 3)
+			main.run.place_bet("S17", 2)
+			main.run.place_bet("DOZ2", 2)
+			main.show_screen("table")],
+		[50.3, func():
+			_close_dialogue()
+			main.screens.table._on_spin()],
+		[52.6, func(): shot("49_twin_count")],
+		[54.5, func():
+			main.run.start_run(13, "crooked", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.show_screen("table")],
+		[55.3, func():
+			_close_dialogue()
+			var fat: Array = main.run.felt.weights.keys()
+			main.run.place_bet("S%d" % fat[0], 3)
+			main.screens.table.refresh()
+			main.screens.table.felt_view.hover_key = "S%d" % fat[0]
+			main.screens.table._on_hover("S%d" % fat[0])],
+		[55.6, func(): shot("50_crooked_table")],
+		[55.7, func():
+			main.run.start_run(14, "carousel", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.show_screen("table")],
+		[56.5, func():
+			_close_dialogue()
+			main.screens.table.refresh()],
+		[56.8, func(): shot("51_carousel_table")],
+		[57.0, func():
+			main.run.start_run(16, "european", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = [{"kind": "odds_maker", "value": 1}]
+			main.run.place_chip(0, "RED")
+			main.run.felt.chips_on("RED")[0].value = 4
+			main.run.felt.house_rules = ["encore", "second_wind"]
+			main.run.table.spins_left += 1   # a respin: the last ball is an extra one
+			main.run.place_bet("RED", 3)
+			main.show_screen("table")],
+		[57.8, func():
+			_close_dialogue()
+			var ts = main.screens.table
+			ts.refresh()
+			ts.felt_view.hover_key = "RED"
+			ts._on_hover("RED")],
+		[58.1, func(): shot("52_odds_maker")],
+		[58.2, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
 		step += 1
+
+
+## A real mouse event at `at` (viewport coords): pressed true/false, or null for a move.
+func _mouse(at: Vector2, pressed) -> void:
+	var e: InputEvent
+	if pressed == null:
+		e = InputEventMouseMotion.new()
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT
+		e.relative = Vector2(4, 0)
+	else:
+		e = InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	Input.warp_mouse(get_viewport().get_final_transform() * at)   # keep the real cursor with the fake one
+	e.position = at
+	e.global_position = at
+	get_viewport().push_input(e, true)
+
+
+func _run_plan(plan: Array) -> void:
+	while step < plan.size() and t >= plan[step][0]:
+		plan[step][1].call()
+		step += 1
+
+
+func _portrait_plan() -> Array:
+	return [
+		[0.6, func(): shot("p01_title")],
+		[0.7, func():
+			main.profile.best_grade = 2
+			main.start_run("european")],
+		[1.6, func():
+			_close_dialogue()
+			main.screens.table.refresh()],
+		[1.9, func(): shot("p02_free_chip")],
+		[2.0, func():
+			var r = main.run
+			r.skip_table_offer()
+			r.place_chip(0, "DOZ1")
+			r.place_chip(0, "S17")
+			r.place_bet("S17", 3)
+			r.place_bet("RED", 4)
+			r.place_bet("SP1_2", 1)
+			main.screens.table.refresh()
+			main.screens.table._on_hover("S17")],
+		[2.3, func(): shot("p03_table_bets")],
+		[2.4, func(): main.screens.table._on_spin()],
+		[4.6, func(): shot("p04_counting")],
+		[7.0, func():
+			var r = main.run
+			var guard := 0
+			while r.phase == 0 and guard < 20:
+				guard += 1
+				r.place_bet("S17", mini(5, r.table.stack))
+				r.spin(17)
+			r.shop.bonus = []
+			r.shop.routes = []
+			r.shop.event = ""
+			r.shop.offer = []
+			r.cash = 30
+			main.route()],
+		[7.8, func():
+			_close_dialogue()
+			main.screens.shop.refresh()],
+		[8.1, func(): shot("p05_cage")],
+		[8.2, func():
+			main.screens.shop._start_stock_drag(0)
+			main.screens.shop.felt_view.hover_key = "RED"],
+		[8.5, func(): shot("p06_cage_drag")],
+		[8.6, func():
+			main.screens.shop._end_stock_drag()
+			main.run.start_run(12, "twin", main.profile.unlocked)
+			main.run.table_offer = []
+			main.run.inventory = []
+			main.run.place_bet("RED", 3)
+			main.show_screen("table")],
+		[9.4, func():
+			_close_dialogue()
+			main.screens.table._on_spin()],
+		[11.6, func(): shot("p07_twin")],
+		[12.6, func(): main.show_screen("select")],
+		[13.0, func(): shot("p08_select")],
+		[13.2, func(): main.show_screen("pawn")],
+		[13.5, func(): shot("p09_pawn")],
+		[13.6, func():
+			main.screens.pawn.tab = "goals"
+			main.screens.pawn.refresh()],
+		[13.9, func(): shot("p10_pawn_goals")],
+		[14.0, func():
+			main.screens.casebook.tab = "collection"
+			main.show_screen("casebook")],
+		[14.4, func(): shot("p11_casebook")],
+		[14.5, func(): main.open_options()],
+		[14.8, func(): shot("p12_options")],
+		[14.9, func(): main.show_screen("credits")],
+		[15.2, func(): shot("p13_credits")],
+		[15.3, func():
+			var r = main.run
+			r.start_run(15, "european", main.profile.unlocked)
+			r.table_offer = []
+			r.place_bet("RED", r.table.stack)
+			var guard := 0
+			while r.phase == 0 and guard < 20:
+				guard += 1
+				if r.table.stack > 0:
+					r.place_bet("S1", r.table.stack)
+				r.spin(2)
+			main.route()],
+		[16.4, func():
+			_close_dialogue()
+			shot("p14_end")],
+		[16.6, func(): main.show_screen("title")],
+		[17.0, func():
+			_close_dialogue()
+			shot("p15_title")],
+		[17.1, func():
+			# Rotate both ways on every screen (what a phone does mid-run): nothing may error.
+			for k in main.screens:
+				if main.screens[k].has_method("relayout"):
+					main.screens[k].relayout(false)
+					main.screens[k].relayout(true)
+			print("ROTATE: OK")],
+		[17.2, func(): get_tree().quit()],
+	]
+
+
+func _tokens(n: Node) -> Array:
+	var out := []
+	for ch in n.get_children():
+		if ch.get_script() == preload("res://scenes/ui/token_button.gd"):
+			out.append(ch)
+		out += _tokens(ch)
+	return out
 
 
 ## Put specific vendors in the Cage (for screenshots of each window).

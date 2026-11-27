@@ -36,7 +36,7 @@ func burst(pos: Vector2, n: int, cols: Array = [P.GOLD, P.CREAM], speed: float =
 func coin_rain(n: int) -> void:
 	n = mini(n, MAX_PARTS - parts.size())
 	for i in range(n):
-		parts.append({"p": Vector2(randf() * 640, randf_range(-60, -4)), "v": Vector2(randf_range(-15, 15), randf_range(40, 120)),
+		parts.append({"p": Vector2(randf() * P.W, randf_range(-60, -4)), "v": Vector2(randf_range(-15, 15), randf_range(40, 120)),
 			"col": [P.GOLD, P.GOLD.lightened(0.3), P.CREAM][i % 3], "life": 2.4, "max": 2.4, "size": 3})
 
 
@@ -139,7 +139,7 @@ func _draw() -> void:
 		var a := 1.0 if k < 0.75 else (1.0 - k) / 0.25
 		var size: int = b.size * (2 if b.t < 0.08 else 1)
 		var w := font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		var pos := Vector2(320 - w / 2.0, b.y - k * 10.0).round()
+		var pos := Vector2(P.W / 2.0 - w / 2.0, b.y * P.H / 360.0 - k * 10.0).round()
 		draw_rect(Rect2(pos + Vector2(-6, -size - 3), Vector2(w + 12, size + 9)), Color(0, 0, 0, 0.55 * a))
 		draw_string(font, pos + Vector2(2, 2), b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(0, 0, 0, a))
 		draw_string(font, pos, b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(b.col, a))
@@ -148,12 +148,12 @@ func _draw() -> void:
 		var a := 1.0 if k < 0.8 else (1.0 - k) / 0.2
 		var size := 48 if s.t < 0.06 else (32 if s.t < 0.12 else 24)
 		var w := font.get_string_size(s.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-		var box := Rect2(Vector2(320 - w / 2.0 - 12, 180 - size / 2.0 - 10), Vector2(w + 24, size + 20)).abs()
+		var box := Rect2(Vector2(P.W / 2.0 - w / 2.0 - 12, P.H / 2.0 - size / 2.0 - 10), Vector2(w + 24, size + 20)).abs()
 		box.position = box.position.round()
 		draw_rect(box, Color(0, 0, 0, 0.7 * a))
 		draw_rect(box, Color(s.col, a), false, 3.0)
 		draw_rect(box.grow(-5), Color(s.col, a * 0.6), false, 1.0)
-		draw_string(font, Vector2(320 - w / 2.0, 180 + size / 2.0 - 2).round(), s.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(s.col, a))
+		draw_string(font, Vector2(P.W / 2.0 - w / 2.0, P.H / 2.0 + size / 2.0 - 2).round(), s.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Color(s.col, a))
 	var small := P.font()
 	for x in texts:
 		var k: float = x.t / x.dur
@@ -187,12 +187,12 @@ func _draw_tally(font: Font, small: Font) -> void:
 	var k: float = tally.t / tally.dur
 	var a := clampf(tally.t / 0.15, 0.0, 1.0) * (1.0 if k < 0.85 else (1.0 - k) / 0.15)
 	var h: float = 30.0 + tally.rows.size() * 13.0
-	var box := Rect2(200, 200 - h / 2.0, 240, h).abs()
+	var box := Rect2(P.W / 2.0 - 120, P.H * 200.0 / 360.0 - h / 2.0, 240, h).abs()
 	box.position = box.position.round()
 	draw_rect(box, Color(0.04, 0.03, 0.02, 0.92 * a))
 	draw_rect(box, Color(P.GOLD, a), false, 2.0)
 	var tw := font.get_string_size(tally.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	draw_string(font, Vector2(320 - tw / 2.0, box.position.y + 16).round(), tally.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(P.GOLD, a))
+	draw_string(font, Vector2(P.W / 2.0 - tw / 2.0, box.position.y + 16).round(), tally.title, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(P.GOLD, a))
 	for i in range(tally.shown):
 		var r: Array = tally.rows[i]
 		var y: float = box.position.y + 32.0 + i * 13.0

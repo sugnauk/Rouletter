@@ -192,7 +192,7 @@ func record_run(nights_cleared: int, total_take: float, won: bool, acts: int = 1
 	return {"paid": paid, "markers": earned}
 
 
-const PROFILE_VERSION := 2   ## profile save format (see migrate())
+const PROFILE_VERSION := 3   ## profile save format (see migrate())
 
 
 ## Older profiles load with defaults for anything missing; this records which format a file
@@ -203,6 +203,22 @@ static func migrate(d_in: Dictionary) -> Dictionary:
 	if v < 2:
 		# 1 -> 2: Pawn Shop lanes. Nothing to convert: unlocks bought out of order stay owned.
 		v = 2
+	if v < 3:
+		# 2 -> 3 (0.0.44): Triple Zero merged into the Zero Wheel, Sunrise became the Carousel.
+		for field in ["unlocked", "wheels_won"]:
+			var out := []
+			for id in d.get(field, []):
+				var nid: String = Wheels.RETIRED.get(id, id)
+				if nid not in out:
+					out.append(nid)
+			if d.has(field):
+				d[field] = out
+		var fs: Array = d.get("feats", [])
+		if "sunrise_win" in fs:
+			fs.erase("sunrise_win")
+			if "carousel_win" not in fs:
+				fs.append("carousel_win")
+		v = 3
 	d["version"] = v
 	return d
 

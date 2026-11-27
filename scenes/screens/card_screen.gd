@@ -68,6 +68,10 @@ func _finish() -> void:
 	main.go("title")
 
 
+func relayout(_tall: bool) -> void:
+	queue_redraw()
+
+
 func _fade(start: float, dur: float = 0.5) -> float:
 	return clampf((t - start) / dur, 0.0, 1.0)
 
@@ -75,6 +79,8 @@ func _fade(start: float, dur: float = 0.5) -> float:
 func _draw() -> void:
 	# Cover the whole window, not just the 640x360 frame.
 	draw_rect(Rect2(-4000, -4000, 8640, 8360), Color("#07050a"))
+	# Drawn for 640x360; on a phone held upright, the same picture sits centred.
+	draw_set_transform(Vector2((P.W - 640.0) / 2.0, (P.H - 360.0) / 2.0))
 	var c := Vector2(320, 150)
 	# Wet asphalt: a few reflected streaks that pick up the sign's colour once it is lit.
 	var on := _sign_on()

@@ -26,6 +26,7 @@ func _initialize() -> void:
 	var acts := 1
 	var grade := 0
 	var want_report := false
+	var only := ""
 	for a in OS.get_cmdline_user_args():
 		if a == "report":
 			want_report = true
@@ -35,6 +36,8 @@ func _initialize() -> void:
 			all = true
 		elif a.begins_with("act="):
 			acts = int(a.substr(4))
+		elif a.begins_with("wheel="):
+			only = a.substr(6)
 		elif a.begins_with("grade="):
 			grade = int(a.substr(6)) - 1
 	var unlocks := Profile.default_unlocks()
@@ -48,7 +51,8 @@ func _initialize() -> void:
 		print("  %-12s pockets %2d  even-money EV/unit %+.4f" % [id, f.board.pockets.size(), Resolver.expected_value(f).net / 2.0])
 	print("== Bot runs (%d per wheel, %s pool) ==" % [runs, "full" if all else "starting"])
 	for id in Wheels.ORDER:
-		sim_wheel(id, runs, unlocks, acts, grade)
+		if only == "" or id == only:
+			sim_wheel(id, runs, unlocks, acts, grade)
 	if want_report:
 		print_report()
 	quit()
@@ -164,8 +168,16 @@ func bot_bet(run) -> void:
 	var keys := []
 	if need <= run.table.stack * 1.2 and run.can_bet_on("DOZ1"):
 		keys = ["DOZ1"]
+		for c in run.felt.perm_chips():   # an Odds Maker's box pays better: bet there
+			if c.kind == "odds_maker" and run.can_bet_on(c.bet):
+				keys = [c.bet]
 	else:
-		var fav := favourite_numbers(run)
+		# Novel wheels: a crooked wheel's fat pockets, or the Carousel's hot arc, come first.
+		var fav := []
+		for n in run.felt.weights.keys() + run.felt.arc_pockets():
+			if n > 0 and n not in fav:
+				fav.append(n)
+		fav += favourite_numbers(run).filter(func(n): return n not in fav)
 		keys = []
 		for n in fav:
 			if keys.size() < 2 and run.can_bet_on(Board.straight_key(n)):
@@ -216,6 +228,12 @@ func place_inventory(run) -> void:
 					if not B.is_red(n) and run.felt.chips_on(Board.straight_key(n)).is_empty():
 						key = Board.straight_key(n)
 						break
+			elif Content.CHIPS[item.kind].get("box_only", false):
+				key = "RED" if item.kind == "odds_maker" else "ODD"
+			elif Content.CHIPS[item.kind].get("coldoz_only", false):
+				key = "DOZ%d" % (1 + run.felt.perm_chips().size() % 3)
+				if not B.has_bet(key):
+					key = "COL1"
 			elif Content.CHIPS[item.kind].get("column_only", false):
 				key = "COL%d" % (1 + run.felt.perm_chips().size() % 3)
 			elif Content.CHIPS[item.kind].get("line_only", false):
@@ -243,6 +261,9 @@ func bot_shop(run) -> void:
 		if item.sold or not run.can_afford(item):
 			continue
 		if item.currency == "stack" and run.stack_spare() - run.price_of(item) < 6:
+			continue
+		# Like a player: box chips are the reliable start; past night 2 they can't keep up, so skip them.
+		if item.type == "chip" and run.night >= 2 and "box" in Content.tags_of(item.id):
 			continue
 		if true:
 			run.buy(i)

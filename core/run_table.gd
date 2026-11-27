@@ -181,7 +181,7 @@ static func parse_seed(text: String) -> int:
 	return absi(t.hash())
 
 
-const SAVE_VERSION := 2   ## run save format (see migrate())
+const SAVE_VERSION := 3   ## run save format (see migrate())
 
 ## Saved too, but optional, so saves from before they existed still load.
 const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [], "report": [], "fresh": {},
@@ -223,6 +223,13 @@ static func migrate(d_in: Dictionary) -> Dictionary:
 			if not c.has("mod"):
 				c["mod"] = ""
 		v = 2
+	if v == 2:
+		# 2 -> 3 (0.0.44): retired wheels map onto their replacements (same boards).
+		var wid: String = Wheels.RETIRED.get(d.get("wheel_id", ""), d.get("wheel_id", ""))
+		d["wheel_id"] = wid
+		if d.has("felt"):
+			d.felt["wheel"] = wid
+		v = 3
 	d["version"] = v
 	return d
 
@@ -387,10 +394,15 @@ func _start_table() -> void:
 	felt.red_streak = 0
 	felt.hit_streak = 0
 	felt.last_pocket = -99
+	felt.second_wind_used = false
+	_wheel_twists()
 	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {}) if not boss else {}
 	if not route.is_empty():
 		target = int(ceil(target * route.target))
-	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else route.get("spins", Content.SPINS)
+	# The last night of the run's first act, and every table upstairs, run an extra ball.
+	var late: bool = night >= Content.NIGHTS - 1
+	var base_spins: int = felt.board.def.get("spins", Content.SPINS) + (Content.UPSTAIRS_SPINS - Content.SPINS if late else 0)
+	var spins: int = Content.SHORT_SPINS if felt.boss_is("short") else route.get("spins", base_spins)
 	if graded(5) and table_idx >= 1:
 		spins -= 1
 	if boss and felt.has_rule("patron"):
@@ -399,7 +411,7 @@ func _start_table() -> void:
 		spins += 1
 	if felt.has_rule("klines_watch"):
 		spins += 1
-	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0,
+	table = {"target": target, "take": 0.0, "spins_left": spins, "spins_used": 0, "base_spins": spins,
 		"stack": stack_size - stack_owed, "boss": boss, "enforcer": enforcer, "docked": stack_owed, "loan": loan,
 		"favours": favours.duplicate(), "base_target": target, "route": shop.get("route", ""),
 		"lou_bet": shop.get("lou_bet", false), "condition": "", "objective": "", "obj_ok": true, "obj_hits": 0, "obj_spins": 0,
@@ -580,6 +592,10 @@ func can_place_chip(kind: String, key: String) -> bool:
 		return straight and Board.straight_number(key) > 0 and not felt.board.is_red(Board.straight_number(key))
 	if Content.CHIPS.get(kind, {}).get("column_only", false):
 		return key.begins_with("COL") and can_bet_on(key)
+	if Content.CHIPS.get(kind, {}).get("coldoz_only", false):
+		return (key.begins_with("COL") or key.begins_with("DOZ")) and can_bet_on(key)
+	if Content.CHIPS.get(kind, {}).get("box_only", false):
+		return (key.begins_with("COL") or key.begins_with("DOZ") or key in Content.EVEN_KEYS) and can_bet_on(key)
 	if kind == "perm":
 		return can_bet_on(key) or (straight and not felt.boss_is("no_outside"))
 	if Content.CHIPS.get(kind, {}).get("line_only", false):
@@ -654,15 +670,36 @@ func expected_value() -> Dictionary:
 	return Resolver.expected_value(felt)
 
 
-func spin(forced_pocket: int = -99) -> Dictionary:
+## A new table on a novel wheel: the Crooked Wheel's fat pockets move, the Carousel's arc
+## starts somewhere new.
+func _wheel_twists() -> void:
+	var def: Dictionary = felt.board.def
+	felt.weights = {}
+	if def.get("crooked", false):
+		var nums := range(1, felt.board.numbers + 1)
+		for n in rng.shuffle(nums).slice(0, Content.CROOKED_FAT):
+			felt.weights[n] = Content.CROOKED_WIDTH
+	felt.arc_start = rng.range_i(0, felt.board.order.size() - 1) if def.get("carousel", false) else -1
+
+
+## Where the ball lands: every pocket equally likely, unless the wheel is crooked.
+func _draw_pocket() -> int:
+	var pockets: Array = felt.board.pockets
+	if felt.weights.is_empty():
+		return pockets[rng.range_i(0, pockets.size() - 1)]
+	return rng.pick_weighted(pockets, pockets.map(func(p): return felt.weight(p)))
+
+
+func spin(forced_pocket: int = -99, forced_second: int = -99) -> Dictionary:
 	if phase != Phase.TABLE:
 		return {}
 	fresh = {}   # the spin makes every placement final
 	if not table_offer.is_empty():   # spinning passes on the free pick (the table screen asks first)
 		note("Free chip: passed by spinning (offered %s)" % ", ".join(table_offer.map(func(o): return Content.CHIPS[o.id].name)))
 	table_offer = []
-	var pockets: Array = felt.board.pockets
-	var pocket: int = forced_pocket if forced_pocket != -99 else pockets[rng.range_i(0, pockets.size() - 1)]
+	var pocket: int = forced_pocket if forced_pocket != -99 else _draw_pocket()
+	var twin: bool = felt.board.def.get("twin", false)
+	var pocket2: int = (forced_second if forced_second != -99 else _draw_pocket()) if twin else -99
 	if not is_called_spin():
 		last_bets = {}
 		for c in felt.chips:
@@ -670,12 +707,15 @@ func spin(forced_pocket: int = -99) -> Dictionary:
 				last_bets[c.bet] = last_bets.get(c.bet, 0) + c.value
 	felt.final_spin = table.spins_left <= 1
 	felt.spin_no = table.spins_used + 1
+	felt.extra_ball = table.spins_used >= table.get("base_spins", 99)
 	var keys := {}
 	for c in felt.chips:
 		if c.is_bet():
 			keys[c.bet] = true
-	var res := Resolver.resolve_spin(felt, pocket)
+	var res := Resolver.resolve_twin(felt, pocket, pocket2) if twin else Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
+	if felt.arc_start >= 0:   # the Carousel's arc moves on
+		felt.arc_start = (felt.arc_start + Content.ARC_STEP) % felt.board.order.size()
 	if res.zero_tax:
 		table.take *= 1.0 - Content.ZERO_TAX
 	if felt.boss_is("tempo") and res.take <= 0.0 and table.take > 0.0:
@@ -953,6 +993,11 @@ func _roll_objective() -> String:
 func _opening_offer(chips_only: bool = false) -> Array:
 	var out := []
 	var dirs: Array = rng.shuffle(Content.DIRECTIONS.keys())
+	if not chips_only:
+		# The run's opening pick always has one reliable option: something for the outside boxes.
+		var safe: String = rng.pick(["outside", "even"])
+		dirs.erase(safe)
+		dirs.push_front(safe)
 	for d in dirs:
 		if out.size() >= 3:
 			break
