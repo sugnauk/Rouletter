@@ -1,10 +1,10 @@
 extends Button
-## A casino-marquee button: black lacquer face, gold trim and a border of light bulbs.
-##   - at rest the bulbs glow warm and twinkle now and then
-##   - on hover they chase round the border and the trim lights up
-##   - on press every bulb flashes and the face dips a pixel
-## Small buttons (under MIN_BULBS) get a lit trim without bulbs. Disabled buttons go dark.
-## Used by every button made with Palette.button().
+## Every button made with Palette.button(). Two looks:
+##   - everyday (the default): a warm lacquer face with a soft bevel and a thin brass trim that
+##     warms to gold on hover, lifts a pixel with a small gold notch, and dips when pressed.
+##   - marquee (`marquee = true`, the hero buttons only: NEW RUN, CONTINUE): a border of light
+##     bulbs that glow warm, chase on hover and all flash when pressed.
+## `pulse` makes the trim breathe slowly (the button you probably want next). Disabled buttons go dark.
 
 const P := preload("res://scenes/ui/palette.gd")
 
@@ -13,9 +13,11 @@ const BULB_GAP := 6.0
 const BULB_ON := Color("#ffe9a8")
 const BULB_WARM := Color("#c98a2e")
 const BULB_OFF := Color("#3a2a1a")
+const BRASS := Color("#8a6a3a")
 
 var accent: Color = P.GOLD     ## trim / lit-bulb colour (a "hero" button can use another)
-var pulse := false             ## breathe gently even when not hovered (NEW RUN, DEAL ME IN)
+var pulse := false             ## the trim breathes gently even when not hovered
+var marquee := false           ## light bulbs round the border (hero buttons only)
 var _t := 0.0
 var _flash := 0.0
 
@@ -34,8 +36,8 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * 4.0)
-	# Redraw while something is moving: hover chase, a press flash, a pulse, or a slow twinkle.
-	if is_hovered() or _flash > 0.0 or pulse or int(_t * 8.0) % 4 == 0:
+	# Redraw only while something moves: a press flash, a pulse, hover, or a marquee's twinkle.
+	if _flash > 0.0 or pulse or (marquee and (is_hovered() or int(_t * 8.0) % 4 == 0)):
 		queue_redraw()
 
 
@@ -43,17 +45,33 @@ func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
 	var hot: bool = is_hovered() and not disabled
 	var down: bool = button_pressed or _flash > 0.5
-	# Trim: a bright inner line along the top, a dark one along the bottom.
-	var trim: Color = BULB_OFF if disabled else (accent if hot or pulse else accent.darkened(0.45))
+	if marquee:
+		var trim: Color = BULB_OFF if disabled else (accent if hot or pulse else accent.darkened(0.45))
+		if pulse and not hot and not disabled:
+			trim = accent.darkened(0.45).lerp(accent, 0.5 + 0.5 * sin(_t * 3.0))
+		draw_rect(r, trim, false, 1.0)
+		draw_rect(Rect2(1, 1, size.x - 2, 1), Color(1, 1, 1, 0.10 if not down else 0.0))
+		draw_rect(Rect2(1, size.y - 2, size.x - 2, 1), Color(0, 0, 0, 0.35))
+		if size.x >= MIN_BULBS.x and size.y >= MIN_BULBS.y:
+			_draw_bulbs(r, hot)
+		if _flash > 0.0 and not disabled:
+			draw_rect(r.grow(-1), Color(BULB_ON, 0.18 * _flash))
+		return
+	# Everyday: soft bevel, brass trim warming to gold, a small notch when hovered.
+	var trim2: Color = BULB_OFF if disabled else (accent if hot else BRASS)
 	if pulse and not hot and not disabled:
-		trim = accent.darkened(0.45).lerp(accent, 0.5 + 0.5 * sin(_t * 3.0))
-	draw_rect(r, trim, false, 1.0)
-	draw_rect(Rect2(1, 1, size.x - 2, 1), Color(1, 1, 1, 0.10 if not down else 0.0))
-	draw_rect(Rect2(1, size.y - 2, size.x - 2, 1), Color(0, 0, 0, 0.35))
-	if size.x >= MIN_BULBS.x and size.y >= MIN_BULBS.y:
-		_draw_bulbs(r, hot)
+		trim2 = BRASS.lerp(accent, 0.5 + 0.5 * sin(_t * 2.4))
+	draw_rect(r, trim2, false, 1.0)
+	if not disabled:
+		draw_rect(Rect2(1, 1, size.x - 2, 1), Color(1, 0.9, 0.7, 0.0 if down else (0.14 if hot else 0.07)))
+		draw_rect(Rect2(1, size.y - 2, size.x - 2, 1), Color(0, 0, 0, 0.45 if not down else 0.2))
+	if hot and size.x >= 30.0:
+		var cy: float = floor(size.y / 2.0)
+		draw_rect(Rect2(3, cy - 2, 1, 5), accent)
+		draw_rect(Rect2(4, cy - 1, 1, 3), accent)
+		draw_rect(Rect2(5, cy, 1, 1), accent)
 	if _flash > 0.0 and not disabled:
-		draw_rect(r.grow(-1), Color(BULB_ON, 0.18 * _flash))
+		draw_rect(r.grow(-1), Color(accent, 0.14 * _flash))
 
 
 ## Bulbs every few pixels round the border, chasing when hovered.

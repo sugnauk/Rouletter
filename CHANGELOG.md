@@ -3,6 +3,24 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.57
+- **A live table behind the home screen.** A roulette table seen over the croupier's shoulder, in chunky pixel 3D, now plays behind the menu.
+  - The wheel spins at the far end and the ball rattles round and drops into a pocket. Its number pops up over the wheel and the winning square glows.
+  - The croupier's rake sweeps the losing stacks away, and a payout piles onto the winner.
+  - Green-glass pendant lamps light the felt, the rest of the casino glows out of focus behind, under a flickering "GILDED ACE" sign, and the camera drifts slowly.
+  - It's drawn at 320x180 and shown at 2x, so it stays crisp pixel art. On a phone held upright it plays across the top with the menu under it.
+- **Calmer buttons.** Only NEW RUN and CONTINUE keep the marquee lights. Every other button is now:
+  - a warm lacquer face with a brass trim that turns gold on hover, with a small notch;
+  - a soft dip when pressed.
+
+  They redraw only when touched, which also saves battery on phones.
+- **The home menu** sits on a pane of smoked glass, with the other options in a tidy two-column list.
+- **Cosier all round:**
+  - the wallpaper's lamps breathe slowly and smoke motes catch their light;
+  - a soft vignette frames every screen;
+  - info cards and dialogue have a fine framed border;
+  - screens now change with a quick warm dip instead of a hard cut (skipped at the Fastest speed).
+
 ## 0.0.56
 - **Haptics on iPhone too.** iPhones have no vibrate API for web pages, but Safari (iOS 18+) gives a haptic tick when a switch toggle flips, so the game flips a hidden one: one tick for a small buzz, two or three for big wins and jackpots. Android still vibrates as before.
 - **More buzzes:** a tick when you press SPIN and a buzz when the ball drops, on top of wins and placing chips. Options > Vibration still turns them all off.

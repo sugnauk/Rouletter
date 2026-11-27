@@ -78,9 +78,10 @@ func _draw() -> void:
 		return
 	var r := Rect2(Vector2.ZERO, size)
 	var col: Color = data.get("col", P.GOLD)
-	draw_rect(r.grow(1), Color(0, 0, 0, 0.5))
-	draw_rect(r, Color("#120c0a"))
+	draw_rect(r.grow(2), Color(0, 0, 0, 0.45))
+	draw_rect(r, Color("#140d0a"))
 	draw_rect(r, col, false, 1.0)
+	draw_rect(r.grow(-2), Color(col, 0.18), false, 1.0)   # a fine inner line: a framed card
 	draw_rect(Rect2(1, 1, size.x - 2, 1), Color(col, 0.35))
 	var icon: String = data.get("icon", "")
 	var tx := PAD

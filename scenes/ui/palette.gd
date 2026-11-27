@@ -106,6 +106,14 @@ static func chip_color(kind: String) -> Color:
 	return CHIP_COLORS.get(kind, CREAM)
 
 
+## A cosy panel: a warm brass line inside a dark outer edge (a framed, finished look).
+static func cosy(bg: Color, border: Color = Color("#8a6a3a"), margin: int = 3) -> StyleBoxFlat:
+	var s := box(bg, border, 1, margin)
+	s.shadow_color = Color(0, 0, 0, 0.75)
+	s.shadow_size = 2
+	return s
+
+
 static func box(bg: Color, border: Color, width: int = 1, margin: int = 3) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
@@ -126,11 +134,11 @@ static func make_theme() -> Theme:
 	t.default_font_size = FONT
 	t.set_font("normal_font", "RichTextLabel", font())
 	t.set_font("bold_font", "RichTextLabel", font())
-	# Buttons are casino marquees (scenes/ui/marquee_button.gd draws the bulbs and trim on top):
-	# black lacquer with a deep-red sheen on hover, pressing dips into red velvet.
-	t.set_stylebox("normal", "Button", box(LACQUER, LACQUER.lightened(0.18), 1, 4))
-	t.set_stylebox("hover", "Button", box(Color("#2a1116"), GOLD.darkened(0.2), 1, 4))
-	t.set_stylebox("pressed", "Button", box(Color("#4a0f18"), GOLD, 1, 4))
+	# Buttons (scenes/ui/marquee_button.gd draws the trim, or a hero's bulbs, on top): warm
+	# lacquer that glows a little on hover and dips into dark mahogany when pressed.
+	t.set_stylebox("normal", "Button", box(Color("#1a100c"), Color("#1a100c"), 1, 4))
+	t.set_stylebox("hover", "Button", box(Color("#2a1a12"), Color("#2a1a12"), 1, 4))
+	t.set_stylebox("pressed", "Button", box(Color("#3a2414"), Color("#3a2414"), 1, 4))
 	t.set_stylebox("disabled", "Button", box(Color("#0e0a0c"), Color("#2a2024"), 1, 4))
 	t.set_stylebox("focus", "Button", StyleBoxEmpty.new())
 	t.set_color("font_color", "Button", CREAM)

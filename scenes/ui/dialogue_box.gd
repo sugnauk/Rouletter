@@ -31,7 +31,7 @@ func _ready() -> void:
 	shade.gui_input.connect(_gui_input)
 	add_child(shade)
 	panel = Panel.new()
-	panel.add_theme_stylebox_override("panel", P.box(P.PANEL, P.GOLD, 2))
+	panel.add_theme_stylebox_override("panel", P.cosy(P.PANEL, P.GOLD.darkened(0.15)))
 	P.place(panel, Vector2(12, 266), Vector2(616, 84))
 	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(panel)

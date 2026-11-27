@@ -39,7 +39,7 @@ func _draw() -> void:
 	var wall := Color("#140d0f")
 	draw_rect(Rect2(-off.x, -off.y, size.x, 300 + off.y), wall)
 	# Damask diamonds.
-	var pat := wall.lightened(0.05)
+	var pat := wall.lightened(0.035)
 	for y in range(-int(ceil(ey / 16.0)) * 16, 300, 16):
 		for x in range(-int(ceil(ex / 16.0)) * 16, 640 + int(ex), 16):
 			var o := 8 if posmod(y / 16, 2) == 1 else 0
@@ -52,13 +52,27 @@ func _draw() -> void:
 	for x in range(-int(ceil(off.x / 40.0)) * 40, 640 + int(off.x), 40):
 		draw_rect(Rect2(x + 4, 308, 32, 46 + off.y), Color("#24170f"))
 	# Lamplight pools (banded, like dithered 16-bit lighting).
-	for l in lamps:
+	for li in range(lamps.size()):
+		var l: Vector2 = lamps[li]
+		var breathe := 1.0 + 0.18 * sin(t * 0.6 + li * 2.1)   # the lamps breathe, slowly
 		for i in range(5):
 			var rr := 150.0 - i * 26.0
-			draw_circle(l, rr, Color(1.0, 0.8, 0.45, 0.018 + i * 0.006), true, -1.0, false)
+			draw_circle(l, rr, Color(1.0, 0.78, 0.45, (0.02 + i * 0.007) * breathe), true, -1.0, false)
 	# Smoke motes.
 	for m in motes:
-		draw_rect(Rect2(m.p.round(), Vector2(1, 1)), Color(1, 0.9, 0.7, 0.18))
+		# Motes catch the light: brighter near a lamp.
+		var near := 0.0
+		for l in lamps:
+			near = maxf(near, 1.0 - clampf(m.p.distance_to(l) / 160.0, 0.0, 1.0))
+		draw_rect(Rect2(m.p.round(), Vector2(1, 1)), Color(1, 0.88, 0.65, 0.10 + 0.25 * near))
+	# A soft vignette pulls the eye to the middle (banded, to stay pixel-crisp).
+	draw_set_transform(Vector2.ZERO)
+	for i in range(6):
+		var a := 0.13 - i * 0.02
+		draw_rect(Rect2(0, 0, size.x, (6 - i) * 4.0), Color(0, 0, 0, a))
+		draw_rect(Rect2(0, size.y - (6 - i) * 4.0, size.x, (6 - i) * 4.0), Color(0, 0, 0, a))
+		draw_rect(Rect2(0, 0, (6 - i) * 5.0, size.y), Color(0, 0, 0, a))
+		draw_rect(Rect2(size.x - (6 - i) * 5.0, 0, (6 - i) * 5.0, size.y), Color(0, 0, 0, a))
 
 
 ## Small neon sign, drawn by screens that have room for it.
