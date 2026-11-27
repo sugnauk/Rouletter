@@ -32,10 +32,10 @@ const CHIP_COLORS := {
 	"respin": CYAN, "ledger": Color("#f4a261"), "collector": VIOLET,
 	"bridge": Color("#cdb4db"), "kingmaker": Color("#ffd166"),
 	"mirror": Color("#90e0ef"), "porch_light": Color("#f6bd60"),
-	"black_cat": Color("#4a4a5a"), "penny": Color("#d08a4a"), "snowball": Color("#e8f4ff"),
+	"black_cat": Color("#4a4a5a"), "penny": Color("#d08a4a"), "snowball": Color("#7ec8f0"),
 	"sentinel": Color("#2ec46a"), "crown": Color("#ffd166"),
 	"street_light": Color("#e9c46a"), "red_herring": Color("#e76f51"), "jar": Color("#8ecae6"), "hedge": Color("#52b788"),
-	"wheel_spoke": Color("#d4a373"), "echo": Color("#a2d2ff"), "ace": Color("#f8f9fa"), "tip_jar": Color("#90be6d"),
+	"wheel_spoke": Color("#d4a373"), "echo": Color("#a2d2ff"), "ace": Color("#2b2d42"), "tip_jar": Color("#90be6d"),
 	"green_thumb": Color("#38b000"), "signpost": Color("#bc8a5f"),
 	"odd_fellow": Color("#e9c46a"), "even_keel": Color("#90e0ef"), "low_roller": Color("#80ed99"), "penthouse": Color("#f4a261"),
 	"dozen_watch": Color("#cdb4db"), "pillar": Color("#a8dadc"), "night_owl": Color("#b5838d"), "piggy_bank": Color("#ffafcc"),
@@ -43,6 +43,19 @@ const CHIP_COLORS := {
 	"teen_idol": Color("#ff8fab"), "fibonacci": Color("#c77dff"), "nickel": Color("#adb5bd"), "seventh_heaven": Color("#ffe066"),
 	"last_digit": Color("#8ecae6"), "far_side": Color("#f28482"), "seedling": Color("#95d5b2"), "golden_goose": Color("#fcbf49"),
 	"heart_of_gold": Color("#ef476f"), "spare_key": Color("#2ec4b6"),
+	"even_stevens": Color("#b5179e"), "box_office": Color("#f77f00"), "coin_purse": Color("#a0522d"),
+	"streak_rider": Color("#06d6a0"), "odds_maker": Color("#ffb703"), "keystone": Color("#8d99ae"),
+	"tall_stack": Color("#7209b7"), "wind_up": Color("#c9a227"), "ivory_tower": Color("#d4a5ff"),
+	"conductor": Color("#3a0ca3"), "relay": Color("#00b4d8"), "fuse": Color("#6d597a"),
+}
+
+## Felt upgrades: the strip along a square's top edge, one colour each (the badge shows its picture).
+const UPGRADE_COLORS := {
+	"gilded": GOLD, "hot": DANGER, "link": CYAN, "double_felt": GOOD, "pinned": VIOLET,
+	"diamond": Color("#9ad7ff"), "magnetized": RED, "twin_square": Color("#3aa6b9"), "spoke": Color("#d4a373"),
+	"gold_trim": Color("#ffd166"), "fat_box": Color("#c08ad8"), "repeat_box": Color("#e0aaff"),
+	"lucky_colour": Color("#38b000"), "lamp": Color("#ffb703"), "silk": Color("#ff8fab"),
+	"sweet_spot": Color("#f77f00"), "cornerstone": Color("#b8862b"),
 }
 
 ## Fonts (SIL Open Font License, see fonts/*-OFL.txt):

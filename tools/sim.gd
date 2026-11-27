@@ -242,6 +242,13 @@ func place_inventory(run) -> void:
 					if B.has_bet(k):
 						key = k
 						break
+			elif not Content.target_numbers(item.kind, B).is_empty():
+				var ts: Array = Content.target_numbers(item.kind, B)
+				key = Board.straight_key(ts[run.felt.perm_chips().size() % ts.size()])
+				for n in ts:
+					if run.felt.chips_on(Board.straight_key(n)).is_empty():
+						key = Board.straight_key(n)
+						break
 			else:
 				key = Board.straight_key(1 + (run.felt.perm_chips().size() * 7) % B.numbers)
 		if key == "" or not run.place_chip(0, key):

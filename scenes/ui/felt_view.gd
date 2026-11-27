@@ -320,6 +320,11 @@ func _draw() -> void:
 			up = run.felt.bet_upgrades.get(k, "")
 		if up != "":
 			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(r.size.x - 2, 2)), _upgrade_color(up))
+			# Its badge: the upgrade's own picture on a dark tile, in a corner clear of the label.
+			var bp: Vector2 = r.position + Vector2(1, 3) if Board.is_straight(k) else Vector2(r.end.x - 8, r.position.y + 3)
+			draw_rect(Rect2(bp.floor(), Vector2(7, 7)), Color(P.BLACK, 0.85))
+			draw_rect(Rect2(bp.floor(), Vector2(7, 7)), _upgrade_color(up), false, 1.0)
+			Art.face(self, up, bp.floor() + Vector2(3, 3))
 		if Board.is_straight(k):
 			var sn := Board.straight_number(k)
 			if run.felt.weight(sn) > 1:   # Crooked Wheel: a fat pocket
@@ -429,7 +434,7 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id, "mod": c.mod,
 			"fresh": run.fresh.has(str(c.id))})
 	var is_line := line_rects.has(k)
-	var rad := 5.0 if (is_line or _is_strip(r) or not Board.is_straight(k)) else 6.0
+	var rad := 6.0 if (is_line or _is_strip(r) or not Board.is_straight(k)) else 7.0
 	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
 	var n := entries.size()
 	var spacing := minf(2.0 * rad - 1.0, (r.size.x - 2.0 * rad - 2.0) / maxf(1.0, n - 1.0)) if not is_line else 6.0
@@ -470,7 +475,10 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 			var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 200.0)
 			draw_arc(p, rad + 1.5, 0, TAU, 16, Color(P.GOLD, 0.35 + 0.45 * g), 1.0, false)
 		var v: int = e.value
-		if v > 1 or e.kind == "bet":
+		if v > 1 and e.kind != "bet":
+			# An item's level sits on its rim, so the picture on its face stays clear.
+			_tiny(font, p + Vector2(rad - 3, rad + 2), str(v) if v < 100 else "99+")
+		elif e.kind == "bet":
 			var txt := str(v) if v < 100 else "99+"
 			var dark: bool = Color(e.col).get_luminance() > 0.45
 			var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT_SMALL).x
@@ -492,30 +500,7 @@ func _tiny(font: Font, p: Vector2, s: String) -> void:
 
 
 func _upgrade_color(up: String) -> Color:
-	match up:
-		"gilded":
-			return P.GOLD
-		"hot":
-			return P.DANGER
-		"link":
-			return P.CYAN
-		"double_felt":
-			return P.GOOD
-		"pinned":
-			return P.VIOLET
-		"diamond":
-			return Color("#9ad7ff")
-		"magnetized":
-			return P.RED
-		"twin_square", "spoke":
-			return P.CYAN.darkened(0.2)
-		"gold_trim", "lamp", "sweet_spot":
-			return P.GOLD
-		"fat_box", "repeat_box", "silk":
-			return Color("#c08ad8")
-		"lucky_colour":
-			return P.GOOD
-	return P.CREAM
+	return P.UPGRADE_COLORS.get(up, P.CREAM)
 
 
 func _outside_name(k: String) -> String:

@@ -15,11 +15,16 @@ static func chip(ci: CanvasItem, c: Vector2, rad: float, col: Color, kind: Strin
 	for i in range(spots):
 		var a := TAU * i / spots + PI / spots
 		var p := (c + Vector2(cos(a), sin(a)) * (rad - 1.2)).round()
-		ci.draw_rect(Rect2(p - Vector2(1, 1), Vector2(2, 2)), P.CREAM if col.get_luminance() < 0.75 else P.RED)
-	ci.draw_circle(c, rad * 0.62, col.darkened(0.18), true, -1.0, false)
-	ci.draw_circle(c, rad * 0.62, col.lightened(0.35), false, 1.0, false)
-	if kind != "" and kind != "bet" and kind != "perm" and rad >= 5.0:
-		icon(ci, kind, c, 1, true)
+		var spot: Color = P.CREAM if col.get_luminance() < 0.75 else P.RED
+		if kind != "" and kind != "bet":   # items have gold edge spots, money has cream ones
+			spot = P.GOLD if col.get_luminance() < 0.6 else P.WOOD_DARK
+		ci.draw_rect(Rect2(p - Vector2(1, 1), Vector2(2, 2)), spot)
+	var has_face: bool = kind != "" and kind != "bet" and MINI.has(kind) and rad >= 5.0
+	# An item's inlay is dark so its picture reads on any chip colour; a bet's stays light.
+	ci.draw_circle(c, rad * 0.66, col.darkened(0.6) if has_face else col.darkened(0.18), true, -1.0, false)
+	ci.draw_circle(c, rad * 0.66, col.lightened(0.35), false, 1.0, false)
+	if has_face:
+		face(ci, kind, c)
 	if frozen:
 		ci.draw_line(c - Vector2(rad, rad), c + Vector2(rad, rad), P.CYAN, 1.0, false)
 		ci.draw_line(c + Vector2(-rad, rad), c + Vector2(rad, -rad), P.CYAN, 1.0, false)
@@ -119,6 +124,90 @@ const SPRITES := {
 const SPRITE_COLOURS := {"k": "#1a1410", "w": "#f4ead5", "g": "#b8862b", "y": "#f2c14e", "r": "#c0392b",
 	"G": "#3fae5a", "c": "#5fd3d3", "v": "#b07ad9", "b": "#7a4e2a", "d": "#8a8a8a", "p": "#f4a3c0",
 	"o": "#e9894a", "B": "#3f6fd1"}
+
+## 5x5 felt-size pictures: the face of every chip and the badge of every felt upgrade, so each
+## placed item reads at a glance (a smaller echo of its 12x12 icon). Colours: SPRITE_COLOURS.
+const MINI := {
+	"perm": ["..y..", "..y..", "yyyyy", "..y..", "..y.."],
+	"magnet": ["w...w", "r...r", "r...r", "rrrrr", ".rrr."],
+	"compounding": ["..G..", ".GGG.", "G.G.G", "..G..", "..G.."],
+	"croupier": ["..b..", "..b..", "..b..", "ddddd", "d.d.d"],
+	"wildcard_zero": [".ccc.", "c...c", "c.y.c", "c...c", ".ccc."],
+	"mint": [".yyy.", "yykyy", "yyyyy", "yykyy", ".yyy."],
+	"respin": [".ccc.", "c...c", "c..cc", "c...c", ".cc.."],
+	"ledger": ["bbbbb", "bwwwb", "bkkwb", "bwwwb", "bbbbb"],
+	"collector": [".....", "rrrrr", "wwwww", "yyyyy", "....."],
+	"bridge": [".....", "ww.ww", "wwyww", "ww.ww", "....."],
+	"mirror": ["cc.ww", "cc.ww", "cc.ww", ".....", "..b.."],
+	"porch_light": ["..b..", ".yyy.", "yyyyy", ".yyy.", "..b.."],
+	"black_cat": ["d...d", "ddddd", "dydyd", "ddddd", ".ddd."],
+	"penny": [".ooo.", "ooboo", "ooboo", "ooboo", ".ooo."],
+	"snowball": ["w.w.w", ".www.", "wwcww", ".www.", "w.w.w"],
+	"street_light": [".ddd.", ".dyd.", "..d..", "..d..", ".ddd."],
+	"red_herring": [".....", ".rr.r", "rwrrr", ".rr.r", "....."],
+	"jar": [".bbb.", "c...c", "cyyyc", "cyyyc", "ccccc"],
+	"hedge": [".....", "G.G.G", "GGGGG", "GGGGG", "bbbbb"],
+	"wheel_spoke": [".www.", "w.w.w", "wwyww", "w.w.w", ".www."],
+	"echo": ["ccccc", "c...c", "c.c.c", "c...c", "ccccc"],
+	"ace": ["wwwww", "wwkww", "wkkkw", "wwkww", "wwwww"],
+	"tip_jar": ["..G..", ".bbb.", "c.y.c", "cyyyc", "ccccc"],
+	"green_thumb": ["GG.GG", ".GGG.", "..G..", "..G..", ".bbb."],
+	"signpost": [".yyyy", "..b..", "yyyy.", "..b..", "..b.."],
+	"sentinel": ["GGGGG", "GwwwG", "GwGwG", ".GwG.", "..G.."],
+	"crown": [".....", "y.y.y", "yyyyy", "yrcry", "yyyyy"],
+	"even_stevens": [".rdd.", "rrddd", "rrddd", "rrddd", ".rdd."],
+	"box_office": [".....", "yyyyy", "yk.ky", "yyyyy", "....."],
+	"coin_purse": ["..b..", ".bbb.", "bbybb", "bbybb", ".bbb."],
+	"streak_rider": ["r.r.r", ".w.w.", "r.r.r", ".w.w.", "r.r.r"],
+	"odds_maker": ["yyyyy", "yrrry", "yr.ry", "yrrry", "yyyyy"],
+	"keystone": ["yyyyy", "ywwwy", ".ygy.", ".ywy.", "..y.."],
+	"tall_stack": [".rrr.", ".www.", ".BBB.", ".rrr.", ".www."],
+	"wind_up": [".ddd.", "d.y.d", ".ddd.", "..d..", ".ddd."],
+	"ivory_tower": ["..w..", ".www.", ".wkw.", ".www.", "wwwww"],
+	"odd_fellow": ["wwwww", "wkwww", "wwkww", "wwwkw", "wwwww"],
+	"even_keel": ["..w..", "..ww.", "..www", "bbbbb", ".bbb."],
+	"low_roller": ["..G..", "..G..", "GGGGG", ".GGG.", "..G.."],
+	"penthouse": ["..y..", ".ddd.", ".dyd.", ".ddd.", ".dyd."],
+	"dozen_watch": [".ggg.", "gwkwg", "gwkkg", "gwwwg", ".ggg."],
+	"pillar": ["wwwww", ".w.w.", ".w.w.", ".w.w.", "wwwww"],
+	"night_owl": ["b...b", "bbbbb", "ykbky", "bbobb", ".bbb."],
+	"piggy_bank": [".pp..", "ppppp", "pkppp", "ppppo", "p..p."],
+	"clover": [".G.G.", "GGGGG", ".GGG.", "..b..", ".b..."],
+	"doorbell": ["..y..", ".yyy.", ".yyy.", "yyyyy", "..b.."],
+	"prime_time": ["d...d", ".d.d.", "ccccc", "cwccc", "ccccc"],
+	"square_deal": ["ccccc", "c..Gc", "G.G.c", "cG..c", "ccccc"],
+	"teen_idol": [".ddd.", ".ddd.", "..d..", "..p..", ".ppp."],
+	"fibonacci": ["vvvvv", "v...v", "v.v.v", "v.vvv", "v...."],
+	"nickel": [".ddd.", "dwwwd", "dwddd", "dddwd", ".ddd."],
+	"seventh_heaven": ["yyyyy", "...y.", "..y..", ".y...", ".y..."],
+	"last_digit": [".c.c.", "ccccc", ".c.c.", "ccccc", ".c.c."],
+	"far_side": [".bbb.", "b...r", "b.G.b", "r...b", ".bbb."],
+	"seedling": [".G.G.", "..G..", "..G..", ".bbb.", ".bbb."],
+	"golden_goose": [".yyy.", "yywyy", "yyyyy", "yyyyy", ".ggg."],
+	"heart_of_gold": ["yy.yy", "yyyyy", "yyyyy", ".yyy.", "..y.."],
+	"spare_key": [".....", "gg...", "g.ggg", "gg.gg", "....."],
+	"conductor": ["....w", "...w.", "..w..", ".yy..", "yyy.."],
+	"relay": ["cc...", "..c..", "ccccc", "..c..", "...cc"],
+	"fuse": ["...y.", "..o..", ".ddd.", "ddddd", ".ddd."],
+	"kingmaker": ["..y..", ".yyy.", "..y..", ".yyy.", "yyyyy"],
+	"gilded": [".....", ".yyy.", "yyyyy", "yywyy", "yyyyy"],
+	"hot": ["..r..", ".rr..", ".ryr.", "ryyyr", ".rrr."],
+	"link": [".....", "cc.cc", "c.c.c", "cc.cc", "....."],
+	"double_felt": ["GGG..", "G.GGG", "GGG.G", "..G.G", "..GGG"],
+	"pinned": [".vvv.", ".vvv.", "..v..", "..d..", "..d.."],
+	"diamond": ["..c..", ".ccc.", "ccwcc", ".ccc.", "..c.."],
+	"magnetized": ["GGGGG", "GrGrG", "GrGrG", "GrrrG", "GGGGG"],
+	"twin_square": ["rr.rr", "rr.rr", "..y..", "rr.rr", "rr.rr"],
+	"spoke": ["y.y.y", ".yyy.", "yy.yy", ".yyy.", "y.y.y"],
+	"gold_trim": ["yyyyy", "yGGGy", "yGGGy", "yGGGy", "yyyyy"],
+	"fat_box": ["vvvvv", "vyyyv", "vyyyv", "vyyyv", "vvvvv"],
+	"repeat_box": ["vvvvv", "vwvwv", "vvvvv", "vwvwv", "vvvvv"],
+	"lucky_colour": ["..y..", "rr.dd", "rr.dd", "rr.dd", "....."],
+	"lamp": [".yyy.", "yyyyy", "..b..", "..b..", ".bbb."],
+	"silk": ["vpvpv", "vpvpv", "vpvpv", "vpvpv", "vpvpv"],
+	"sweet_spot": ["rrrrr", "ryyyr", "rywyr", "ryyyr", "rrrrr"],
+	"cornerstone": ["y...y", ".GGG.", ".GGG.", ".GGG.", "y...y"],
+}
 
 
 ## A small pixel icon (12x12 at scale 1). `tiny` = draw a 6x6 glyph for inside chips.
@@ -486,69 +575,21 @@ static func icon(ci: CanvasItem, id: String, c: Vector2, s: int = 1, tiny: bool 
 
 
 static func _tiny(ci: CanvasItem, id: String, c: Vector2) -> void:
-	var o := c - Vector2(2, 2)
-	var col := P.BLACK
-	match id:
-		"magnet":
-			ci.draw_rect(Rect2(o, Vector2(1, 4)), col)
-			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 3), Vector2(4, 1)), col)
-		"compounding":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 1)), col)
-		"mint":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
-		"respin":
-			ci.draw_rect(Rect2(o, Vector2(4, 1)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 3), Vector2(4, 1)), col)
-			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
-		"wildcard_zero":
-			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
-		"bridge":
-			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
-		"street_light", "wheel_spoke":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 1)), col)
-		"red_herring", "hedge":
-			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 2)), col)
-		"jar", "tip_jar":
-			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 3)), col)
-		"echo":
-			ci.draw_rect(Rect2(o, Vector2(4, 4)), col, false, 1.0)
-		"ace":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 1)), col)
-		"green_thumb", "signpost":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
-			ci.draw_rect(Rect2(o + Vector2(2, 0), Vector2(2, 1)), col)
-		"black_cat":
-			ci.draw_rect(Rect2(o + Vector2(0, 0), Vector2(1, 1)), col)
-			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 1)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 1), Vector2(4, 3)), col)
-		"penny":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 4)), col)
-		"snowball":
-			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 2)), col)
-		"sentinel":
-			ci.draw_rect(Rect2(o, Vector2(4, 3)), col)
-			ci.draw_rect(Rect2(o + Vector2(1, 3), Vector2(2, 1)), col)
-		"crown":
-			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 2)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 0), Vector2(1, 2)), col)
-			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 2)), col)
-			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 1)), col)
-		"mirror":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(1, 4)), col)
-			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 4)), col)
-		"porch_light":
-			ci.draw_rect(Rect2(o + Vector2(1, 0), Vector2(2, 3)), col)
-			ci.draw_rect(Rect2(o + Vector2(0, 3), Vector2(4, 1)), col)
-		"kingmaker":
-			ci.draw_rect(Rect2(o + Vector2(0, 2), Vector2(4, 2)), col)
-			ci.draw_rect(Rect2(o, Vector2(1, 2)), col)
-			ci.draw_rect(Rect2(o + Vector2(3, 0), Vector2(1, 2)), col)
-		_:
-			ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(2, 2)), col)
+	face(ci, id, c)
+
+
+## An item's 5x5 felt-size picture (MINI), centred on `c`. Anything without one gets a dot.
+static func face(ci: CanvasItem, id: String, c: Vector2) -> void:
+	var o := c.round() - Vector2(2, 2)
+	if not MINI.has(id):
+		ci.draw_rect(Rect2(o + Vector2(1, 1), Vector2(3, 3)), P.CREAM)
+		return
+	var rows: Array = MINI[id]
+	for y in range(5):
+		var row: String = rows[y]
+		for x in range(5):
+			if row[x] != ".":
+				ci.draw_rect(Rect2(o + Vector2(x, y), Vector2(1, 1)), Color(SPRITE_COLOURS[row[x]]))
 
 
 ## A brass plaque background.

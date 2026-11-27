@@ -3,6 +3,18 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.52
+- **Every item on the felt has its own face.** Each chip kind shows a small picture of its own (a snowflake for Snowball, a U magnet, a key, a ticket...) on a dark inlay, in its own colour.
+  - Item chips have gold edge spots; bet chips keep cream ones, so a Snowball no longer looks like a 1 chip.
+  - Chips on the felt are a size bigger, and an item's level sits on its rim instead of covering the picture.
+  - Twelve newer chips that fell back to bet-chip cream now have colours of their own.
+- **Felt upgrades get a badge:** each upgrade's own picture in the corner of its square, and a strip colour no other upgrade shares.
+- **Pattern chips go on numbers they watch.** Odd Fellow, Even Keel, Low Roller, Penthouse, Prime Time, Square Deal, Teen Idol, Fibonacci, Nickel and Seventh Heaven only go on numbers in their own set (e.g. Seventh Heaven on 7, 17 or 27), and only those light up while you hold one.
+  - On its own number a pattern chip now pays both ways: the straight bet and its bonus.
+  - On a wheel with none of its numbers (Teen Idol on the Mini Wheel) it can still go anywhere.
+  - Chips already on the felt from an older save stay where they are.
+- **Info cards say a chip is also a bet:** "Its own number also pays as a straight bet of its level (35 to 1)." Watch chips (Dozen Watch, Pillar, Doorbell, Last Digit, Clover, Far Side) say their bonus fires on other numbers.
+
 ## 0.0.51
 - **Every new wheel has its own Enforcer,** met on that wheel only, and always somewhere in Act I:
   - **The Twins** (Twin Ball): two balls drop, but only the better one counts for you.

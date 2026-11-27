@@ -528,7 +528,11 @@ func _process(delta: float) -> void:
 		[62.5, func():
 			print("TUTORIAL: step ", main.tutorial.idx if main.tutorial != null else -1, " take ", main.run.table.take)
 			shot("55_tutorial_after_spin")],
-		[63.0, func(): get_tree().quit()],
+		[63.0, func(): _gallery()],
+		[65.0, func():
+			_close_dialogue()
+			shot("56_chip_gallery")],
+		[65.5, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
@@ -656,7 +660,11 @@ func _portrait_plan() -> Array:
 					main.screens[k].relayout(false)
 					main.screens[k].relayout(true)
 			print("ROTATE: OK")],
-		[17.2, func(): get_tree().quit()],
+		[17.2, func(): _gallery()],
+		[19.2, func():
+			_close_dialogue()
+			shot("p16_chip_gallery")],
+		[19.6, func(): get_tree().quit()],
 	]
 
 
@@ -695,6 +703,47 @@ func _empty_pocket(run) -> int:
 		if not covered:
 			return p
 	return 0
+
+
+## Every chip kind and felt upgrade laid out on one felt, with a bet chip beside a Snowball on 1,
+## to check each placed item reads differently at felt size.
+func _gallery() -> void:
+	main.end_tutorial()
+	main.start_run("european")
+	_close_dialogue()
+	var r = main.run
+	r.skip_table_offer()
+	for c in r.felt.perm_chips():
+		r.felt.remove(c.id)
+	r.inventory.clear()
+	r.felt.add_chip("snowball", "S1", 1)
+	r.place_bet("S1", 1)
+	var n := 0
+	for kind in Content.CHIPS:
+		if kind == "snowball":
+			continue
+		var best := ""
+		var low := 99
+		for k in r.felt.board.all_bet_keys():
+			if r.can_place_chip(kind, k):
+				var cnt: int = r.felt.chips_on(k).size()
+				if cnt < low:
+					low = cnt
+					best = k
+		if best != "":
+			r.felt.add_chip(kind, best, 3 if n % 5 == 0 else 1)
+			n += 1
+	var sq := 2
+	for up in Content.UPGRADES:
+		match Content.UPGRADES[up].target:
+			"outside":
+				r.felt.bet_upgrades["DOZ%d" % (1 + r.felt.bet_upgrades.size() % 3)] = up
+			"even":
+				r.felt.bet_upgrades[["RED", "BLACK", "ODD", "EVEN", "LOW", "HIGH"][r.felt.bet_upgrades.size() % 6]] = up
+			_:
+				r.felt.square_upgrades[sq] = up
+				sq += 2
+	main.screens.table.refresh()
 
 
 func shot(n: String) -> void:

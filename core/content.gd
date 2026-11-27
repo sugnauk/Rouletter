@@ -782,11 +782,56 @@ static func targets_for(night: int) -> Array:
 	return out
 
 
+## Pattern chips (odd/even/low/high/set triggers) only go on numbers they watch, so the square
+## they sit on is one their bonus can also pay on. [] = no restriction (any number). On a board
+## without any of its numbers (the Mini Wheel and Teen Idol) a pattern chip may go anywhere.
+static func target_numbers(kind: String, board) -> Array:
+	var t: Dictionary = CHIPS.get(kind, {}).get("trigger", {})
+	if t.is_empty():
+		return []
+	var n: int = board.numbers
+	var out := []
+	match t.on:
+		"odd":
+			out = range(1, n + 1).filter(func(x): return x % 2 == 1)
+		"even":
+			out = range(1, n + 1).filter(func(x): return x % 2 == 0)
+		"low":
+			out = range(1, n / 2 + 1)
+		"high":
+			out = range(n / 2 + 1, n + 1)
+		"set":
+			out = t.arg.filter(func(x): return x >= 1 and x <= n)
+		_:
+			return []
+	return out
+
+
+## Pattern chips: the words for where they go ("" for other chips).
+static func _target_hint(kind: String) -> String:
+	var t: Dictionary = CHIPS.get(kind, {}).get("trigger", {})
+	match t.get("on", ""):
+		"odd":
+			return "Goes on an odd number."
+		"even":
+			return "Goes on an even number."
+		"low":
+			return "Goes on a low-half number."
+		"high":
+			return "Goes on a high-half number."
+		"set":
+			var nums: Array = t.arg.map(func(x): return str(x))
+			return "Goes on a number it watches: %s or %s." % [", ".join(nums.slice(0, nums.size() - 1)), nums[-1]]
+	return ""
+
+
 ## Where an item goes on the felt, in plain words (info cards, the status line while holding it).
 ## Works for chip kinds and felt upgrades; "" for anything that isn't placed.
 static func place_hint(kind: String) -> String:
 	if CHIPS.has(kind):
 		var spec: Dictionary = CHIPS[kind]
+		if _target_hint(kind) != "":
+			return _target_hint(kind)
 		if spec.get("zero_only", false):
 			return "Goes on a zero."
 		if spec.get("even_only", false):

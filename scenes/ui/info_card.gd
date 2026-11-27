@@ -97,6 +97,13 @@ static func chip_detail(kind: String) -> String:
 	for t in [Content.place_hint(kind), Content.scale_hint(kind), str(spec.get("more", ""))]:
 		if t != "":
 			out.append(t)
+	# Every chip on a single number is also a straight-up bet worth its level.
+	if Content.CHIPS.has(kind) and kind != "perm" and (Content.place_hint(kind).contains("number") or Content.place_hint(kind).contains("zero")):
+		var on: String = spec.get("trigger", {}).get("on", "")
+		if on in ["dozen", "column", "grid", "wheel", "digit", "opposite"]:
+			out.append("Its bonus fires on other numbers; its own number pays as a straight bet of its level.")
+		else:
+			out.append("Its own number also pays as a straight bet of its level (35 to 1).")
 	return "\n".join(out)
 
 
