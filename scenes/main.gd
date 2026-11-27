@@ -428,6 +428,14 @@ func say(lines: Array, done: Callable = Callable()) -> void:
 	dialogue.say(lines, done)
 
 
+## A short buzz on phones (Options > Vibration). kind: tick | place | win | big | jackpot.
+func buzz(kind: String) -> void:
+	if not profile.settings.get("vibrate", true) or not DisplayServer.is_touchscreen_available():
+		return
+	var ms: int = {"tick": 8, "place": 12, "win": 20, "big": 45, "jackpot": 90}.get(kind, 10)
+	Input.vibrate_handheld(ms)
+
+
 func shake(amount: float, t: float = 0.3) -> void:
 	if not profile.settings.shake:
 		return

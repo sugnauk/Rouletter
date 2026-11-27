@@ -3,6 +3,15 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.48
+- **Phone polish:**
+  - **Vibration:** a little buzz on hits, big wins, jackpots and placing chips. Most Androids support it; iPhones don't let web pages vibrate. You can turn it off in Options > Vibration.
+  - **Bigger touch targets when upright:** fatter split and corner zones on the upright felt, bigger rack tokens, and no tap-to-zoom (the upright felt is already big).
+  - **Long-press to inspect:** long-press an empty spot to see its odds, or a chip to see its card (phones have no hover).
+  - **Faster odds:** Twin Ball's pay-off chance is about 10x faster (3ms instead of 37ms on desktop, so no stutter on phones). It's cached between updates, too.
+  - **Fixed:** previews on the Crooked Wheel and the Carousel could show stale results after the fat pockets or the arc moved.
+  - **Phone test checklist:** `docs/phone_test.md` lists what to check on a real iPhone or Android.
+
 ## 0.0.47
 - **The run's arc, finished:** steady odds early, stacking in the middle, then spins and combos late.
   - **Early, better odds:** the **Odds Maker** chip sits on an outside box, and every bet there pays +0.25x per level, your betting chips included. At level 4, red pays 2 to 1.

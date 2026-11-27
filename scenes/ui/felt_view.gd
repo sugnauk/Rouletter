@@ -126,6 +126,8 @@ func _turn(h: float) -> void:
 ## edge, streets / six-lines on the edge against the dozens strip, and zero splits.
 func _layout_lines(B, cw: float) -> void:
 	zone = ZONE_TOUCH if DisplayServer.is_touchscreen_available() else ZONE
+	if vertical:   # the upright felt has room for fatter split / corner zones
+		zone = maxf(zone, 14.0)
 	var hz := zone / 2.0
 	var floor_y := row_h * 3.0
 	for c in range(B.cols):

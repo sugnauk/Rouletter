@@ -587,7 +587,8 @@ func _refresh_tokens() -> void:
 		selected_item = -1
 	for i in range(inv.size()):
 		var item: Dictionary = inv[i]
-		var tok = Token.new(item.kind, Vector2(25, 25))
+		var ts: float = 30.0 if portrait else 25.0   # bigger for thumbs on an upright phone
+		var tok = Token.new(item.kind, Vector2(ts, ts))
 		tok.rarity = Content.rarity_of(item.kind)
 		tok.badge = "x%d" % item.value if item.value > 1 else ""
 		if item.get("flaw", "") != "":
@@ -692,6 +693,7 @@ func _place_selected(key: String) -> void:
 		if twin:
 			main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
 		Sfx.play("stack" if twin else "chip_place")
+		main.buzz("place")
 		_status("Placed. Next: %s." % Content.CHIPS[run.inventory[0].kind].name if selected_item >= 0 else "Placed.")
 		_refresh_tokens()
 	else:
@@ -881,6 +883,8 @@ func _draw_score(c: Control) -> void:
 
 ## Zoom the felt so small targets (splits, corners) are big enough for a finger.
 func _zoom_enabled() -> bool:
+	if portrait:   # the upright felt is already big enough to tap
+		return main.profile.settings.get("zoom_felt", false)
 	return main.profile.settings.get("zoom_felt", false) or DisplayServer.is_touchscreen_available()
 
 

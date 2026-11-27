@@ -58,6 +58,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			fx.banner("TWIN!", P.GOLD, 1.3, 112, 24)
 			fx.burst(p2, 40, [P.GOLD, P.CREAM, P.CYAN], 150.0)
 			Sfx.play("jackpot")
+			main.buzz("jackpot")
 		else:
 			fx.pop_text(p2 - Vector2(0, 10), "%s %s" % [B.label(res.pocket2), B.colour_name(res.pocket2).to_upper()], P.GOLD, 0.8)
 	if run.felt.extra_ball:
@@ -95,6 +96,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 				t.hits += 1
 				t.score_rows.append({"kind": "win", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": t._chip_icon(key)})
 				Sfx.play("win", 1.0 + 0.09 * combo)
+				main.buzz("win")
 				combo += 1
 			"bonus":
 				gross += e.amount
@@ -156,6 +158,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			main.shake(5.0, 0.45)
 			fx.coin_rain(50)
 			Sfx.play("sting")
+			main.buzz("jackpot")
 		elif ratio >= 1.0:
 			# One spin paid the whole table: the full jackpot treatment.
 			fx.banner("JACKPOT!", P.GOLD, 1.6, 100, 24)
@@ -170,6 +173,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			main.shake(4.0, 0.35)
 			fx.burst(meter_at, 40, [P.GOLD, P.CREAM, P.GOOD], 140.0)
 			Sfx.play("big_win")
+			main.buzz("big")
 		elif ratio >= 0.15:
 			fx.banner("NICE", P.GOOD, 0.8, 100, 8)
 		if personal_best and res.take >= 20.0 and not final_ball and ratio < 1.0:

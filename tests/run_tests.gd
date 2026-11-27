@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1691,6 +1691,35 @@ func test_run_arc() -> void:
 	for id in ["odds_maker", "keystone", "tall_stack", "wind_up"]:
 		check(Content.CHIPS.has(id) and Content.CHIPS[id].desc.length() <= 60, "%s is concise" % id)
 	check(Content.place_hint("odds_maker").contains("outside box"), "Odds Maker goes on an outside box")
+
+
+func test_fast_odds() -> void:
+	# The grouped Twin Ball distribution must equal the slow, exact pair-by-pair one.
+	for layout in [[["bet", "RED", 3], ["bet", "S17", 2], ["bet", "DOZ2", 2]], [["perm", "S5", 2], ["bet", "S5", 1], ["bet", "BLACK", 4]]]:
+		var f = felt("twin", layout)
+		var exact := {}
+		var res := {}
+		for p in f.board.pockets:
+			res[p] = Resolver.resolve_spin(f, p)
+		for a in f.board.pockets:
+			for b in f.board.pockets:
+				var t := int(floor(Resolver.combine_twin(f, res[a], res[b]).take))
+				exact[t] = exact.get(t, 0.0) + f.pocket_chance(a) * f.pocket_chance(b)
+		var fast: Dictionary = Odds._spin_distribution(f)
+		var same := exact.size() == fast.size()
+		for k in exact:
+			same = same and fast.has(k) and is_equal_approx(fast[k], exact[k])
+		check(same, "twin odds: the fast distribution matches the exact one (%d outcomes)" % exact.size())
+	var tf = felt("twin", [["bet", "RED", 3], ["bet", "S17", 2], ["perm", "S9", 2]])
+	var t0 := Time.get_ticks_usec()
+	Odds.hit_chance(tf, 40.0, 4)
+	check(Time.get_ticks_usec() - t0 < 30000, "twin pay-off chance computes in under 30ms (%d us)" % (Time.get_ticks_usec() - t0))
+	# Crooked previews: the cache knows the pockets moved.
+	var cf = felt("crooked", [["perm", "S5", 1]])
+	var before: Array = Preview.pays_on(cf, "perm", "S9")
+	cf.weights = {9: 3}
+	check(Preview.signature(cf) != Preview.signature(felt("crooked", [["perm", "S5", 1]])), "preview cache keys include crooked pockets")
+	check(before.size() == Preview.pays_on(cf, "perm", "S9").size(), "...and still answer")
 
 
 func test_provisional_placement() -> void:

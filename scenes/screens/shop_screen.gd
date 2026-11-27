@@ -294,6 +294,7 @@ func _on_stock_dropped(i: int, key: String) -> void:
 		main.fx.burst(at, 24, [P.GOLD, P.CREAM, P.chip_color(item.id)], 120.0)
 		main.fx.pop_text(at - Vector2(0, 12), "LEVEL UP!" if twin_here else "SOLD!", P.GOOD if twin_here else P.GOLD)
 		Sfx.play("stack" if twin_here else "chip_place")
+		main.buzz("place")
 		selected_item = 0 if not run.inventory.is_empty() else -1
 	else:
 		main.fx.burst(tp, 22, [P.GOLD, P.CREAM, P.chip_color(item.id)], 130.0)
@@ -844,7 +845,8 @@ func _refresh_rack() -> void:
 		P.label(rack, "(nothing to place)", P.FONT_SMALL, P.DIM)
 	for i in range(inv.size()):
 		var item: Dictionary = inv[i]
-		var tok = Token.new(item.kind, Vector2(25, 25))
+		var ts: float = 30.0 if portrait else 25.0
+		var tok = Token.new(item.kind, Vector2(ts, ts))
 		tok.rarity = Content.rarity_of(item.kind)
 		tok.badge = "x%d" % item.value if item.value > 1 else ""
 		if item.get("flaw", "") != "":
@@ -935,6 +937,7 @@ func _place_selected(key: String) -> void:
 		if twin:
 			main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
 		Sfx.play("stack" if twin else "chip_place")
+		main.buzz("place")
 		refresh()
 	else:
 		status_lbl.text = "%s can't go there: try a lit spot." % Content.CHIPS[kind].name
