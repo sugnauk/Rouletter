@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1020,7 +1020,7 @@ func test_refine() -> void:
 
 func test_table_variety() -> void:
 	# Eight Act I Enforcers, four per run, all different.
-	var act1 := Content.ENFORCERS.keys().filter(func(k): return Content.ENFORCERS[k].get("act", 1) == 1)
+	var act1 := Content.ENFORCERS.keys().filter(func(k): return Content.ENFORCERS[k].get("act", 1) == 1 and not Content.ENFORCERS[k].has("wheel"))
 	check(act1.size() == 8, "eight Act I Enforcers (%d)" % act1.size())
 	var run = new_run()
 	var first4: Array = run.enforcer_order.slice(0, 4)
@@ -1770,6 +1770,56 @@ func test_combos() -> void:
 		for part in c.parts:
 			for id in part:
 				check(Content.CHIPS.has(id) or Content.HOUSE_RULES.has(id) or Content.UPGRADES.has(id), "combo part %s exists" % id)
+
+
+func test_balance_content() -> void:
+	# Each novel wheel always meets its own Enforcer in Act I; other wheels never do.
+	for w in [["twin", "twins"], ["crooked", "mechanic"], ["carousel", "ringmaster"]]:
+		var r = new_run(w[0])
+		check(w[1] in r.enforcer_order.slice(0, 4), "%s runs meet %s" % w)
+	var eu = new_run("european")
+	check(not eu.enforcer_order.any(func(k): return Content.ENFORCERS[k].has("wheel")), "the European wheel meets no wheel Enforcers")
+	# The Twins: only the better ball counts.
+	var tw = felt("twin", [["bet", "S7", 1], ["bet", "RED", 2]])
+	tw.boss_rule = "one_ball"
+	var r1 := Resolver.resolve_twin(tw, 7, 9)
+	near(r1.take, 35.0 + 2.0, "The Twins: the better ball (7, straight + red) counts alone")
+	check(r1.pocket2 == 9, "...both balls still recorded")
+	# The Ringmaster: the arc runs backwards 2 a spin.
+	var rc = new_run("carousel")
+	rc.felt.boss_rule = "reverse_arc"
+	var a0: int = rc.felt.arc_start
+	rc.place_bet("RED", 1)
+	rc.spin(2)
+	check(rc.felt.arc_start == posmod(a0 - 2, 37), "The Ringmaster: the arc steps back 2")
+	# The Mechanic: fat pockets move every 2 spins.
+	var mc = new_run("crooked")
+	mc.felt.boss_rule = "shifty"
+	var w0: Dictionary = mc.felt.weights.duplicate()
+	mc.place_bet("RED", 1)
+	mc.spin(2)
+	check(mc.felt.weights == w0, "The Mechanic: not after 1 spin")
+	mc.place_bet("RED", 1)
+	mc.spin(2)
+	check(mc.felt.weights.size() == Content.CROOKED_FAT, "...the pockets are rerolled after 2 (still 4 fat)")
+	# Capstones.
+	var iv = felt("european", [["ivory_tower", "S1", 1], ["perm", "S5", 4], ["bet", "RED", 1]])
+	near(Resolver.resolve_spin(iv, 3).take, 1.0 + 4 * 35.0 * 0.5, "Ivory Tower: any hit, the tallest chip scores half")
+	near(Resolver.resolve_spin(iv, 2).take, 0.0, "...nothing hit, nothing extra")
+	var so = felt("european", [["perm", "S5", 1]])
+	so.house_rules = ["standing_ovation"]
+	so.extra_ball = true
+	var s1 := Resolver.resolve_spin(so, 20)
+	check(s1.respins == 1 and Resolver.resolve_spin(s1.felt_after, 20).respins == 0, "Standing Ovation: an extra ball earns one more, once a table")
+	var ho = felt("european", [["even_stevens", "ODD", 1], ["box_office", "COL3", 1], ["bet", "RED", 2]])
+	ho.house_rules = ["house_odds"]
+	near(Resolver.resolve_spin(ho, 2).take, 0.0, "House Odds: needs 3 box chips (2 placed, red loses anyway)")
+	var base: float = Resolver.resolve_spin(ho, 1).take
+	ho.add_chip("coin_purse", "HIGH", 1)
+	near(Resolver.resolve_spin(ho, 1).take, base + 2.0 + 1.0, "...with 3, the red bet and Even Stevens' box pay +1x")
+	for id in ["ivory_tower", "standing_ovation", "house_odds"]:
+		check(Content.rarity_of(id) == "legendary", "%s is legendary" % id)
+	check(Wheels.get_def("no_zero").target < 1.25 and not Wheels.get_def("no_zero").kit.is_empty(), "the Cheater's Wheel is gentler and has a kit")
 
 
 func test_provisional_placement() -> void:

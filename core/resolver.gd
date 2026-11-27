@@ -216,6 +216,18 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 					take += bonus
 					res.log.chips.append("Collector: +%d for crowding" % bonus)
 					_event(res, "bonus", c.bet, bonus, "collector")
+	# Ivory Tower: when anything hits, your tallest chip scores half its own pay too.
+	if res.events.any(func(e): return e.kind == "win"):
+		for it in w.perm_chips():
+			if it.kind == "ivory_tower" and it.id != w.frozen_id:
+				var tallest = null
+				for oc in w.perm_chips():
+					if tallest == null or oc.value > tallest.value:
+						tallest = oc
+				if tallest != null:
+					var iv: float = tallest.value * w.payout_of(tallest.bet) * 0.5 * it.copies
+					take += iv
+					_bonus(res, it, iv, "ivory tower")
 	# Conductor: every multiplier chip you own fires too (once per Conductor in the stack).
 	for i in range(conduct):
 		for oc in w.perm_chips():
@@ -528,6 +540,11 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 		w.second_wind_used = true
 		res.log.rules.append("Second Wind: a straight-up hit, +1 ball")
 		_event(res, "push", pkey, 0.0, "second wind +1 ball")
+	# Standing Ovation: an extra ball earns another (once a table).
+	if w.has_rule("standing_ovation") and w.extra_ball and not w.ovation_used:
+		res.respins += 1
+		w.ovation_used = true
+		res.log.rules.append("Standing Ovation: an extra ball, +1 ball")
 	# Wind-Up: every respin earned winds it a level tighter.
 	if res.respins > 0:
 		for wc in w.perm_chips():
@@ -646,6 +663,12 @@ static func resolve_twin(felt, p1: int, p2: int) -> Dictionary:
 		if f2.find(c.id) == null:
 			f2.chips.append(c.copy())
 	var r2 := resolve_spin(f2, p2)
+	if felt.boss_is("one_ball"):   # The Twins: only the better ball counts for you
+		var best: Dictionary = (r1 if r1.take >= r2.take else r2).duplicate()
+		best.pocket = r1.pocket
+		best.pocket2 = r2.pocket
+		best.log.rules.append("The Twins: only the better ball counts")
+		return best
 	return combine_twin(felt, r1, r2)
 
 
@@ -737,6 +760,14 @@ static func _score(w, c, b: Dictionary, pocket: int, res: Dictionary) -> float:
 		if om.kind == "odds_maker" and om.id != w.frozen_id:
 			payout += Content.ODDS_STEP * om.value
 			res.log.chips.append("Odds Maker on %s: +%s" % [c.bet, _fmt(Content.ODDS_STEP * om.value)])
+	if w.has_rule("house_odds") and B.is_outside(c.bet) and b.type != "sector":
+		var boxes := 0
+		for bc in w.perm_chips():
+			if "box" in Content.tags_of(bc.kind):
+				boxes += 1
+		if boxes >= 3:
+			payout += 1.0
+			res.log.rules.append("House Odds: %s pays +1x" % c.bet)
 	if w.has_rule("satin_gloves") and b.type in ["red", "black", "odd", "even", "low", "high"]:
 		payout += 0.5
 		res.log.rules.append("Satin Gloves: %s pays 1.5:1" % c.bet)

@@ -128,15 +128,23 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 	var act1 := []
 	var act2 := []
 	var finale := []
+	var mine := ""   # this wheel's own Enforcer, if it has one
 	for k in Content.ENFORCERS:
 		var e: Dictionary = Content.ENFORCERS[k]
+		if e.has("wheel"):
+			if e.wheel == wheel_id:
+				mine = k
+			continue
 		if e.get("final", false):
 			finale.append(k)
 		elif e.get("act", 1) == 2:
 			act2.append(k)
 		else:
 			act1.append(k)
-	enforcer_order = rng.shuffle(act1).slice(0, 4) + rng.shuffle(act2).slice(0, 3) + finale
+	act1 = rng.shuffle(act1).slice(0, 4)
+	if mine != "":
+		act1[rng.range_i(0, act1.size() - 1)] = mine
+	enforcer_order = act1 + rng.shuffle(act2).slice(0, 3) + finale
 	if challenge == "gauntlet":
 		enforcer_order = rng.shuffle(act1) + rng.shuffle(act1)
 	shop = {}
@@ -397,6 +405,7 @@ func _start_table() -> void:
 	felt.hit_streak = 0
 	felt.last_pocket = -99
 	felt.second_wind_used = false
+	felt.ovation_used = false
 	_wheel_twists()
 	var route: Dictionary = Content.ROUTES.get(shop.get("route", ""), {}) if not boss else {}
 	if not route.is_empty():
@@ -716,8 +725,13 @@ func spin(forced_pocket: int = -99, forced_second: int = -99) -> Dictionary:
 			keys[c.bet] = true
 	var res := Resolver.resolve_twin(felt, pocket, pocket2) if twin else Resolver.resolve_spin(felt, pocket)
 	felt = res.felt_after
-	if felt.arc_start >= 0:   # the Carousel's arc moves on
-		felt.arc_start = (felt.arc_start + Content.ARC_STEP) % felt.board.order.size()
+	if felt.arc_start >= 0:   # the Carousel's arc moves on (backwards, at the Ringmaster's table)
+		var step: int = -2 if felt.boss_is("reverse_arc") else Content.ARC_STEP
+		felt.arc_start = posmod(felt.arc_start + step, felt.board.order.size())
+	if felt.boss_is("shifty") and (table.spins_used + 1) % 2 == 0:   # the Mechanic moves the fat pockets
+		var arc: int = felt.arc_start
+		_wheel_twists()
+		felt.arc_start = arc
 	if res.zero_tax:
 		table.take *= 1.0 - Content.ZERO_TAX
 	if felt.boss_is("tempo") and res.take <= 0.0 and table.take > 0.0:

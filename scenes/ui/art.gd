@@ -55,6 +55,9 @@ const GLYPHS := {
 ## Pixel sprites for items that used to be lettered tiles: 12 rows of 12 characters.
 ## Colours: see SPRITE_COLOURS ('.' is transparent).
 const SPRITES := {
+	"ivory_tower": [".....ww.....", "....wwww....", "....wkkw....", "....wwww....", "...wwwwww...", "...wwkkww...", "...wwwwww...", "...wwkkww...", "..wwwwwwww..", "..wwwkkwww..", "..wwwwwwww..", "dddddddddddd"],
+	"standing_ovation": ["............", ".y...y...y..", "yyy.yyy.yyy.", ".y...y...y..", "............", "..pp.pp.pp..", ".pppppppppp.", ".pppppppppp.", "..pppppppp..", "..pp.pp.pp..", "..pp.pp.pp..", "............"],
+	"house_odds": ["............", "GGGGGGGGGGGG", "GwwGGyyGGwwG", "GwwGGyyGGwwG", "GGGGGGGGGGGG", "GrrGGkkGGrrG", "GrrGGkkGGrrG", "GGGGGGGGGGGG", "....yyyy....", "...y....y...", "...y.yy.y...", "....yyyy...."],
 	"odds_maker": ["............", "..yyyyyyyy..", ".yykkkkkkyy.", ".yk.rrrr.ky.", ".yk.r..r.ky.", ".yk.rrrr.ky.", ".yk.r..r.ky.", ".yk.r..r.ky.", ".yykkkkkkyy.", "..yyyyyyyy..", "....G..G....", "...GGGGGG..."],
 	"keystone": ["....yyyy....", "...yggggy...", "..yggggggy..", "..ywwwwwwy..", "..yggggggy..", "..ywwwwwwy..", "..yggggggy..", "..ywwwwwwy..", "..yggggggy..", "..yyyyyyyy..", "............", "............"],
 	"tall_stack": ["....rrrr....", "....wwww....", "....BBBB....", "....rrrr....", "....wwww....", "....BBBB....", "....rrrr....", "....wwww....", "....BBBB....", "....rrrr....", "...dddddd...", "............"],

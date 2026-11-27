@@ -3,6 +3,21 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.51
+- **Every new wheel has its own Enforcer,** met on that wheel only, and always somewhere in Act I:
+  - **The Twins** (Twin Ball): two balls drop, but only the better one counts for you.
+  - **The Mechanic** (Crooked Wheel): the fat pockets move every 2 spins, not just every table.
+  - **The Ringmaster** (Carousel): the hot arc runs backwards, 2 pockets a spin.
+- **Three legendary capstones,** one for each combo family:
+  - **Ivory Tower** (chip): whenever anything hits, your tallest chip scores half its pay too.
+  - **Standing Ovation** (rule): an extra ball earns another ball, once a table.
+  - **House Odds** (rule): with 3 or more box chips on the felt, outside boxes pay +1x.
+- **The Cheater's Wheel is fairer:**
+  - Payments are a touch smaller (they were 25% bigger).
+  - It starts with an Even Stevens beside its Satin Gloves.
+  - The bot's win rate is about 27% (it was 6%).
+- Every wheel now sits in the same difficulty band for the bot: 21–41% in Act I.
+
 ## 0.0.50
 - **Combos you can see.** Six named combos, groups of items that feed each other:
   - **Encore Chain:** Respin or Second Wind, plus Encore or Wind-Up.

@@ -24,7 +24,7 @@ static func signature(felt) -> String:
 	var all := [felt.board.wheel_id, ",".join(parts), ",".join(felt.house_rules), ",".join(felt.wheel_rules),
 		felt.square_upgrades, felt.bet_upgrades, felt.boss_rule, felt.condition, felt.frozen_id,
 		felt.red_streak, felt.hit_streak, felt.last_pocket, felt.spin_no, felt.final_spin,
-		felt.weights, felt.arc_start, felt.extra_ball, felt.second_wind_used]
+		felt.weights, felt.arc_start, felt.extra_ball, felt.second_wind_used, felt.ovation_used]
 	return "|".join(all.map(func(x): return str(x)))
 
 
