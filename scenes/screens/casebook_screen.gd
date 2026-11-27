@@ -257,6 +257,13 @@ func _guide() -> void:
 		var b := P.button(list, "%d.  %s" % [i + 1, g[0].to_upper()], func(): _guide_page(g), Vector2(list_w - 12, 20), P.FONT_SMALL)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.mouse_entered.connect(func(): _guide_page(g))
+	var rb := P.button(list, "REPLAY THE GUIDED FIRST RUN", func():
+		main.profile.seen_beats.erase("tutorial_done")
+		main.save_profile()
+		Sfx.play("click")
+		_show("GUIDED FIRST RUN", "Done: your next run on the European wheel will be guided again, step by step. You can skip it from any of Dolores's lines."),
+		Vector2(list_w - 12, 20), P.FONT_SMALL)
+	rb.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	summary_lbl.text = "HOW TO PLAY  -  short pages on every part of the game. Dolores can talk you through any of them again."
 	_guide_page(GUIDE[0])
 

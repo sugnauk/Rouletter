@@ -301,6 +301,8 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 				_bonus(res, c, part, sq.replace("_", " "))
 		var trig: Dictionary = Content.CHIPS.get(c.kind, {}).get("trigger", {})
 		if not trig.is_empty() and _triggered(trig, B, own, pocket, covered):
+			if trig.has("cash") or trig.has("grow"):   # (Take bonuses log themselves via _bonus)
+				res.log.chips.append("%s on %s fires" % [Content.CHIPS[c.kind].name, c.bet])
 			var tk: float = trig.get("take", 0.0) * c.value * crack
 			if tk > 0.0:
 				take += tk

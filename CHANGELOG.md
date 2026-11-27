@@ -3,6 +3,19 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.49
+- **A guided first run.** A brand-new player's first run on the European wheel is walked through by Dolores, one action at a time. Only the spot she's talking about is lit; the rest of the felt dims.
+  1. Put the Box Office on a column.
+  2. Put the Magnet on a number.
+  3. Bet on red.
+  4. SPIN. The first ball is rigged to land on a red number in your Box Office's column, so you see a bet and a chip pay together.
+  5. Keep playing the table.
+  6. In the Cage, drag something off the counter to buy it.
+  7. NEXT TABLE, and you're on your own.
+- Every one of her lines has a **SKIP TUTORIAL** button.
+- Casebook > How to Play > **Replay the guided first run** turns it back on.
+- While it runs, the free chip and the usual first-time tips stay out of the way.
+
 ## 0.0.48
 - **Phone polish:**
   - **Vibration:** a little buzz on hits, big wins, jackpots and placing chips. Most Androids support it; iPhones don't let web pages vibrate. You can turn it off in Options > Vibration.

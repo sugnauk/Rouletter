@@ -287,6 +287,7 @@ func _on_stock_dropped(i: int, key: String) -> void:
 		return
 	picked = -1
 	main.profile.note_used(item.id)
+	main.tutorial_did("buy")
 	Sfx.play("buy")
 	if got == "placed" and key != "":
 		var at: Vector2 = main.fx.local(felt_view.key_global(key))
@@ -384,6 +385,8 @@ func _hint() -> String:
 			if not "cashier" in main.run.shop.get("vendors", []):
 				return "The Cashier handles trade-ins, and the Cashier isn't on."
 			return "Click one of your chips: the Cashier swaps it for a related chip ($%d), same square, same level." % Content.CONVERT_PRICE
+	if main.tutorial_on() and main.tutorial.step().get("status", "") != "":
+		return main.tutorial.step().status
 	if main.run.inventory.is_empty():
 		return "Drag an item off the counter onto the felt or your rack to buy it (or click it, then BUY)."
 	return "Click a chip in your rack, then a lit spot on the felt (or drag it there). Right-click puts it down."
@@ -421,6 +424,7 @@ func _next() -> void:
 		status_lbl.text = "Pick your table first."
 		Sfx.play("click")
 	elif main.run.leave_shop():
+		main.tutorial_did("leave")
 		Sfx.play("click")
 		main.route()
 	else:
@@ -503,11 +507,12 @@ func refresh() -> void:
 	cage_view.queue_redraw()
 	_refresh_choice(run)
 	_first_time_tips(run)
+	main.tutorial_prompt.call_deferred()
 	_update_buy_btn()
 
 
 func _first_time_tips(run) -> void:
-	if main.dialogue.is_open():
+	if main.dialogue.is_open() or main.tutorial_on():
 		return
 	var refinable: bool = "cashier" in run.shop.get("vendors", []) and run.felt.perm_chips().any(func(c): return Board.is_straight(c.bet) and c.value >= Content.REFINE_LEVEL)
 	for pair in [["route", not run.shop.get("routes", []).is_empty()], ["event", run.shop.get("event", "") != ""], ["refine", refinable]]:
@@ -887,6 +892,7 @@ func _buy(i: int) -> void:
 	if run.buy(i):
 		picked = -1
 		main.profile.note_used(item.id)
+		main.tutorial_did("buy")
 		if owned_twin:
 			main.tip("level", true)
 		Sfx.play("buy")

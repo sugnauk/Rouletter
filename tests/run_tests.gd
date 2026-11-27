@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1720,6 +1720,35 @@ func test_fast_odds() -> void:
 	cf.weights = {9: 3}
 	check(Preview.signature(cf) != Preview.signature(felt("crooked", [["perm", "S5", 1]])), "preview cache keys include crooked pockets")
 	check(before.size() == Preview.pays_on(cf, "perm", "S9").size(), "...and still answer")
+
+
+func test_tutorial() -> void:
+	var T = load("res://core/tutorial.gd")
+	var tu = T.new()
+	var b = Board.new("european")
+	check(tu.want() == "place_col" and tu.lit_keys(b) == ["COL1", "COL2", "COL3"], "tutorial starts by placing the Box Office on a column")
+	check(not tu.allows("bet", "RED") and not tu.allows("spin") and not tu.allows("place", "S5", "magnet"), "...nothing else is allowed yet")
+	check(tu.allows("place", "COL2", "box_office") and not tu.allows("place", "DOZ1", "box_office"), "...only a column")
+	check(not tu.did("bet", "RED") and tu.did("place", "COL2"), "wrong actions don't advance; the right one does")
+	check(tu.want() == "place_num" and tu.allows("place", "S7", "magnet") and not tu.allows("place", "RED", "magnet"), "then the Magnet on a number")
+	tu.did("place", "S7")
+	check(tu.want() == "bet_red" and tu.allows("bet", "RED") and not tu.allows("bet", "S9"), "then a bet on red, only red")
+	tu.did("bet", "RED")
+	check(tu.want() == "spin" and tu.allows("spin"), "then SPIN")
+	var p: int = tu.rigged_pocket(b)
+	check(b.is_red(p) and Board.grid_row(p) == 1, "the rigged ball lands on a red number in the Box Office's column (%d)" % p)
+	var f = felt("european", [["box_office", "COL2", 1], ["bet", "RED", 1]])
+	check(Resolver.resolve_spin(f, p).take >= 5.0 + 1.0, "...so both the chip and the bet pay")
+	tu.did("spin")
+	check(tu.want() == "spin_free" and tu.allows("bet", "S3") and tu.allows("spin"), "after the first spin the table is free play")
+	tu.did("shop")
+	check(tu.want() == "buy", "in the Cage: buy something")
+	tu.did("buy")
+	tu.did("leave")
+	check(not tu.active and tu.allows("bet", "S1"), "then it's over and everything is allowed")
+	var sk = T.new()
+	sk.finish()
+	check(not sk.active and sk.want() == "", "skipping ends it straight away")
 
 
 func test_provisional_placement() -> void:

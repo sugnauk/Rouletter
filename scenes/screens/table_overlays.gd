@@ -26,7 +26,7 @@ func _init(table) -> void:
 
 ## Dolores explains each new system the first time it turns up (one at a time).
 func first_time_tips(run) -> void:
-	if t.main.dialogue.is_open() or t.spinning:
+	if t.main.dialogue.is_open() or t.spinning or t.main.tutorial_on():
 		return
 	var td: Dictionary = run.table
 	for pair in [["free_chip", not run.table_offer.is_empty()], ["job", td.get("objective", "") != ""],

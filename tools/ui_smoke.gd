@@ -23,7 +23,9 @@ func _process(delta: float) -> void:
 		_run_plan(_portrait_plan())
 		return
 	var plan := [
-		[0.6, func(): shot("01_title")],
+		[0.6, func():
+			main.profile.seen_beats.append("tutorial_done")   # the guided run has its own tour below
+			shot("01_title")],
 		[0.7, func():
 			main.profile.best_grade = 2
 			main.screens.select.grade = 2
@@ -500,7 +502,30 @@ func _process(delta: float) -> void:
 			ts.felt_view.hover_key = "RED"
 			ts._on_hover("RED")],
 		[58.1, func(): shot("52_odds_maker")],
-		[58.2, func(): get_tree().quit()],
+		[58.2, func():
+			main.profile.seen_beats.erase("tutorial_done")
+			main.start_run("european")],
+		[59.0, func():
+			_close_dialogue()
+			shot("53_tutorial_start")
+			var ts = main.screens.table
+			ts._on_bet_clicked("RED", MOUSE_BUTTON_LEFT)   # not allowed yet: the Box Office comes first
+			ts._select_item(0)
+			ts._place_selected("COL2")
+			_close_dialogue()
+			ts._place_selected("S7")
+			_close_dialogue()
+			ts.refresh()],
+		[59.4, func(): shot("54_tutorial_bet_red")],
+		[59.5, func():
+			var ts = main.screens.table
+			ts._on_bet_clicked("RED", MOUSE_BUTTON_LEFT)
+			_close_dialogue()
+			ts._on_spin()],
+		[62.5, func():
+			print("TUTORIAL: step ", main.tutorial.idx if main.tutorial != null else -1, " take ", main.run.table.take)
+			shot("55_tutorial_after_spin")],
+		[63.0, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
