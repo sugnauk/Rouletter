@@ -561,6 +561,9 @@ func describe(k: String) -> String:
 	var B = run.felt.board
 	var b: Dictionary = B.bet(k)
 	var payout: float = run.felt.payout_of(k)
+	for om in run.felt.chips_on(k):   # an Odds Maker shortens the odds on its box
+		if om.kind == "odds_maker":
+			payout += Content.ODDS_STEP * om.value
 	var ptxt := str(int(payout)) if is_equal_approx(payout, round(payout)) else "%.2f" % payout
 	var hw := 0
 	for p in b.numbers:
