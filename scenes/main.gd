@@ -500,7 +500,46 @@ func buzz(kind: String) -> void:
 	if not profile.settings.get("vibrate", true) or not DisplayServer.is_touchscreen_available():
 		return
 	var ms: int = {"tick": 8, "place": 12, "win": 20, "big": 45, "jackpot": 90}.get(kind, 10)
+	if OS.has_feature("web"):
+		# Android browsers vibrate (navigator.vibrate). iPhones have no vibrate API, but Safari
+		# (iOS 18+) gives a haptic tick when a switch toggle flips, so we flip a hidden one: one
+		# tick for a small buzz, a few for a big win.
+		if not _haptics_ready:
+			_haptics_ready = true
+			JavaScriptBridge.eval(HAPTICS_JS, true)
+		var ticks: int = 3 if kind == "jackpot" else (2 if kind == "big" else 1)
+		JavaScriptBridge.eval("window.__rlHaptic && window.__rlHaptic(%d, %d)" % [ms, ticks], true)
+		return
 	Input.vibrate_handheld(ms)
+
+
+var _haptics_ready := false
+const HAPTICS_JS := """(function(){
+if (window.__rlHaptic) return;
+var label = null;
+function tick(){
+	try {
+		if (!label) {
+			label = document.createElement('label');
+			label.setAttribute('aria-hidden', 'true');
+			label.style.display = 'none';
+			var box = document.createElement('input');
+			box.type = 'checkbox';
+			box.setAttribute('switch', '');
+			label.appendChild(box);
+			document.head.appendChild(label);
+		}
+		label.click();
+	} catch (e) {}
+}
+window.__rlHaptic = function(ms, ticks){
+	if (typeof navigator.vibrate === 'function') {
+		try { if (navigator.vibrate(ms)) return; } catch (e) {}
+	}
+	tick();
+	for (var i = 1; i < ticks; i++) setTimeout(tick, i * 70);
+};
+})();"""
 
 
 func shake(amount: float, t: float = 0.3) -> void:

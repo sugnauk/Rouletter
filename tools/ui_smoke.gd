@@ -542,6 +542,21 @@ func _process(delta: float) -> void:
 
 
 ## A real mouse event at `at` (viewport coords): pressed true/false, or null for a move.
+var touch_open := false
+var _touch_at := Vector2.ZERO
+
+
+## A finger on the glass: a screen touch in window coordinates, as a phone's browser sends it.
+func _touch(at: Vector2, pressed: bool) -> void:
+	if pressed:
+		_touch_at = at
+	var e := InputEventScreenTouch.new()
+	e.index = 0
+	e.pressed = pressed
+	e.position = get_viewport().get_final_transform() * (get_viewport().get_canvas_transform() * _touch_at)
+	Input.parse_input_event(e)
+
+
 func _mouse(at: Vector2, pressed) -> void:
 	var e: InputEvent
 	if pressed == null:
@@ -685,8 +700,23 @@ func _portrait_plan() -> Array:
 			print("STICKY CARD: ", "OK" if stays and same_tap and not main.card.visible else "FAIL %s %s %s" % [stays, same_tap, main.card.visible])
 			var m := InputEventMouseMotion.new()
 			main._input(m)
-			print("MOUSE MODE: ", "OK" if not main.touch_mode else "FAIL")],
-		[19.6, func(): get_tree().quit()],
+			print("MOUSE MODE: ", "OK" if not main.touch_mode else "FAIL")
+			# A real finger: tap a House Rule icon in the tray (through Input, with mouse emulation).
+			main.hide_card(true)
+			main.run.felt.house_rules.append("crowd_pleaser")
+			main.screens.table.refresh()],
+		[19.5, func():
+			var tok: Control = main.screens.table.rules_flow.get_child(main.screens.table.rules_flow.get_child_count() - 1)
+			_touch(tok.get_global_rect().get_center(), true)],
+		[19.55, func(): _touch(Vector2.ZERO, false)],
+		[19.7, func():
+			touch_open = main.card.visible
+			shot("p18_touch_card")
+			_touch(main.fx.get_global_transform() * Vector2(60, 300), true)],   # the next press, on an empty spot
+		[19.75, func(): _touch(Vector2.ZERO, false)],
+		[19.9, func():
+			print("TOUCH CARD: ", "OK" if touch_open and not main.card.visible and main.touch_mode else "FAIL open=%s after=%s touch=%s" % [touch_open, main.card.visible, main.touch_mode])],
+		[20.2, func(): get_tree().quit()],
 	]
 
 

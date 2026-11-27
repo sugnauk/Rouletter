@@ -1113,6 +1113,7 @@ func _on_spin() -> void:
 	main.tutorial_did("spin")
 	spinning = true
 	main.hide_card(true)
+	main.buzz("tick")
 	bet_history.clear()
 	spin_btn.disabled = true
 	selected_item = -1
@@ -1126,6 +1127,7 @@ func _on_spin() -> void:
 	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9, pocket2)
 	await wheel_view.spin_done
 	Sfx.play("ball_drop")
+	main.buzz("place")
 	var ctx := {"before": run.table.take, "target": run.table.target, "spins_before": run.table.spins_left,
 		"stakes": run.felt.bet_stakes(), "layout": run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return [c.bet, c.value])}
 	var res: Dictionary = run.spin(pocket, pocket2)

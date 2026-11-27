@@ -3,6 +3,12 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.56
+- **Haptics on iPhone too.** iPhones have no vibrate API for web pages, but Safari (iOS 18+) gives a haptic tick when a switch toggle flips, so the game flips a hidden one: one tick for a small buzz, two or three for big wins and jackpots. Android still vibrates as before.
+- **More buzzes:** a tick when you press SPIN and a buzz when the ball drops, on top of wins and placing chips. Options > Vibration still turns them all off.
+- **Touch cards checked with a real finger tap:** the screenshot run now taps a House Rule through the phone's touch input. It checks that the card opens, stays open after the finger lifts, and closes on the next tap.
+- The phone checklist (docs/phone_test.md) covers iPhone haptics and tap-to-open cards.
+
 ## 0.0.55
 - **The table is rebuilt around the felt.** The felt grows to fill the space beside the wheel, about twice its old size, and chips on it grow with the squares (pictures show at double size on big squares).
   - **The text log is gone.** A spin's result now covers the tray while it counts: the pocket as a ball, the Take in big gold numbers, "x3 HITS", and an icon pill for every bet and chip that paid. It fades back to the tray a few seconds later, or as soon as you bet again.
