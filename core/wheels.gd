@@ -80,9 +80,9 @@ const WHEELS := {
 	"no_zero": {
 		"felt": "#5a0f1e", "rail": "#2a1a14",
 		"name": "Cheater's Wheel", "numbers": 36, "zeros": [], "order": NO_ZERO_ORDER, "red": RED_36,
-		"rules": [], "cash": 0, "kit": [], "house": ["satin_gloves"], "unlock": 8, "target": 1.25,
+		"rules": [], "cash": 0, "kit": [{"kind": "even_stevens", "value": 1}], "house": ["satin_gloves"], "unlock": 8, "target": 0.95,
 		"style": "EVEN MONEY: red, black, odd, even at a fair price",
-		"desc": "No zero at all: every bet is perfectly fair. Starts with Satin Gloves (even-money pays 1.5 to 1). Mr. Vance makes up for it with payments 25% bigger.",
+		"desc": "No zero at all: every bet is perfectly fair. Starts with Satin Gloves (even-money pays 1.5 to 1) and an Even Stevens. Its payments are a touch smaller to make up for the slow, steady pace.",
 	},
 }
 

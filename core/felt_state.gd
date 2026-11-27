@@ -24,6 +24,7 @@ var next_id: int = 1
 var weights: Dictionary = {}           ## Crooked Wheel: pocket -> width (missing = 1); payouts follow
 var extra_ball := false               ## this spin is past the table's usual count of balls (Encore)
 var second_wind_used := false          ## Second Wind already paid out at this table
+var ovation_used := false              ## Standing Ovation already paid out at this table
 var arc_start: int = -1                ## Carousel: index into the wheel order where the hot arc begins (-1 = none)
 
 
@@ -53,6 +54,7 @@ func copy():
 	f.arc_start = arc_start
 	f.extra_ball = extra_ball
 	f.second_wind_used = second_wind_used
+	f.ovation_used = ovation_used
 	return f
 
 
@@ -65,7 +67,7 @@ func to_dict() -> Dictionary:
 		"bet_upgrades": bet_upgrades.duplicate(), "house_rules": house_rules.duplicate(),
 		"wheel_rules": wheel_rules.duplicate(), "boss_rule": boss_rule, "condition": condition, "frozen_id": frozen_id,
 		"red_streak": red_streak, "hit_streak": hit_streak, "last_pocket": last_pocket, "next_id": next_id,
-		"weights": weights.duplicate(), "arc_start": arc_start, "second_wind_used": second_wind_used}
+		"weights": weights.duplicate(), "arc_start": arc_start, "second_wind_used": second_wind_used, "ovation_used": ovation_used}
 
 
 static func from_dict(d: Dictionary):
@@ -90,6 +92,7 @@ static func from_dict(d: Dictionary):
 	f.weights = d.get("weights", {}).duplicate()
 	f.arc_start = int(d.get("arc_start", -1))
 	f.second_wind_used = bool(d.get("second_wind_used", false))
+	f.ovation_used = bool(d.get("ovation_used", false))
 	return f
 
 

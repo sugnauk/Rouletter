@@ -26,7 +26,7 @@ func _init(table) -> void:
 
 ## Dolores explains each new system the first time it turns up (one at a time).
 func first_time_tips(run) -> void:
-	if t.main.dialogue.is_open() or t.spinning:
+	if t.main.dialogue.is_open() or t.spinning or t.main.tutorial_on():
 		return
 	var td: Dictionary = run.table
 	for pair in [["free_chip", not run.table_offer.is_empty()], ["job", td.get("objective", "") != ""],
@@ -168,6 +168,12 @@ func on_bet_held(key: String) -> void:
 	var outside: bool = not Board.is_straight(key)
 	var has_fresh: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and run.is_fresh(c.id))
 	if not has_bet and not outside and not has_fresh:
+		# Nothing to edit: a long press inspects instead (phones have no hover).
+		var perms: Array = run.felt.chips_on(key).filter(func(c): return not c.is_bet())
+		var d: Dictionary = InfoCard.for_chip(perms[0], run) if not perms.is_empty() \
+			else InfoCard.for_text(run.felt.board.label(Board.straight_number(key)) if Board.is_straight(key) else key, "", t.felt_view.describe(key))
+		t.main.card_at_felt(t.felt_view, key, d)
+		t.main.buzz("tick")
 		return
 	bet_menu = Control.new()
 	bet_menu.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

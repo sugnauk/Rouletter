@@ -11,6 +11,7 @@ const P := preload("res://scenes/ui/palette.gd")
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
+const Synergy := preload("res://core/synergy.gd")
 
 var t   ## the table screen
 var _pour_tw: Tween = null   ## the meter filling towards the running score
@@ -58,6 +59,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			fx.banner("TWIN!", P.GOLD, 1.3, 112, 24)
 			fx.burst(p2, 40, [P.GOLD, P.CREAM, P.CYAN], 150.0)
 			Sfx.play("jackpot")
+			main.buzz("jackpot")
 		else:
 			fx.pop_text(p2 - Vector2(0, 10), "%s %s" % [B.label(res.pocket2), B.colour_name(res.pocket2).to_upper()], P.GOLD, 0.8)
 	if run.felt.extra_ball:
@@ -95,6 +97,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 				t.hits += 1
 				t.score_rows.append({"kind": "win", "text": "%s  %s" % [name, e.label.to_upper()], "amount": "+%d" % int(e.amount), "icon": t._chip_icon(key)})
 				Sfx.play("win", 1.0 + 0.09 * combo)
+				main.buzz("win")
 				combo += 1
 			"bonus":
 				gross += e.amount
@@ -137,6 +140,14 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 	if res.events.is_empty():
 		t.score_rows.append({"kind": "push", "text": "%s %s - nothing on it" % [B.label(res.pocket), B.colour_name(res.pocket).to_upper()], "amount": "0", "icon": ""})
 	t.receipt = receipt(res)
+	# Named combos: every part of a combo acted in this spin.
+	var combos: Array = Synergy.fired(run.felt, res)
+	for i in range(combos.size()):
+		fx.banner(combos[i].name + "!", P.GOLD, 1.2, 70 + i * 22, 16)
+		run.combos_fired[combos[i].id] = run.combos_fired.get(combos[i].id, 0) + 1
+	if not combos.is_empty():
+		Sfx.play("sting")
+		main.buzz("big")
 	t.score_view.queue_redraw()
 
 	# --- Beat 3: count the Take into the payment -------------------------------------
@@ -156,6 +167,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			main.shake(5.0, 0.45)
 			fx.coin_rain(50)
 			Sfx.play("sting")
+			main.buzz("jackpot")
 		elif ratio >= 1.0:
 			# One spin paid the whole table: the full jackpot treatment.
 			fx.banner("JACKPOT!", P.GOLD, 1.6, 100, 24)
@@ -170,6 +182,7 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 			main.shake(4.0, 0.35)
 			fx.burst(meter_at, 40, [P.GOLD, P.CREAM, P.GOOD], 140.0)
 			Sfx.play("big_win")
+			main.buzz("big")
 		elif ratio >= 0.15:
 			fx.banner("NICE", P.GOOD, 0.8, 100, 8)
 		if personal_best and res.take >= 20.0 and not final_ball and ratio < 1.0:

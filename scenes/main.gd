@@ -3,6 +3,7 @@
 ## Game rules live in res://core; screens only draw state and forward input.
 
 const P := preload("res://scenes/ui/palette.gd")
+const Tutorial := preload("res://core/tutorial.gd")
 const DialogueBox := preload("res://scenes/ui/dialogue_box.gd")
 const Backdrop := preload("res://scenes/ui/backdrop.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
@@ -277,7 +278,9 @@ func route() -> void:
 			go("table", card[0], card[1], card[2], card[3] if card.size() > 3 else "")
 		RunState.Phase.SHOP:
 			var names := []
-			if Story.TUTORIAL.shop.id not in profile.seen_beats:
+			if tutorial_on():
+				tutorial_did("shop")
+			elif Story.TUTORIAL.shop.id not in profile.seen_beats:
 				_queue_scene(Story.TUTORIAL.shop)
 			for it in run.shop.stock:
 				profile.note_seen(it.id)
@@ -325,7 +328,14 @@ func start_run(wheel: String, acts: int = 1, grade: int = 0, opts: Dictionary = 
 	run_feats = []
 	last_layout = {}
 	Sfx.play("click")
-	if Story.TUTORIAL.table.id not in profile.seen_beats:
+	# A brand-new player's first run on the European wheel is guided, one step at a time.
+	tutorial = null
+	_tut_said = -1
+	if Tutorial.DONE_ID not in profile.seen_beats and wheel == "european" and opts.get("challenge", "") == "" \
+			and opts.get("weekly", "") == "" and opts.get("starter", "") == "":
+		tutorial = Tutorial.new()
+		run.table_offer = []
+	elif Story.TUTORIAL.table.id not in profile.seen_beats:
 		_queue_scene(Story.TUTORIAL.table)
 	var card := table_card()
 	go("table", card[0], card[1], card[2], card[3] if card.size() > 3 else "")
@@ -426,6 +436,71 @@ static func kit_summary(r) -> Array:
 
 func say(lines: Array, done: Callable = Callable()) -> void:
 	dialogue.say(lines, done)
+
+
+# --- The guided first run (core/tutorial.gd) ----------------------------------------------------
+
+var tutorial = null      ## a Tutorial while the first run is being guided, else null
+var _tut_said := -1      ## the step Dolores last explained
+
+
+func tutorial_on() -> bool:
+	return tutorial != null and tutorial.active
+
+
+## Dolores explains the current step (once), with a Skip button on every line.
+func tutorial_prompt() -> void:
+	if not tutorial_on() or dialogue.is_open() or _tut_said == tutorial.idx:
+		return
+	if current == "table" and screens.table.spinning:   # wait for the count to finish
+		return
+	_tut_said = tutorial.idx
+	var lines := []
+	for t in tutorial.step().say:
+		lines.append({"speaker": "Dolores", "text": t})
+	dialogue.on_skip = end_tutorial
+	dialogue.say(lines, func():
+		dialogue.on_skip = Callable()
+		_refresh_current())
+
+
+## The player did something the tutorial may be waiting for.
+func tutorial_did(action: String, key: String = "") -> void:
+	if not tutorial_on():
+		return
+	if tutorial.did(action, key):
+		if not tutorial.active:
+			end_tutorial()
+		else:
+			tutorial_prompt.call_deferred()
+
+
+func end_tutorial() -> void:
+	if tutorial != null:
+		tutorial.finish()
+	tutorial = null
+	dialogue.on_skip = Callable()
+	if Tutorial.DONE_ID not in profile.seen_beats:
+		profile.seen_beats.append(Tutorial.DONE_ID)
+		# The tutorial covered these: don't repeat them as first-time tips.
+		for id in [Story.TUTORIAL.table.id, Story.TUTORIAL.shop.id]:
+			if id not in profile.seen_beats:
+				profile.seen_beats.append(id)
+		save_profile()
+	_refresh_current()
+
+
+func _refresh_current() -> void:
+	if screens.has(current) and screens[current].visible:
+		screens[current].call("refresh")
+
+
+## A short buzz on phones (Options > Vibration). kind: tick | place | win | big | jackpot.
+func buzz(kind: String) -> void:
+	if not profile.settings.get("vibrate", true) or not DisplayServer.is_touchscreen_available():
+		return
+	var ms: int = {"tick": 8, "place": 12, "win": 20, "big": 45, "jackpot": 90}.get(kind, 10)
+	Input.vibrate_handheld(ms)
 
 
 func shake(amount: float, t: float = 0.3) -> void:

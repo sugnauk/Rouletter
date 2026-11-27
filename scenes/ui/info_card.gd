@@ -8,6 +8,7 @@ const P := preload("res://scenes/ui/palette.gd")
 const Art := preload("res://scenes/ui/art.gd")
 const Content := preload("res://core/content.gd")
 const Preview := preload("res://core/preview.gd")
+const Synergy := preload("res://core/synergy.gd")
 
 const W := 190.0
 const PAD := 6.0
@@ -195,6 +196,10 @@ static func for_stock(run, i: int) -> Dictionary:
 			icon = "loan"
 			sub = "LOAN"
 	var hints: Array = run.item_hints(item)
+	if item.type in ["chip", "rule", "upgrade"] and not item.get("sold", false):
+		hints += Preview.cage_hints(run, item).lines   # what it adds to your build, per spin
+		for cb in Synergy.completes(run.felt, item.id):
+			hints.append("Completes the %s combo: %s" % [cb.name, cb.desc])
 	if not hints.is_empty():
 		detail += ("\n" if detail != "" else "") + "\n".join(hints)
 	var block: String = run.buy_block(i)

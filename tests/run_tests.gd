@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1020,7 +1020,7 @@ func test_refine() -> void:
 
 func test_table_variety() -> void:
 	# Eight Act I Enforcers, four per run, all different.
-	var act1 := Content.ENFORCERS.keys().filter(func(k): return Content.ENFORCERS[k].get("act", 1) == 1)
+	var act1 := Content.ENFORCERS.keys().filter(func(k): return Content.ENFORCERS[k].get("act", 1) == 1 and not Content.ENFORCERS[k].has("wheel"))
 	check(act1.size() == 8, "eight Act I Enforcers (%d)" % act1.size())
 	var run = new_run()
 	var first4: Array = run.enforcer_order.slice(0, 4)
@@ -1691,6 +1691,135 @@ func test_run_arc() -> void:
 	for id in ["odds_maker", "keystone", "tall_stack", "wind_up"]:
 		check(Content.CHIPS.has(id) and Content.CHIPS[id].desc.length() <= 60, "%s is concise" % id)
 	check(Content.place_hint("odds_maker").contains("outside box"), "Odds Maker goes on an outside box")
+
+
+func test_fast_odds() -> void:
+	# The grouped Twin Ball distribution must equal the slow, exact pair-by-pair one.
+	for layout in [[["bet", "RED", 3], ["bet", "S17", 2], ["bet", "DOZ2", 2]], [["perm", "S5", 2], ["bet", "S5", 1], ["bet", "BLACK", 4]]]:
+		var f = felt("twin", layout)
+		var exact := {}
+		var res := {}
+		for p in f.board.pockets:
+			res[p] = Resolver.resolve_spin(f, p)
+		for a in f.board.pockets:
+			for b in f.board.pockets:
+				var t := int(floor(Resolver.combine_twin(f, res[a], res[b]).take))
+				exact[t] = exact.get(t, 0.0) + f.pocket_chance(a) * f.pocket_chance(b)
+		var fast: Dictionary = Odds._spin_distribution(f)
+		var same := exact.size() == fast.size()
+		for k in exact:
+			same = same and fast.has(k) and is_equal_approx(fast[k], exact[k])
+		check(same, "twin odds: the fast distribution matches the exact one (%d outcomes)" % exact.size())
+	var tf = felt("twin", [["bet", "RED", 3], ["bet", "S17", 2], ["perm", "S9", 2]])
+	var t0 := Time.get_ticks_usec()
+	Odds.hit_chance(tf, 40.0, 4)
+	check(Time.get_ticks_usec() - t0 < 30000, "twin pay-off chance computes in under 30ms (%d us)" % (Time.get_ticks_usec() - t0))
+	# Crooked previews: the cache knows the pockets moved.
+	var cf = felt("crooked", [["perm", "S5", 1]])
+	var before: Array = Preview.pays_on(cf, "perm", "S9")
+	cf.weights = {9: 3}
+	check(Preview.signature(cf) != Preview.signature(felt("crooked", [["perm", "S5", 1]])), "preview cache keys include crooked pockets")
+	check(before.size() == Preview.pays_on(cf, "perm", "S9").size(), "...and still answer")
+
+
+func test_tutorial() -> void:
+	var T = load("res://core/tutorial.gd")
+	var tu = T.new()
+	var b = Board.new("european")
+	check(tu.want() == "place_col" and tu.lit_keys(b) == ["COL1", "COL2", "COL3"], "tutorial starts by placing the Box Office on a column")
+	check(not tu.allows("bet", "RED") and not tu.allows("spin") and not tu.allows("place", "S5", "magnet"), "...nothing else is allowed yet")
+	check(tu.allows("place", "COL2", "box_office") and not tu.allows("place", "DOZ1", "box_office"), "...only a column")
+	check(not tu.did("bet", "RED") and tu.did("place", "COL2"), "wrong actions don't advance; the right one does")
+	check(tu.want() == "place_num" and tu.allows("place", "S7", "magnet") and not tu.allows("place", "RED", "magnet"), "then the Magnet on a number")
+	tu.did("place", "S7")
+	check(tu.want() == "bet_red" and tu.allows("bet", "RED") and not tu.allows("bet", "S9"), "then a bet on red, only red")
+	tu.did("bet", "RED")
+	check(tu.want() == "spin" and tu.allows("spin"), "then SPIN")
+	var p: int = tu.rigged_pocket(b)
+	check(b.is_red(p) and Board.grid_row(p) == 1, "the rigged ball lands on a red number in the Box Office's column (%d)" % p)
+	var f = felt("european", [["box_office", "COL2", 1], ["bet", "RED", 1]])
+	check(Resolver.resolve_spin(f, p).take >= 5.0 + 1.0, "...so both the chip and the bet pay")
+	tu.did("spin")
+	check(tu.want() == "spin_free" and tu.allows("bet", "S3") and tu.allows("spin"), "after the first spin the table is free play")
+	tu.did("shop")
+	check(tu.want() == "buy", "in the Cage: buy something")
+	tu.did("buy")
+	tu.did("leave")
+	check(not tu.active and tu.allows("bet", "S1"), "then it's over and everything is allowed")
+	var sk = T.new()
+	sk.finish()
+	check(not sk.active and sk.want() == "", "skipping ends it straight away")
+
+
+func test_combos() -> void:
+	var Syn = load("res://core/synergy.gd")
+	var f = felt("european", [["respin", "S8", 1], ["wind_up", "S3", 1]])
+	check(Syn.active(f).map(func(c): return c.id) == ["encore_chain"], "Respin + Wind-Up is an Encore Chain")
+	check(Syn.active(felt("european", [["respin", "S8", 1]])).is_empty(), "...one part alone isn't")
+	var rs := Resolver.resolve_spin(f, 8)
+	check(Syn.fired(f, rs).size() == 1, "it fires when the Respin hits and Wind-Up grows")
+	check(Syn.fired(f, Resolver.resolve_spin(f, 20)).is_empty(), "...not on a miss")
+	var odds = felt("european", [["odds_maker", "RED", 2]])
+	check(Syn.completes(odds, "even_stevens").map(func(c): return c.id) == ["long_odds"], "an Even Stevens would complete Long Odds")
+	check(Syn.completes(odds, "mint").is_empty(), "...a Mint wouldn't")
+	var hr = felt("european", [["keystone", "S5", 5]])
+	hr.house_rules = ["high_rise"]
+	check(Syn.fired(hr, Resolver.resolve_spin(hr, 5)).map(func(c): return c.id) == ["skyscraper"], "High Rise on a Keystone hit: Skyscraper")
+	check(Syn.parts_text(Syn.COMBOS[0]).contains("Respin or Second Wind"), "combo cards list their parts")
+	for c in Syn.COMBOS:
+		for part in c.parts:
+			for id in part:
+				check(Content.CHIPS.has(id) or Content.HOUSE_RULES.has(id) or Content.UPGRADES.has(id), "combo part %s exists" % id)
+
+
+func test_balance_content() -> void:
+	# Each novel wheel always meets its own Enforcer in Act I; other wheels never do.
+	for w in [["twin", "twins"], ["crooked", "mechanic"], ["carousel", "ringmaster"]]:
+		var r = new_run(w[0])
+		check(w[1] in r.enforcer_order.slice(0, 4), "%s runs meet %s" % w)
+	var eu = new_run("european")
+	check(not eu.enforcer_order.any(func(k): return Content.ENFORCERS[k].has("wheel")), "the European wheel meets no wheel Enforcers")
+	# The Twins: only the better ball counts.
+	var tw = felt("twin", [["bet", "S7", 1], ["bet", "RED", 2]])
+	tw.boss_rule = "one_ball"
+	var r1 := Resolver.resolve_twin(tw, 7, 9)
+	near(r1.take, 35.0 + 2.0, "The Twins: the better ball (7, straight + red) counts alone")
+	check(r1.pocket2 == 9, "...both balls still recorded")
+	# The Ringmaster: the arc runs backwards 2 a spin.
+	var rc = new_run("carousel")
+	rc.felt.boss_rule = "reverse_arc"
+	var a0: int = rc.felt.arc_start
+	rc.place_bet("RED", 1)
+	rc.spin(2)
+	check(rc.felt.arc_start == posmod(a0 - 2, 37), "The Ringmaster: the arc steps back 2")
+	# The Mechanic: fat pockets move every 2 spins.
+	var mc = new_run("crooked")
+	mc.felt.boss_rule = "shifty"
+	var w0: Dictionary = mc.felt.weights.duplicate()
+	mc.place_bet("RED", 1)
+	mc.spin(2)
+	check(mc.felt.weights == w0, "The Mechanic: not after 1 spin")
+	mc.place_bet("RED", 1)
+	mc.spin(2)
+	check(mc.felt.weights.size() == Content.CROOKED_FAT, "...the pockets are rerolled after 2 (still 4 fat)")
+	# Capstones.
+	var iv = felt("european", [["ivory_tower", "S1", 1], ["perm", "S5", 4], ["bet", "RED", 1]])
+	near(Resolver.resolve_spin(iv, 3).take, 1.0 + 4 * 35.0 * 0.5, "Ivory Tower: any hit, the tallest chip scores half")
+	near(Resolver.resolve_spin(iv, 2).take, 0.0, "...nothing hit, nothing extra")
+	var so = felt("european", [["perm", "S5", 1]])
+	so.house_rules = ["standing_ovation"]
+	so.extra_ball = true
+	var s1 := Resolver.resolve_spin(so, 20)
+	check(s1.respins == 1 and Resolver.resolve_spin(s1.felt_after, 20).respins == 0, "Standing Ovation: an extra ball earns one more, once a table")
+	var ho = felt("european", [["even_stevens", "ODD", 1], ["box_office", "COL3", 1], ["bet", "RED", 2]])
+	ho.house_rules = ["house_odds"]
+	near(Resolver.resolve_spin(ho, 2).take, 0.0, "House Odds: needs 3 box chips (2 placed, red loses anyway)")
+	var base: float = Resolver.resolve_spin(ho, 1).take
+	ho.add_chip("coin_purse", "HIGH", 1)
+	near(Resolver.resolve_spin(ho, 1).take, base + 2.0 + 1.0, "...with 3, the red bet and Even Stevens' box pay +1x")
+	for id in ["ivory_tower", "standing_ovation", "house_odds"]:
+		check(Content.rarity_of(id) == "legendary", "%s is legendary" % id)
+	check(Wheels.get_def("no_zero").target < 1.25 and not Wheels.get_def("no_zero").kit.is_empty(), "the Cheater's Wheel is gentler and has a kit")
 
 
 func test_provisional_placement() -> void:

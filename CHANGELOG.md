@@ -3,6 +3,57 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.51
+- **Every new wheel has its own Enforcer,** met on that wheel only, and always somewhere in Act I:
+  - **The Twins** (Twin Ball): two balls drop, but only the better one counts for you.
+  - **The Mechanic** (Crooked Wheel): the fat pockets move every 2 spins, not just every table.
+  - **The Ringmaster** (Carousel): the hot arc runs backwards, 2 pockets a spin.
+- **Three legendary capstones,** one for each combo family:
+  - **Ivory Tower** (chip): whenever anything hits, your tallest chip scores half its pay too.
+  - **Standing Ovation** (rule): an extra ball earns another ball, once a table.
+  - **House Odds** (rule): with 3 or more box chips on the felt, outside boxes pay +1x.
+- **The Cheater's Wheel is fairer:**
+  - Payments are a touch smaller (they were 25% bigger).
+  - It starts with an Even Stevens beside its Satin Gloves.
+  - The bot's win rate is about 27% (it was 6%).
+- Every wheel now sits in the same difficulty band for the bot: 21–41% in Act I.
+
+## 0.0.50
+- **Combos you can see.** Six named combos, groups of items that feed each other:
+  - **Encore Chain:** Respin or Second Wind, plus Encore or Wind-Up.
+  - **Skyscraper:** High Rise or Old Timers, plus a growing chip.
+  - **Long Odds:** an Odds Maker, plus another box chip.
+  - **Growth Engine:** chips that grow other chips, plus chips that grow.
+  - **Crown Jewels:** a Conductor, plus a multiplier chip.
+  - **House of Zero:** zero chips, plus zero rules.
+- **How they show up:**
+  - **At the table:** the combos your build has switched on are listed under your House Rules. Hover one to see what it's made of.
+  - **When one fires:** when every part of a combo acts in the same spin, its name flashes up (e.g. **ENCORE CHAIN!**) with a sting and a buzz.
+  - **In the Cage:** an item's card now says about how much Take a spin it adds to your build, and if it would complete a combo ("Completes the LONG ODDS combo").
+  - **Run report:** counts how often each combo fired.
+
+## 0.0.49
+- **A guided first run.** A brand-new player's first run on the European wheel is walked through by Dolores, one action at a time. Only the spot she's talking about is lit; the rest of the felt dims.
+  1. Put the Box Office on a column.
+  2. Put the Magnet on a number.
+  3. Bet on red.
+  4. SPIN. The first ball is rigged to land on a red number in your Box Office's column, so you see a bet and a chip pay together.
+  5. Keep playing the table.
+  6. In the Cage, drag something off the counter to buy it.
+  7. NEXT TABLE, and you're on your own.
+- Every one of her lines has a **SKIP TUTORIAL** button.
+- Casebook > How to Play > **Replay the guided first run** turns it back on.
+- While it runs, the free chip and the usual first-time tips stay out of the way.
+
+## 0.0.48
+- **Phone polish:**
+  - **Vibration:** a little buzz on hits, big wins, jackpots and placing chips. Most Androids support it; iPhones don't let web pages vibrate. You can turn it off in Options > Vibration.
+  - **Bigger touch targets when upright:** fatter split and corner zones on the upright felt, bigger rack tokens, and no tap-to-zoom (the upright felt is already big).
+  - **Long-press to inspect:** long-press an empty spot to see its odds, or a chip to see its card (phones have no hover).
+  - **Faster odds:** Twin Ball's pay-off chance is about 10x faster (3ms instead of 37ms on desktop, so no stutter on phones). It's cached between updates, too.
+  - **Fixed:** previews on the Crooked Wheel and the Carousel could show stale results after the fat pockets or the arc moved.
+  - **Phone test checklist:** `docs/phone_test.md` lists what to check on a real iPhone or Android.
+
 ## 0.0.47
 - **The run's arc, finished:** steady odds early, stacking in the middle, then spins and combos late.
   - **Early, better odds:** the **Odds Maker** chip sits on an outside box, and every bet there pays +0.25x per level, your betting chips included. At level 4, red pays 2 to 1.

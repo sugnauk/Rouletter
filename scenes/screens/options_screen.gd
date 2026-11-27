@@ -9,6 +9,7 @@ const ITEMS := [
 	["cards", "Loading cards", "The themed cards between screens. Off switches screens instantly."],
 	["shake", "Screen shake", "Shake on big wins and busts."],
 	["speed", "Game speed", "Normal takes its time. Fast is brisk. Fastest also cuts the wheel spin and the count short. The >> button at the table (or F) switches it."],
+	["vibrate", "Vibration", "A little buzz on hits, big wins and placing chips, on phones that support it (most Androids; iPhones don't let web pages vibrate)."],
 	["zoom_felt", "Tap-to-zoom felt", "Clicking the felt first zooms it in, so splits and corners are easy to hit. Always on for touch screens."],
 ]
 
@@ -34,7 +35,7 @@ func setup() -> void:
 		b.mouse_entered.connect(func(): detail.text = it[2])
 		P.place(b, Vector2(16, y))
 		buttons[it[0]] = [b, it[1]]
-		y += 28
+		y += 26
 	panel = Panel.new()
 	P.place(panel, Vector2(292, 50), Vector2(332, 114))
 	add_child(panel)
@@ -52,7 +53,7 @@ func setup() -> void:
 		minus.mouse_entered.connect(func(): detail.text = v[2])
 		P.button(row, "+", _nudge.bind(v[0], 0.1), Vector2(24, 24))
 		buttons[v[0]] = [lbl, v[1]]
-		y += 28
+		y += 26
 	# Screen fit: for phone browsers that hide part of the page under their bars.
 	var fit_tip := "Shrinks the game and pins it to the top of the screen. Use it if a phone browser cuts off the bottom (try 90%). On iPhone, Share > Add to Home Screen plays full screen."
 	var frow := HBoxContainer.new()
@@ -64,7 +65,7 @@ func setup() -> void:
 	P.button(frow, "+", _nudge_fit.bind(1), Vector2(24, 24))
 	for c in [fminus, fit_lbl]:
 		c.mouse_entered.connect(func(): detail.text = fit_tip)
-	y += 28
+	y += 26
 	keys_lbl = P.label(self, "F11: fullscreen    Keys at the table: 1/2/3 chip size, Z undo, C clear, Space spin", P.FONT_SMALL, P.DIM)
 	keys_y = y + 6
 	P.place(keys_lbl, Vector2(16, keys_y))

@@ -21,6 +21,7 @@ const Story := preload("res://core/story.gd")
 const Profile := preload("res://core/profile.gd")
 const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Placing := preload("res://scenes/ui/placing.gd")
+const Synergy := preload("res://core/synergy.gd")
 
 const LEFT_W := 180
 const MID_X := 188
@@ -320,7 +321,25 @@ func _canvas(pos: Vector2, sz: Vector2, fn: Callable) -> Control:
 	return c
 
 
+## The guided first run lights only the spots this step wants (the rest dims).
+func _tutorial_light(run) -> void:
+	if not main.tutorial_on():
+		return
+	var lit: Array = main.tutorial.lit_keys(run.felt.board)
+	if lit.is_empty():
+		return
+	if felt_view.legal.is_empty() and felt_view.twins.is_empty():
+		Placing.mark_keys(felt_view, lit)
+	else:
+		for k in felt_view.legal.keys():
+			if k not in lit:
+				felt_view.legal.erase(k)
+		felt_view.queue_redraw()
+
+
 func _hint() -> String:
+	if main.tutorial_on() and main.tutorial.step().get("status", "") != "":
+		return main.tutorial.step().status
 	if selected_item >= 0 and selected_item < main.run.inventory.size():
 		var kind: String = main.run.inventory[selected_item].kind
 		return "Holding %s. %s" % [Content.CHIPS[kind].name, Content.place_hint(kind)]
@@ -515,6 +534,7 @@ func refresh() -> void:
 		log_box.append_text("[color=#f2c14e]%s[/color]\n" % run.message)
 	felt_view.targets = []
 	_sync_wheel(run)
+	main.tutorial_prompt.call_deferred()
 	felt_view.queue_redraw()
 	var t: Dictionary = run.table
 	if not spinning:
@@ -587,7 +607,8 @@ func _refresh_tokens() -> void:
 		selected_item = -1
 	for i in range(inv.size()):
 		var item: Dictionary = inv[i]
-		var tok = Token.new(item.kind, Vector2(25, 25))
+		var ts: float = 30.0 if portrait else 25.0   # bigger for thumbs on an upright phone
+		var tok = Token.new(item.kind, Vector2(ts, ts))
 		tok.rarity = Content.rarity_of(item.kind)
 		tok.badge = "x%d" % item.value if item.value > 1 else ""
 		if item.get("flaw", "") != "":
@@ -613,6 +634,7 @@ func _refresh_tokens() -> void:
 		tok.pressed.connect(_select_item.bind(i))
 		rack_grid.add_child(tok)
 	Placing.mark(felt_view, run, selected_item)
+	_tutorial_light(run)
 	if inv.is_empty():
 		var e := P.label(rack_grid, "", P.FONT_SMALL, P.DIM)
 		e.text = "empty"
@@ -652,6 +674,15 @@ func _refresh_tokens() -> void:
 		vl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
 		vl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		rules_flow.add_child(vrow)
+	# Your build's combos (core/synergy.gd): which of your items feed each other.
+	for cb in Synergy.active(run.felt):
+		var cl := P.label(rules_flow, "COMBO: " + cb.name, P.FONT_SMALL, P.GOLD)
+		cl.custom_minimum_size = Vector2(rules_flow.size.x, 12)
+		cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cl.mouse_filter = Control.MOUSE_FILTER_PASS
+		var cd: Dictionary = InfoCard.for_text(cb.name, "COMBO", cb.desc, "", Synergy.parts_text(cb))
+		cl.mouse_entered.connect(func(): main.card_near(cl, cd))
+		cl.mouse_exited.connect(main.hide_card)
 
 
 func _select_item(i: int) -> void:
@@ -685,13 +716,19 @@ func _place_selected(key: String) -> void:
 		return
 	var kind: String = run.inventory[selected_item].kind
 	var twin: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == kind)
+	if main.tutorial_on() and not main.tutorial.allows("place", key, kind):
+		_status(main.tutorial.step().status)
+		Sfx.play("click")
+		return
 	if run.place_chip(selected_item, key):
+		main.tutorial_did("place", key)
 		selected_item = 0 if not run.inventory.is_empty() else -1
 		felt_view.pop(key)
 		main.fx.burst(main.fx.local(felt_view.key_global(key)), 8 if not twin else 20, [P.GOLD, P.CREAM] if not twin else [P.GOOD, P.GOLD, P.CREAM], 60.0)
 		if twin:
 			main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
 		Sfx.play("stack" if twin else "chip_place")
+		main.buzz("place")
 		_status("Placed. Next: %s." % Content.CHIPS[run.inventory[0].kind].name if selected_item >= 0 else "Placed.")
 		_refresh_tokens()
 	else:
@@ -881,6 +918,8 @@ func _draw_score(c: Control) -> void:
 
 ## Zoom the felt so small targets (splits, corners) are big enough for a finger.
 func _zoom_enabled() -> bool:
+	if portrait:   # the upright felt is already big enough to tap
+		return main.profile.settings.get("zoom_felt", false)
 	return main.profile.settings.get("zoom_felt", false) or DisplayServer.is_touchscreen_available()
 
 
@@ -935,8 +974,13 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	if selected_item >= 0:
 		_place_selected(key)
 		return
+	if main.tutorial_on() and not main.tutorial.allows("bet", key):
+		_status(main.tutorial.step().status)
+		Sfx.play("click")
+		return
 	var amt: int = mini(bet_size, run.table.stack)
 	if run.place_bet(key, amt):
+		main.tutorial_did("bet", key)
 		bet_history.append({"key": key, "amount": amt})
 		felt_view.pop(key)
 		main.fx.fly(stack_at(), main.fx.local(felt_view.key_global(key)), Art.denom_color(amt), 1)
@@ -987,6 +1031,12 @@ func _on_spin() -> void:
 			selected_item = 0
 			_refresh_tokens()
 		return
+	if main.tutorial_on() and not main.tutorial.allows("spin"):
+		_status(main.tutorial.step().status)
+		Sfx.play("click")
+		return
+	var rigged: int = main.tutorial.rigged_pocket(run.felt.board) if main.tutorial_on() and main.tutorial.want() == "spin" else -99
+	main.tutorial_did("spin")
 	spinning = true
 	bet_history.clear()
 	spin_btn.disabled = true
@@ -996,7 +1046,7 @@ func _on_spin() -> void:
 	spin_score = 0.0
 	spin_score_vis = false
 	receipt = ""
-	var pocket: int = run._draw_pocket()
+	var pocket: int = rigged if rigged != -99 else run._draw_pocket()
 	var pocket2: int = run._draw_pocket() if run.felt.board.def.get("twin", false) else -99
 	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9, pocket2)
 	await wheel_view.spin_done

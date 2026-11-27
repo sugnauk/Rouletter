@@ -14,6 +14,8 @@ var portrait: Control
 var name_lbl: Label
 var text_lbl: Label
 var hint: Label
+var skip_btn: Button      ## shown while the guided first run is talking (main.tutorial)
+var on_skip: Callable
 
 
 func _ready() -> void:
@@ -31,7 +33,7 @@ func _ready() -> void:
 	panel = Panel.new()
 	panel.add_theme_stylebox_override("panel", P.box(P.PANEL, P.GOLD, 2))
 	P.place(panel, Vector2(12, 266), Vector2(616, 84))
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(panel)
 	portrait = Control.new()
 	P.place(portrait, Vector2(8, 8), Vector2(64, 64))
@@ -45,6 +47,19 @@ func _ready() -> void:
 	hint = P.label(panel, "click / space", P.FONT_SMALL, P.DIM)
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	P.place(hint, Vector2(456, 68), Vector2(152, 10))
+	skip_btn = Button.new()
+	skip_btn.text = "SKIP TUTORIAL"
+	skip_btn.focus_mode = Control.FOCUS_NONE
+	skip_btn.add_theme_font_size_override("font_size", P.FONT_SMALL)
+	skip_btn.visible = false
+	skip_btn.pressed.connect(func():
+		var cb := on_skip
+		on_skip = Callable()
+		visible = false
+		on_done = Callable()
+		if cb.is_valid():
+			cb.call())
+	panel.add_child(skip_btn)
 	relayout()
 
 
@@ -55,6 +70,7 @@ func relayout() -> void:
 	P.place(panel, Vector2(8 if tall else 12, P.H - ph - 10), Vector2(P.W - (16 if tall else 24), ph))
 	P.place(text_lbl, Vector2(82, 22), Vector2(panel.size.x - 94, ph - 34))
 	P.place(hint, Vector2(panel.size.x - 160, ph - 16), Vector2(152, 10))
+	P.place(skip_btn, Vector2(panel.size.x - 96, 4), Vector2(88, 14))
 
 
 func say(new_lines: Array, done: Callable = Callable()) -> void:
@@ -65,6 +81,7 @@ func say(new_lines: Array, done: Callable = Callable()) -> void:
 	lines = new_lines
 	idx = 0
 	on_done = done
+	skip_btn.visible = on_skip.is_valid()
 	_show_line()
 	visible = true
 
