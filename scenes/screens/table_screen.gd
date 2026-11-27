@@ -912,10 +912,11 @@ func _draw_history(c: Control) -> void:
 ## The wooden tray under the felt: three bays (bet chips, the rack, House Rules).
 func _draw_tray(c: Control) -> void:
 	var r := Rect2(Vector2.ZERO, c.size)
-	c.draw_rect(r, P.WOOD_DARK)
-	c.draw_rect(Rect2(0, 0, r.size.x, 3), P.WOOD.lightened(0.15))
-	c.draw_rect(Rect2(0, 3, r.size.x, 1), Color(0, 0, 0, 0.5))
-	c.draw_rect(r, P.BLACK, false, 1.0)
+	# Dark leather with a brass lip along the top.
+	c.draw_rect(r, Color("#120f16"))
+	c.draw_rect(Rect2(0, 0, r.size.x, 2), Color("#a07c42"))
+	c.draw_rect(Rect2(0, 2, r.size.x, 1), Color(0, 0, 0, 0.6))
+	c.draw_rect(r, Color(0, 0, 0, 0.9), false, 1.0)
 	# Bays: sunk felt pockets in the wood.
 	var bays: Array = [Rect2(4, 6, 116, r.size.y - 10), Rect2(122, 6, 120, r.size.y - 10), Rect2(246, 6, 110, r.size.y - 10)] if portrait \
 		else [Rect2(4, 6, 118, r.size.y - 10), Rect2(126, 6, 162, r.size.y - 10), Rect2(292, 6, 154, r.size.y - 10)]
@@ -924,7 +925,7 @@ func _draw_tray(c: Control) -> void:
 		var lit: bool = i == 1 and main.run != null and not main.run.inventory.is_empty()
 		c.draw_rect(b, P.FELT.darkened(0.45))
 		c.draw_rect(Rect2(b.position, Vector2(b.size.x, 1)), Color(0, 0, 0, 0.6))
-		var edge: Color = P.WOOD.darkened(0.2)
+		var edge: Color = Color("#6a5232")
 		if lit:   # chips waiting in the rack: the bay glows until they're placed
 			edge = P.GOLD.lerp(P.CREAM, 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0))
 		c.draw_rect(b, edge, false, 1.0)

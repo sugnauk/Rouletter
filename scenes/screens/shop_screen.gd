@@ -69,7 +69,7 @@ func setup() -> void:
 	P.place(service_box, Vector2(8, 184))
 	add_child(service_box)
 	dp = Panel.new()
-	dp.add_theme_stylebox_override("panel", P.box(Color("#1a120c"), P.WOOD, 1))
+	dp.add_theme_stylebox_override("panel", P.cosy(Color("#141018")))
 	P.place(dp, Vector2(8, 234), Vector2(288, 82))
 	add_child(dp)
 	desc_title = P.label(dp, "", P.FONT_SMALL, P.GOLD)
@@ -351,8 +351,9 @@ func _draw_cage() -> void:
 ## One vendor's window: wood frame, dark interior, a lamp, brass bars, velvet counter, name.
 func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
 	var accent: Color = {"cash": P.GOLD, "stack": P.RED.lightened(0.2), "loan": P.CYAN, "take": P.VIOLET}.get(Content.VENDORS[vendor].currency, P.GOLD)
-	c.draw_rect(w.grow(4), P.WOOD_DARK)
-	c.draw_rect(w.grow(2), P.WOOD)
+	c.draw_rect(w.grow(4), Color("#0e0b12"))
+	c.draw_rect(w.grow(2), Color("#a07c42"))
+	c.draw_rect(w.grow(1), Color("#0e0b12"))
 	c.draw_rect(w, Color("#0d0907"))
 	for i in range(4):
 		c.draw_circle(Vector2(w.get_center().x, w.position.y + 6), 50.0 - i * 12.0, Color(1, 0.8, 0.4, 0.03 + i * 0.01), true, -1.0, false)
@@ -361,7 +362,7 @@ func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
 	c.draw_rect(counter_r, Color("#5c1020") if vendor == "cashier" else Color("#123a24"))
 	for x in range(int(counter_r.position.x), int(counter_r.end.x), 3):
 		c.draw_rect(Rect2(x, counter_r.position.y, 1, counter_r.size.y), Color("#4a0c19") if vendor == "cashier" else Color("#0d2c1b"))
-	c.draw_rect(Rect2(counter_r.position, Vector2(counter_r.size.x, 3)), P.WOOD)
+	c.draw_rect(Rect2(counter_r.position, Vector2(counter_r.size.x, 2)), Color("#a07c42"))
 	# Bars stop at the counter so the tokens sit in front of them.
 	for x in range(int(w.position.x) + 8, int(w.end.x), 18):
 		c.draw_rect(Rect2(x, w.position.y, 2, 30), P.GOLD.darkened(0.35))

@@ -182,6 +182,21 @@ static func button(parent: Node, text: String, cb: Callable, size: Vector2 = Vec
 	return b
 
 
+## A text link (the home menu): cream text that turns gold, with a chip and an underline on hover.
+static func link(parent: Node, text: String, cb: Callable, size: Vector2 = Vector2(0, 0), font: int = FONT) -> Button:
+	var b := button(parent, text, cb, size, font)
+	b.set("link", true)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var e := StyleBoxEmpty.new()
+		e.content_margin_left = 14
+		b.add_theme_stylebox_override(st, e)
+	b.add_theme_color_override("font_color", CREAM.darkened(0.05))
+	b.add_theme_color_override("font_hover_color", GOLD)
+	b.add_theme_color_override("font_pressed_color", Color("#ffe9a8"))
+	return b
+
+
 static func place(c: Control, pos: Vector2, size: Vector2 = Vector2.ZERO) -> Control:
 	c.position = pos
 	if size != Vector2.ZERO:

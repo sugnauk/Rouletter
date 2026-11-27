@@ -3,6 +3,20 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.58
+- **The live table fills the whole screen.** It now sits behind the game frame and stretches edge to edge on any window or phone, with no borders top and bottom.
+  - It's framed to the layout: right of the menu in landscape, centred in the top half on a phone held upright.
+  - It's drawn at the game's own pixel size, twice the detail of before. The wheel shows brass frets between the pockets and brass rims, a chrome turret whose four arms turn and catch the light, and a ball with its own shadow.
+- **A new home screen, floating over the table.** There are no boxes any more:
+  - the ROULETTER neon floats top-left;
+  - a slim text menu runs down the left (a chip and a gold underline slide in on hover);
+  - a small brass Markers plaque sits top-right (click it for the Pawn Shop);
+  - NEW RUN and CONTINUE are the only lit marquees, with the run you left as a ticket stub beside them.
+
+  A soft shade keeps the text readable. On a phone the menu sits on a dark floor under the table.
+- **A new backdrop for every other screen:** the same room, out of focus. A deep night (ink blue fading to burgundy), soft lights from the other tables and the bar, two lamp glows that breathe, smoke catching the light. The damask wallpaper and wooden wainscot are gone.
+- **No more brown wood.** Plaques (the night label, take meter, Cage header), the table's tray and the Cage's window frames are now dark lacquer and leather with brass trim.
+
 ## 0.0.57
 - **A live table behind the home screen.** A roulette table seen over the croupier's shoulder, in chunky pixel 3D, now plays behind the menu.
   - The wheel spins at the far end and the ball rattles round and drops into a pocket. Its number pops up over the wheel and the winning square glows.

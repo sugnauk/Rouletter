@@ -595,15 +595,17 @@ static func face(ci: CanvasItem, id: String, c: Vector2, s: int = 1) -> void:
 
 
 ## A brass plaque background.
+## A plaque: dark lacquer with a brass hairline and brass corner studs (`dark` = deeper still).
 static func plaque(ci: CanvasItem, r: Rect2, dark: bool = false) -> void:
-	var base := P.WOOD_DARK if dark else Color("#7a5a2a")
-	ci.draw_rect(r, P.BLACK)
+	var base := Color("#100d14") if dark else Color("#1a1520")
+	var brass := Color("#a07c42")
+	ci.draw_rect(r, Color(0, 0, 0, 0.85))
 	ci.draw_rect(r.grow(-1), base)
-	ci.draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(r.size.x - 2, 1)), base.lightened(0.35))
-	ci.draw_rect(Rect2(r.position + Vector2(1, r.size.y - 2), Vector2(r.size.x - 2, 1)), base.darkened(0.4))
+	ci.draw_rect(r.grow(-1), brass, false, 1.0)
+	ci.draw_rect(Rect2(r.position + Vector2(2, 2), Vector2(r.size.x - 4, 1)), Color(1, 0.9, 0.7, 0.08))
 	for p in [r.position + Vector2(2, 2), Vector2(r.end.x - 4, r.position.y + 2),
 			Vector2(r.position.x + 2, r.end.y - 4), r.end - Vector2(4, 4)]:
-		ci.draw_rect(Rect2(p, Vector2(2, 2)), P.GOLD.darkened(0.2))
+		ci.draw_rect(Rect2(p, Vector2(2, 2)), P.GOLD.darkened(0.15))
 
 
 ## Text with a 1px drop shadow.
