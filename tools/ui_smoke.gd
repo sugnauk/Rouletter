@@ -518,6 +518,7 @@ func _process(delta: float) -> void:
 			ts.refresh()],
 		[59.4, func(): shot("54_tutorial_bet_red")],
 		[59.5, func():
+			_close_dialogue()   # Dolores explains the bet step first
 			var ts = main.screens.table
 			ts._on_bet_clicked("RED", MOUSE_BUTTON_LEFT)
 			_close_dialogue()

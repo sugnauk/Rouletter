@@ -53,6 +53,7 @@ var best_spin: float = 0.0       ## run summary: the biggest single spin
 var beaten: Array = []           ## run summary: Enforcers beaten this run
 var new_player := false
 var used_outside := false        ## any outside bet placed this run (the "no outside bets" Feat)
+var combos_fired: Dictionary = {}   ## combo id -> times it fired this run (core/synergy.gd)
 var run_seed: int = 0           ## the run's seed (shareable: the same seed deals the same run)
 var challenge: String = ""       ## a named challenge (Content.CHALLENGES), or ""
 var starter: String = ""         ## an alternative starting kit (Content.STARTERS), or "" for the wheel's
@@ -100,6 +101,7 @@ func start_run(seed_in: int, wheel: String = "european", unlocked_ids: Array = [
 		inventory = [{"kind": "magnet", "value": 1}, {"kind": "perm", "value": 1}]
 		cash += Content.FENCE_RUN_CASH
 	cash_log = {"Starting cash": cash}
+	combos_fired = {}
 	report = []
 	fresh = {}
 	for r in def.get("house", []):
@@ -185,7 +187,7 @@ const SAVE_VERSION := 3   ## run save format (see migrate())
 
 ## Saved too, but optional, so saves from before they existed still load.
 const OPTIONAL_FIELDS := {"run_seed": 0, "challenge": "", "starter": "", "weekly": "", "table_offer": [], "report": [], "fresh": {},
-	"contrib": {}, "best_spin_info": {}, "cash_log": {}}
+	"contrib": {}, "best_spin_info": {}, "cash_log": {}, "combos_fired": {}}
 const SAVE_FIELDS := ["wheel_id", "phase", "unlocked", "cash", "inventory", "stack_size", "stack_buys",
 	"stack_owed", "loan_pct", "last_bets", "night", "table_idx", "table", "shop", "enforcer_order", "acts",
 	"total_take", "nights_cleared", "message", "overflow", "favours", "vouchers", "best_spin", "beaten", "new_player", "grade", "used_outside"]
@@ -875,6 +877,8 @@ func run_report() -> String:
 			(", " + Content.CHALLENGES[challenge].name) if challenge != "" else (", weekly" if weekly != "" else (", grade %d" % (grade + 1) if grade > 0 else "")), run_seed],
 		"Result: %s. Nights cleared %d. Total Take %d. Best spin +%d." % [
 			"WON" if phase == Phase.VICTORY else ("lost" if phase == Phase.GAME_OVER else "in progress"), nights_cleared, int(total_take), int(best_spin)], ""]
+	if not combos_fired.is_empty():
+		lines.insert(lines.size() - 1, "Combos: " + ", ".join(combos_fired.keys().map(func(k): return "%s x%d" % [k.replace("_", " "), combos_fired[k]])))
 	lines.append_array(report)
 	lines.append("")
 	lines.append("Money: " + ", ".join(cash_sources().slice(0, 6).map(func(x): return "%s $%d" % [x[0], x[1]])))

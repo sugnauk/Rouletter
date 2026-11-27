@@ -21,6 +21,7 @@ const Story := preload("res://core/story.gd")
 const Profile := preload("res://core/profile.gd")
 const InfoCard := preload("res://scenes/ui/info_card.gd")
 const Placing := preload("res://scenes/ui/placing.gd")
+const Synergy := preload("res://core/synergy.gd")
 
 const LEFT_W := 180
 const MID_X := 188
@@ -673,6 +674,15 @@ func _refresh_tokens() -> void:
 		vl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
 		vl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		rules_flow.add_child(vrow)
+	# Your build's combos (core/synergy.gd): which of your items feed each other.
+	for cb in Synergy.active(run.felt):
+		var cl := P.label(rules_flow, "COMBO: " + cb.name, P.FONT_SMALL, P.GOLD)
+		cl.custom_minimum_size = Vector2(rules_flow.size.x, 12)
+		cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cl.mouse_filter = Control.MOUSE_FILTER_PASS
+		var cd: Dictionary = InfoCard.for_text(cb.name, "COMBO", cb.desc, "", Synergy.parts_text(cb))
+		cl.mouse_entered.connect(func(): main.card_near(cl, cd))
+		cl.mouse_exited.connect(main.hide_card)
 
 
 func _select_item(i: int) -> void:

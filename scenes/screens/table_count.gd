@@ -11,6 +11,7 @@ const P := preload("res://scenes/ui/palette.gd")
 const Board := preload("res://core/board.gd")
 const Content := preload("res://core/content.gd")
 const RunState := preload("res://core/run_state.gd")
+const Synergy := preload("res://core/synergy.gd")
 
 var t   ## the table screen
 var _pour_tw: Tween = null   ## the meter filling towards the running score
@@ -139,6 +140,14 @@ func play(res: Dictionary, ctx: Dictionary) -> void:
 	if res.events.is_empty():
 		t.score_rows.append({"kind": "push", "text": "%s %s - nothing on it" % [B.label(res.pocket), B.colour_name(res.pocket).to_upper()], "amount": "0", "icon": ""})
 	t.receipt = receipt(res)
+	# Named combos: every part of a combo acted in this spin.
+	var combos: Array = Synergy.fired(run.felt, res)
+	for i in range(combos.size()):
+		fx.banner(combos[i].name + "!", P.GOLD, 1.2, 70 + i * 22, 16)
+		run.combos_fired[combos[i].id] = run.combos_fired.get(combos[i].id, 0) + 1
+	if not combos.is_empty():
+		Sfx.play("sting")
+		main.buzz("big")
 	t.score_view.queue_redraw()
 
 	# --- Beat 3: count the Take into the payment -------------------------------------

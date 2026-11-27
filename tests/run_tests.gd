@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1749,6 +1749,27 @@ func test_tutorial() -> void:
 	var sk = T.new()
 	sk.finish()
 	check(not sk.active and sk.want() == "", "skipping ends it straight away")
+
+
+func test_combos() -> void:
+	var Syn = load("res://core/synergy.gd")
+	var f = felt("european", [["respin", "S8", 1], ["wind_up", "S3", 1]])
+	check(Syn.active(f).map(func(c): return c.id) == ["encore_chain"], "Respin + Wind-Up is an Encore Chain")
+	check(Syn.active(felt("european", [["respin", "S8", 1]])).is_empty(), "...one part alone isn't")
+	var rs := Resolver.resolve_spin(f, 8)
+	check(Syn.fired(f, rs).size() == 1, "it fires when the Respin hits and Wind-Up grows")
+	check(Syn.fired(f, Resolver.resolve_spin(f, 20)).is_empty(), "...not on a miss")
+	var odds = felt("european", [["odds_maker", "RED", 2]])
+	check(Syn.completes(odds, "even_stevens").map(func(c): return c.id) == ["long_odds"], "an Even Stevens would complete Long Odds")
+	check(Syn.completes(odds, "mint").is_empty(), "...a Mint wouldn't")
+	var hr = felt("european", [["keystone", "S5", 5]])
+	hr.house_rules = ["high_rise"]
+	check(Syn.fired(hr, Resolver.resolve_spin(hr, 5)).map(func(c): return c.id) == ["skyscraper"], "High Rise on a Keystone hit: Skyscraper")
+	check(Syn.parts_text(Syn.COMBOS[0]).contains("Respin or Second Wind"), "combo cards list their parts")
+	for c in Syn.COMBOS:
+		for part in c.parts:
+			for id in part:
+				check(Content.CHIPS.has(id) or Content.HOUSE_RULES.has(id) or Content.UPGRADES.has(id), "combo part %s exists" % id)
 
 
 func test_provisional_placement() -> void:

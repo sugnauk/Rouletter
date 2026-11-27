@@ -69,6 +69,11 @@ static func fired(felt, res: Dictionary) -> Array:
 	return out
 
 
+## "Respin or Second Wind + Encore or Wind-Up": what a combo is made of, for its card.
+static func parts_text(c: Dictionary) -> String:
+	return " + ".join(c.parts.map(func(part): return " or ".join(part.map(func(id): return _name(id)))))
+
+
 static func _name(id: String) -> String:
 	for t in [Content.CHIPS, Content.HOUSE_RULES, Content.UPGRADES]:
 		if t.has(id):

@@ -3,6 +3,20 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.50
+- **Combos you can see.** Six named combos, groups of items that feed each other:
+  - **Encore Chain:** Respin or Second Wind, plus Encore or Wind-Up.
+  - **Skyscraper:** High Rise or Old Timers, plus a growing chip.
+  - **Long Odds:** an Odds Maker, plus another box chip.
+  - **Growth Engine:** chips that grow other chips, plus chips that grow.
+  - **Crown Jewels:** a Conductor, plus a multiplier chip.
+  - **House of Zero:** zero chips, plus zero rules.
+- **How they show up:**
+  - **At the table:** the combos your build has switched on are listed under your House Rules. Hover one to see what it's made of.
+  - **When one fires:** when every part of a combo acts in the same spin, its name flashes up (e.g. **ENCORE CHAIN!**) with a sting and a buzz.
+  - **In the Cage:** an item's card now says about how much Take a spin it adds to your build, and if it would complete a combo ("Completes the LONG ODDS combo").
+  - **Run report:** counts how often each combo fired.
+
 ## 0.0.49
 - **A guided first run.** A brand-new player's first run on the European wheel is walked through by Dolores, one action at a time. Only the spot she's talking about is lit; the rest of the felt dims.
   1. Put the Box Office on a column.
