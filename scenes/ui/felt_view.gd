@@ -51,6 +51,7 @@ var preview: Dictionary = {}     ## key -> Color: squares lit by a hover preview
 var ring_keys: Dictionary = {}
 var pinned: Dictionary = {}      ## pinned bet keys (a small pin on their chips)   ## bet keys that could clear the table on a hit (gold ring on their chips)
 var marks := false               ## colour-blind aid: a diamond on every red square
+var fit := Vector2.ZERO          ## the box the felt grows to fill (screen axes); ZERO = base size
 
 
 const ZONE := 8.0               ## width of the clickable strip on a felt line (mouse)
@@ -81,6 +82,19 @@ func layout() -> void:
 	zero_w = VZERO_W if vertical else ZERO_W
 	col_w = VCOL_W if vertical else COL_W
 	var B = run.felt.board
+	if fit != Vector2.ZERO:
+		# Grow to fill the box the screen gave us. The box is in screen axes; a vertical felt is
+		# built on its side, so its long axis is the box's height.
+		var box: Vector2 = Vector2(fit.y, fit.x) if vertical else fit
+		var bw: float = zero_w + grid_len + col_w
+		var bh: float = row_h * 3.0 + strip_h * (3.0 if run.has_feature("call_bets") else 2.0)
+		var sx: float = box.x / bw
+		var sy: float = minf(box.y / bh, sx * 1.4)   # squares can grow taller, but not into slivers
+		grid_len = floor(grid_len * sx)
+		zero_w = floor(zero_w * sx)
+		col_w = floor(col_w * sx)
+		row_h = floor(row_h * sy)
+		strip_h = floor(strip_h * sy)
 	cell_w = floor(grid_len / B.cols)   # small boards (the Mini wheel's 4 columns) widen to fill the same space
 	var grid_w: float = cell_w * B.cols
 	var nz: int = B.zeros.size()
@@ -320,6 +334,11 @@ func _draw() -> void:
 			up = run.felt.bet_upgrades.get(k, "")
 		if up != "":
 			draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(r.size.x - 2, 2)), _upgrade_color(up))
+			# Its badge: the upgrade's own picture on a dark tile, in a corner clear of the label.
+			var bp: Vector2 = r.position + Vector2(1, 3) if Board.is_straight(k) else Vector2(r.end.x - 8, r.position.y + 3)
+			draw_rect(Rect2(bp.floor(), Vector2(7, 7)), Color(P.BLACK, 0.85))
+			draw_rect(Rect2(bp.floor(), Vector2(7, 7)), _upgrade_color(up), false, 1.0)
+			Art.face(self, up, bp.floor() + Vector2(3, 3))
 		if Board.is_straight(k):
 			var sn := Board.straight_number(k)
 			if run.felt.weight(sn) > 1:   # Crooked Wheel: a fat pocket
@@ -425,24 +444,38 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	var entries := []
 	if bet_total > 0:
 		entries.append({"col": Art.denom_color(bet_total), "kind": "bet", "value": bet_total, "frozen": false})
-	for c in perms.slice(0, 2):
+	# Up to three chips show (the bet counts as one); the rest are a "+N" tag.
+	var shown: int = mini(perms.size(), 3 - entries.size())
+	if perms.size() > shown:
+		shown -= 1   # the last slot becomes a "+N" token
+	var hidden: int = perms.size() - shown
+	for c in perms.slice(0, shown):
 		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id, "mod": c.mod,
 			"fresh": run.fresh.has(str(c.id))})
+	if hidden > 0:
+		entries.append({"col": P.BLACK, "kind": "more", "value": hidden, "frozen": false})
 	var is_line := line_rects.has(k)
-	var rad := 5.0 if (is_line or _is_strip(r) or not Board.is_straight(k)) else 6.0
-	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
+	# Chips grow with the squares (a bigger felt shows bigger faces).
+	var side: float = minf(r.size.x, r.size.y)
+	var rad: float = 6.0 if is_line else clampf(floor(side * (0.3 if Board.is_straight(k) else 0.36)), 6.0, 11.0)
 	var n := entries.size()
-	var spacing := minf(2.0 * rad - 1.0, (r.size.x - 2.0 * rad - 2.0) / maxf(1.0, n - 1.0)) if not is_line else 6.0
-	spacing = maxf(spacing, 5.0)
+	if n > 1 and not is_line:
+		# Several chips share the square: smaller, so every face stays in view.
+		rad = maxf(5.0, minf(floor((r.size.x + 4.0 - 3.0 * (n - 1)) / (n + 1.0)), rad - 1.0))
+	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
+	# Each chip overlaps the one before it by no more than its rim, so every face is visible.
+	var spacing := rad + 3.0 if n > 1 else 0.0
+	if is_line:
+		spacing = 6.0
 	var first: Vector2   # centre of the first chip; the rest fan out to the right
 	if is_line:
 		first = r.get_center() - Vector2((n - 1) * spacing / 2.0, 0)
 	elif Board.is_straight(k):
-		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.end.y - 7.0)
+		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.end.y - rad - 1.0)
 	elif _is_strip(r):
-		first = Vector2(r.end.x - 7.0 - (n - 1) * spacing, r.get_center().y)  # strips: chips hug the right edge
+		first = Vector2(r.end.x - rad - 1.0 - (n - 1) * spacing, r.get_center().y)  # strips: chips hug the right edge
 	else:
-		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.position.y + 7.0)  # columns: chips above the label
+		first = Vector2(r.get_center().x - (n - 1) * spacing / 2.0, r.position.y + rad + 1.0)  # columns: chips above the label
 	var fp := first.floor()
 	if ring_keys.has(k):
 		var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 160.0)
@@ -453,6 +486,12 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	for i in range(n):
 		var e: Dictionary = entries[i]
 		var p := (first + Vector2(i * spacing, 0)).floor()
+		if e.kind == "more":   # more chips than fit: hover the square for all of them
+			draw_circle(p, rad, Color("#120c0a"), true, -1.0, false)
+			draw_arc(p, rad, 0, TAU, 16, P.GOLD, 1.0, false)
+			var mt := "+%d" % e.value
+			draw_string(font, p + Vector2(-floor(font.get_string_size(mt, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT_SMALL).x / 2.0), 3), mt, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT_SMALL, P.GOLD)
+			continue
 		Art.chip(self, p, rad * scale, e.col, e.kind, 0, e.frozen)
 		if e.get("fresh", false):
 			# Placed since the last spin: still provisional, so a dashed cyan ring.
@@ -469,8 +508,17 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		if e.kind != "bet" and Content.rarity_of(e.kind) == "legendary":
 			var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 200.0)
 			draw_arc(p, rad + 1.5, 0, TAU, 16, Color(P.GOLD, 0.35 + 0.45 * g), 1.0, false)
+	# Second pass, so no chip covers another's number.
+	for i in range(n):
+		var e: Dictionary = entries[i]
+		var p := (first + Vector2(i * spacing, 0)).floor()
 		var v: int = e.value
-		if v > 1 or e.kind == "bet":
+		if e.kind == "more":
+			continue
+		if v > 1 and e.kind != "bet":
+			# An item's level sits on its rim, so the picture on its face stays clear.
+			_tiny(font, p + Vector2(rad - 3, rad + 2), str(v) if v < 100 else "99+")
+		elif e.kind == "bet":
 			var txt := str(v) if v < 100 else "99+"
 			var dark: bool = Color(e.col).get_luminance() > 0.45
 			var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT_SMALL).x
@@ -492,30 +540,7 @@ func _tiny(font: Font, p: Vector2, s: String) -> void:
 
 
 func _upgrade_color(up: String) -> Color:
-	match up:
-		"gilded":
-			return P.GOLD
-		"hot":
-			return P.DANGER
-		"link":
-			return P.CYAN
-		"double_felt":
-			return P.GOOD
-		"pinned":
-			return P.VIOLET
-		"diamond":
-			return Color("#9ad7ff")
-		"magnetized":
-			return P.RED
-		"twin_square", "spoke":
-			return P.CYAN.darkened(0.2)
-		"gold_trim", "lamp", "sweet_spot":
-			return P.GOLD
-		"fat_box", "repeat_box", "silk":
-			return Color("#c08ad8")
-		"lucky_colour":
-			return P.GOOD
-	return P.CREAM
+	return P.UPGRADE_COLORS.get(up, P.CREAM)
 
 
 func _outside_name(k: String) -> String:

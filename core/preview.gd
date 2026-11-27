@@ -116,6 +116,9 @@ static func rep_key(felt, kind: String) -> String:
 		for n in range(1, B.numbers + 1):
 			if not B.is_red(n):
 				return Board.straight_key(n)
+	var targets := Content.target_numbers(kind, B)
+	if not targets.is_empty():
+		return Board.straight_key(targets[0])
 	return "S1"
 
 

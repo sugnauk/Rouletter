@@ -3,6 +3,48 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.56
+- **Haptics on iPhone too.** iPhones have no vibrate API for web pages, but Safari (iOS 18+) gives a haptic tick when a switch toggle flips, so the game flips a hidden one: one tick for a small buzz, two or three for big wins and jackpots. Android still vibrates as before.
+- **More buzzes:** a tick when you press SPIN and a buzz when the ball drops, on top of wins and placing chips. Options > Vibration still turns them all off.
+- **Touch cards checked with a real finger tap:** the screenshot run now taps a House Rule through the phone's touch input. It checks that the card opens, stays open after the finger lifts, and closes on the next tap.
+- The phone checklist (docs/phone_test.md) covers iPhone haptics and tap-to-open cards.
+
+## 0.0.55
+- **The table is rebuilt around the felt.** The felt grows to fill the space beside the wheel, about twice its old size, and chips on it grow with the squares (pictures show at double size on big squares).
+  - **The text log is gone.** A spin's result now covers the tray while it counts: the pocket as a ball, the Take in big gold numbers, "x3 HITS", and an icon pill for every bet and chip that paid. It fades back to the tray a few seconds later, or as soon as you bet again.
+  - **A wooden tray under the felt** has three bays: bet chips with your stack and Undo/Clear, the rack (which glows while chips wait to be placed), and House Rules and vouchers as icons. "COMBOS n" next to the rules lists your combos when you hover it.
+  - **The Enforcer or the table's condition and side job** is now one strip over the felt: the boss's portrait, name and twist. Hover it for the full text.
+  - **Under the wheel:** balls, SPIN, the odds and the last numbers (two rows).
+  - The free-chip pick now covers only the tray, so the whole felt stays visible for its previews.
+  - Tap-to-zoom switches itself off now that the felt already fills the screen.
+  - Pressing SPIN closes any open info card.
+- **The Cage is rebuilt the same way.** The vendor counter runs across the top with reroll, Bigger Stack and your House Rules beside it. A one-line strip under it names what you're looking at, with BUY. The felt fills the full width below, with chip modes, the rack and hints in one strip at the bottom.
+  - NEXT TABLE and what the next table needs sit in the top bar.
+  - Bonus picks, refines and vendor events open as a panel over the counter.
+- Both screens use the same layout on a phone held upright: the felt stands up in the middle, with the tray (table) or modes and rack (Cage) under it.
+
+## 0.0.54
+- **On a phone, a tapped info card stays open** until your next press anywhere. Lifting your finger used to close it before you could read it.
+  - With a mouse, nothing changes: cards still close when you move off.
+  - Moving a real mouse again switches straight back to hover behaviour, so touch laptops work either way.
+
+## 0.0.53
+- **Every chip on a crowded square shows.** Several chips on one number shrink a little and fan out so each one's face stays visible (up to three, counting a bet). Any more turn the last slot into a dark "+N" token.
+- **Hovering a square lists every chip on it,** not just one: the first in full, then a row for each of the others with its icon, name, level and what it does. This works on the table and in the Cage.
+- An item's level number is drawn after all the chips, so the next chip never covers it.
+
+## 0.0.52
+- **Every item on the felt has its own face.** Each chip kind shows a small picture of its own (a snowflake for Snowball, a U magnet, a key, a ticket...) on a dark inlay, in its own colour.
+  - Item chips have gold edge spots; bet chips keep cream ones, so a Snowball no longer looks like a 1 chip.
+  - Chips on the felt are a size bigger, and an item's level sits on its rim instead of covering the picture.
+  - Twelve newer chips that fell back to bet-chip cream now have colours of their own.
+- **Felt upgrades get a badge:** each upgrade's own picture in the corner of its square, and a strip colour no other upgrade shares.
+- **Pattern chips go on numbers they watch.** Odd Fellow, Even Keel, Low Roller, Penthouse, Prime Time, Square Deal, Teen Idol, Fibonacci, Nickel and Seventh Heaven only go on numbers in their own set (e.g. Seventh Heaven on 7, 17 or 27), and only those light up while you hold one.
+  - On its own number a pattern chip now pays both ways: the straight bet and its bonus.
+  - On a wheel with none of its numbers (Teen Idol on the Mini Wheel) it can still go anywhere.
+  - Chips already on the felt from an older save stay where they are.
+- **Info cards say a chip is also a bet:** "Its own number also pays as a straight bet of its level (35 to 1)." Watch chips (Dozen Watch, Pillar, Doorbell, Last Digit, Clover, Far Side) say their bonus fires on other numbers.
+
 ## 0.0.51
 - **Every new wheel has its own Enforcer,** met on that wheel only, and always somewhere in Act I:
   - **The Twins** (Twin Ball): two balls drop, but only the better one counts for you.

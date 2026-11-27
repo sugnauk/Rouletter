@@ -57,7 +57,7 @@ func refresh_offer(run) -> void:
 		return
 	offer_panel = Panel.new()
 	offer_panel.add_theme_stylebox_override("panel", P.box(Color(0.05, 0.03, 0.02, 0.97), P.GOLD, 1))
-	P.place(offer_panel, t.score_view.position, t.score_view.size)
+	P.place(offer_panel, t.offer_rect().position, t.offer_rect().size)
 	t.add_child(offer_panel)
 	var title := P.label(offer_panel, "ON THE HOUSE: PICK A CHIP", P.FONT, P.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

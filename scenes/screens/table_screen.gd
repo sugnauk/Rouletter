@@ -52,7 +52,13 @@ var bet_history: Array = []   ## [{key, amount}] of bets placed since the last s
 var status_lbl: Label
 var denom_box: HBoxContainer
 var rack_grid: GridContainer
-var rules_flow: VBoxContainer
+var rules_flow: GridContainer   ## House Rules and vouchers, as icons in the tray
+var combos_lbl: Label            ## "COMBOS 2": hover for the list
+var tray_view: Control           ## the wooden tray under the felt: bet chips, rack, rules
+var last_pocket := -99
+var last_pocket2 := -99
+var score_hold := 0.0            ## seconds the spin result stays over the tray after a spin
+var boss_card: Dictionary = {}   ## the boss / table strip's full text, for its card
 var boss_panel: Panel
 var boss_lbl: Label
 var job_panel: Panel
@@ -99,6 +105,7 @@ func setup() -> void:
 	count = TableCount.new(self)
 	overlays = TableOverlays.new(self)
 	hud = _canvas(Vector2(0, 0), Vector2(640, 24), _draw_hud)
+	tray_view = _canvas(Vector2(186, 248), Vector2(450, 108), _draw_tray)
 
 	wheel_view = WheelView.new()
 	P.place(wheel_view, Vector2(4, 24), Vector2(176, 166))
@@ -137,11 +144,8 @@ func setup() -> void:
 	P.place(status_lbl, Vector2(MID_X, 150), Vector2(330, 10))
 	history_view = _canvas(Vector2(MID_X, 162), Vector2(330, 18), _draw_history)
 	score_view = _canvas(Vector2(MID_X, 184), Vector2(330, 170), _draw_score)
-	# Clicking the score panel opens the full calculation (the spin log).
-	score_view.mouse_filter = Control.MOUSE_FILTER_STOP
-	score_view.gui_input.connect(func(e):
-		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and receipt != "":
-			log_box.visible = true)
+	# The spin's result shows over the tray while it counts, then fades back to the tray.
+	score_view.visible = false
 	log_box = RichTextLabel.new()
 	log_box.bbcode_enabled = true
 	log_box.scroll_following = true
@@ -150,7 +154,7 @@ func setup() -> void:
 	P.place(log_box, Vector2(MID_X, 184), Vector2(330, 170))
 	add_child(log_box)
 
-	bet_lbl = P.label(self, "BET CHIP", P.FONT_SMALL, P.DIM)
+	bet_lbl = P.label(self, "BET", P.FONT_SMALL, P.DIM)
 	P.place(bet_lbl, Vector2(RIGHT_X, 26))
 	menu_btn = P.button(self, "MENU", func(): main.open_pause(), Vector2(40, 12), P.FONT_SMALL)
 	P.place(menu_btn, Vector2(RIGHT_X + 72, 6))
@@ -185,35 +189,53 @@ func setup() -> void:
 	add_child(rack_grid)
 	rules_lbl = P.label(self, "HOUSE RULES", P.FONT_SMALL, P.DIM)
 	P.place(rules_lbl, Vector2(RIGHT_X, 146))
-	rules_flow = VBoxContainer.new()
-	rules_flow.add_theme_constant_override("separation", 2)
-	P.place(rules_flow, Vector2(RIGHT_X, 156), Vector2(RIGHT_W, 0))
+	rules_flow = GridContainer.new()
+	rules_flow.columns = 6
+	rules_flow.add_theme_constant_override("h_separation", 4)
+	rules_flow.add_theme_constant_override("v_separation", 4)
+	P.place(rules_flow, Vector2(RIGHT_X, 156))
 	add_child(rules_flow)
+	combos_lbl = P.label(self, "", P.FONT_SMALL, P.GOLD)
+	combos_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	combos_lbl.mouse_filter = Control.MOUSE_FILTER_PASS
+	combos_lbl.mouse_entered.connect(func():
+		var list: Array = Synergy.active(main.run.felt)
+		if not list.is_empty():
+			main.card_near(combos_lbl, InfoCard.for_text("COMBOS", "%d ACTIVE" % list.size(),
+				"\n".join(list.map(func(c): return "%s: %s" % [c.name, c.desc])), "", "")))
+	combos_lbl.mouse_exited.connect(main.hide_card)
+	# The strip over the felt: the Enforcer (portrait, name, twist) or the table's condition and
+	# side job. One line each; hover (or tap) it for the full text.
 	boss_panel = Panel.new()
 	boss_panel.add_theme_stylebox_override("panel", P.box(Color("#2a0f12"), P.DANGER, 1))
-	P.place(boss_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
+	P.place(boss_panel, Vector2(186, 27), Vector2(450, 20))
 	add_child(boss_panel)
 	boss_face = Control.new()
-	P.place(boss_face, Vector2(4, 4), Vector2(32, 32))
+	P.place(boss_face, Vector2(2, 1), Vector2(18, 18))
 	boss_name = P.label(boss_panel, "", P.FONT_SMALL, P.DANGER)
-	boss_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(boss_name, Vector2(40, 6), Vector2(RIGHT_W - 44, 30))
+	P.place(boss_name, Vector2(24, 5), Vector2(120, 10))
 	boss_face.draw.connect(func():
 		if boss_who != "":
-			Portraits.draw(boss_face, boss_who, Rect2(0, 0, 32, 32)))
+			Portraits.draw(boss_face, boss_who, Rect2(0, 0, 18, 18)))
+	boss_face.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boss_panel.add_child(boss_face)
 	boss_lbl = P.label(boss_panel, "", P.FONT_SMALL, P.CREAM)
-	boss_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	P.place(boss_lbl, Vector2(5, 38), Vector2(RIGHT_W - 10, 62))
+	boss_lbl.clip_text = true
+	P.place(boss_lbl, Vector2(146, 5), Vector2(300, 10))
 	# Ordinary tables: the condition and side job, in the same spot.
 	job_panel = Panel.new()
 	job_panel.add_theme_stylebox_override("panel", P.box(Color("#10201a"), P.LINE, 1))
-	P.place(job_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
+	P.place(job_panel, Vector2(186, 27), Vector2(450, 20))
 	add_child(job_panel)
 	job_lbl = P.label(job_panel, "", P.FONT_SMALL, P.CREAM)
-	job_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	job_lbl.add_theme_constant_override("line_spacing", -2)
-	P.place(job_lbl, Vector2(5, 4), Vector2(RIGHT_W - 10, 96))
+	job_lbl.clip_text = true
+	P.place(job_lbl, Vector2(6, 5), Vector2(438, 10))
+	for pnl in [boss_panel, job_panel]:
+		pnl.mouse_filter = Control.MOUSE_FILTER_STOP
+		pnl.mouse_entered.connect(func():
+			if not boss_card.is_empty():
+				main.card_near(pnl, boss_card))
+		pnl.mouse_exited.connect(main.hide_card)
 	# Tap-to-zoom felt (touch screens, or the Options toggle): a dim layer under a big felt.
 	zoom_bg = ColorRect.new()
 	zoom_bg.color = Color(0.02, 0.01, 0.02, 0.82)
@@ -229,6 +251,7 @@ func setup() -> void:
 	P.place(zl, Vector2(4000, 4000 + 30), Vector2(640, 10))
 	zoom_lbl = zl
 	add_child(zoom_bg)
+	move_child(score_view, -1)   # the spin result covers the tray's chips and labels
 	move_child(felt_view, -1)
 
 
@@ -238,68 +261,86 @@ func setup() -> void:
 func relayout(tall: bool) -> void:
 	portrait = tall
 	felt_view.vertical = tall
+	# The felt is the star: it grows to fill the space between the strip and the tray.
+	felt_view.fit = Vector2(352, 292) if tall else Vector2(450, 194)
 	if felt_view.run != null:
 		felt_view.layout()
+	var fs: Vector2 = felt_view.size
 	if not tall:
 		P.place(hud, Vector2.ZERO, Vector2(640, 24))
-		P.place(wheel_view, Vector2(4, 24), Vector2(176, 166))
-		P.place(balls_view, Vector2(4, 190), Vector2(176, 13))
-		P.place(spin_btn, Vector2(8, 204), Vector2(168, 22))
-		P.place(undo_btn, Vector2(MID_X + 236, 134))
-		P.place(clear_btn, Vector2(MID_X + 284, 134))
-		P.place(gauge_view, Vector2(4, 232), Vector2(176, 124))
-		P.place(stack_view, Vector2(MID_X, 134), Vector2(232, 14))
-		felt_home = Vector2(MID_X, 32)
-		P.place(status_lbl, Vector2(MID_X, 150), Vector2(330, 10))
-		P.place(history_view, Vector2(MID_X, 162), Vector2(330, 18))
-		P.place(score_view, Vector2(MID_X, 184), Vector2(330, 170))
-		P.place(log_box, Vector2(MID_X, 184), Vector2(330, 170))
-		P.place(bet_lbl, Vector2(RIGHT_X, 26))
+		P.place(wheel_view, Vector2(4, 26), Vector2(176, 176))
+		P.place(balls_view, Vector2(4, 204), Vector2(176, 13))
+		P.place(spin_btn, Vector2(8, 219), Vector2(168, 24))
+		P.place(gauge_view, Vector2(4, 250), Vector2(176, 56))
+		P.place(history_view, Vector2(4, 310), Vector2(176, 40))
+		P.place(boss_panel, Vector2(186, 27), Vector2(450, 20))
+		P.place(job_panel, Vector2(186, 27), Vector2(450, 20))
+		P.place(boss_lbl, Vector2(146, 5), Vector2(300, 10))
+		P.place(job_lbl, Vector2(6, 5), Vector2(438, 10))
+		felt_home = Vector2(floor(186 + (450 - fs.x) / 2.0), 50)
+		P.place(status_lbl, Vector2(186, felt_home.y + fs.y + 3), Vector2(450, 10))
+		var tr := Rect2(186, 248, 450, 108)
+		P.place(tray_view, tr.position, tr.size)
+		P.place(score_view, tr.position, tr.size)
+		P.place(log_box, tr.position, tr.size)
+		P.place(bet_lbl, Vector2(194, 252))
+		P.place(denom_box, Vector2(192, 262))
+		P.place(stack_view, Vector2(192, 300), Vector2(112, 14))
+		P.place(undo_btn, Vector2(192, 320), Vector2(54, 18))
+		P.place(clear_btn, Vector2(250, 320), Vector2(54, 18))
+		P.place(rack_lbl, Vector2(316, 252))
+		P.place(rack_grid, Vector2(314, 262))
+		rack_grid.columns = 5
+		P.place(rules_lbl, Vector2(480, 252))
+		P.place(combos_lbl, Vector2(560, 252), Vector2(72, 10))
+		P.place(rules_flow, Vector2(478, 262))
+		rules_flow.columns = 6
 		P.place(menu_btn, Vector2(RIGHT_X + 72, 6))
 		P.place(speed_btn, Vector2(RIGHT_X + 44, 6))
-		P.place(denom_box, Vector2(RIGHT_X, 36))
-		P.place(rack_lbl, Vector2(RIGHT_X, 70))
-		P.place(rack_grid, Vector2(RIGHT_X, 80))
-		rack_grid.columns = 4
-		P.place(rules_lbl, Vector2(RIGHT_X, 146))
-		P.place(rules_flow, Vector2(RIGHT_X, 156), Vector2(RIGHT_W, 0))
-		P.place(boss_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
-		P.place(job_panel, Vector2(RIGHT_X, 250), Vector2(RIGHT_W, 104))
 	else:
 		P.place(hud, Vector2.ZERO, Vector2(360, 44))
 		P.place(wheel_view, Vector2(4, 46), Vector2(122, 122))
 		P.place(balls_view, Vector2(130, 48), Vector2(226, 13))
-		P.place(spin_btn, Vector2(132, 64), Vector2(222, 22))
-		P.place(stack_view, Vector2(130, 90), Vector2(226, 14))
-		P.place(gauge_view, Vector2(130, 108), Vector2(226, 62))
-		felt_home = Vector2(4, 172)
-		var rx: float = 4 + felt_view.size.x + 6
-		var rw: float = 356 - rx
-		P.place(bet_lbl, Vector2(rx, 172))
-		P.place(denom_box, Vector2(rx, 182))
-		P.place(rack_lbl, Vector2(rx, 214))
-		P.place(rack_grid, Vector2(rx, 224))
-		rack_grid.columns = maxi(1, int((rw + 4) / 29))
-		P.place(rules_lbl, Vector2(rx, 284))
-		P.place(rules_flow, Vector2(rx, 294), Vector2(rw, 0))
-		P.place(boss_panel, Vector2(rx, 382), Vector2(rw, 96))
-		P.place(job_panel, Vector2(rx, 382), Vector2(rw, 96))
+		P.place(spin_btn, Vector2(132, 64), Vector2(222, 24))
+		P.place(gauge_view, Vector2(130, 92), Vector2(226, 56))
+		P.place(history_view, Vector2(130, 148), Vector2(226, 20))
+		P.place(boss_panel, Vector2(4, 172), Vector2(352, 20))
+		P.place(job_panel, Vector2(4, 172), Vector2(352, 20))
+		P.place(boss_lbl, Vector2(146, 5), Vector2(202, 10))
+		P.place(job_lbl, Vector2(6, 5), Vector2(340, 10))
+		felt_home = Vector2(floor(4 + (352 - fs.x) / 2.0), 196)
+		P.place(status_lbl, Vector2(4, felt_home.y + fs.y + 3), Vector2(352, 10))
+		var tr := Rect2(0, 506, 360, 134)
+		P.place(tray_view, tr.position, tr.size)
+		P.place(score_view, tr.position, tr.size)
+		P.place(log_box, tr.position, tr.size)
+		P.place(bet_lbl, Vector2(8, 510))
+		P.place(denom_box, Vector2(6, 520))
+		P.place(stack_view, Vector2(6, 558), Vector2(112, 14))
+		P.place(undo_btn, Vector2(6, 578), Vector2(54, 20))
+		P.place(clear_btn, Vector2(64, 578), Vector2(54, 20))
+		P.place(rack_lbl, Vector2(128, 510))
+		P.place(rack_grid, Vector2(126, 520))
+		rack_grid.columns = 4
+		P.place(rules_lbl, Vector2(252, 510))
+		P.place(combos_lbl, Vector2(252, 620), Vector2(104, 10))
+		P.place(rules_flow, Vector2(250, 520))
+		rules_flow.columns = 4
 		P.place(menu_btn, Vector2(316, 4))
 		P.place(speed_btn, Vector2(286, 4))
-		P.place(undo_btn, Vector2(4, 482))
-		P.place(clear_btn, Vector2(52, 482))
-		P.place(status_lbl, Vector2(100, 484), Vector2(256, 10))
-		P.place(history_view, Vector2(4, 498), Vector2(352, 18))
-		P.place(score_view, Vector2(4, 520), Vector2(352, 116))
-		P.place(log_box, Vector2(4, 520), Vector2(352, 116))
 	if not zoomed:
 		felt_view.position = felt_home
 	zoom_lbl.size.x = P.W
 	if overlays != null:
 		overlays.relayout()
 	queue_redraw()
-	for c in [hud, balls_view, stack_view, gauge_view, history_view, score_view]:
+	for c in [hud, balls_view, stack_view, gauge_view, history_view, score_view, tray_view]:
 		c.queue_redraw()
+
+
+## Where the free-chip offer sits: over the tray, leaving the whole felt in view for its previews.
+func offer_rect() -> Rect2:
+	return Rect2(4, 500, 352, 136) if portrait else Rect2(186, 236, 450, 120)
 
 
 ## Where betting chips fly from and back to: the stack.
@@ -390,9 +431,7 @@ func _on_hover(k: String) -> void:
 	if perms.is_empty() or spinning or selected_item >= 0:
 		main.hide_card()
 	else:
-		var d := InfoCard.for_chip(perms[0], main.run)
-		if perms.size() > 1:
-			d.body += "\nAlso here: " + ", ".join(perms.slice(1).map(func(c): return "%s x%d" % [Content.CHIPS[c.kind].name, c.value]))
+		var d := InfoCard.for_square(perms, main.run)
 		main.card_at_felt(felt_view, k, d)
 	if k == "" or spinning:
 		_status(felt_view.describe(k) if k != "" else _hint())
@@ -503,8 +542,14 @@ func _process(delta: float) -> void:
 	hud.queue_redraw()
 	stack_view.queue_redraw()
 	balls_view.queue_redraw()
+	tray_view.queue_redraw()
 	if spinning:
 		score_view.queue_redraw()
+	elif score_hold > 0.0:
+		score_hold -= delta
+		if score_hold <= 0.0:
+			score_view.visible = false
+			spin_score_vis = false
 
 
 # --- Refresh ----------------------------------------------------------------------
@@ -520,8 +565,7 @@ func refresh() -> void:
 		felt_view.layout()
 		wheel_view.board = run.felt.board
 		board_id = bid
-		if portrait:   # the felt's width (call bets) moves the column beside it
-			relayout(true)
+		relayout(portrait)   # the felt's size (wheel, call bets) moves what sits around it
 	var tk := "%d-%s-%d-%d" % [run.run_seed, run.wheel_id, run.night, run.table_idx]
 	if tk != table_key:
 		table_key = tk
@@ -556,12 +600,15 @@ func refresh() -> void:
 		boss_panel.visible = true
 		job_panel.visible = false
 		boss_lbl.text = e.desc
+		var body: String = e.desc
 		if t.get("objective", "") != "":
 			var o: Dictionary = Content.OBJECTIVES[t.objective]
-			boss_lbl.text += "\nJOB: %s +$%d%s" % [o.name, o.cash, " (done)" if run.objective_met() else ""]
+			body += "\nJOB: %s +$%d%s" % [o.name, o.cash, " (done)" if run.objective_met() else ""]
+		boss_card = InfoCard.for_text(e.name, "ENFORCER", body, "", "")
+		boss_card.col = P.DANGER
 		boss_who = e.name
 		boss_face.queue_redraw()
-		boss_name.text = "ENFORCER\n" + e.name.to_upper()
+		boss_name.text = e.name.to_upper()
 		var key := "%d-%d" % [run.night, run.table_idx]
 		if announced != key and t.spins_used == 0:
 			announced = key
@@ -585,7 +632,8 @@ func refresh() -> void:
 				st = " %d/3" % mini(3, t.get("obj_hits", 0))
 			lines.append("SIDE JOB +$%d%s\n%s: %s" % [o.cash, st, o.name, o.desc])
 		job_panel.visible = not lines.is_empty()
-		job_lbl.text = "\n".join(lines)
+		job_lbl.text = "   ".join(lines.map(func(l): return l.replace("\n", ": ")))
+		boss_card = InfoCard.for_text("THIS TABLE", "", "\n".join(lines), "", "") if not lines.is_empty() else {}
 	if status_lbl.text == "":
 		_status("")
 	hud.queue_redraw()
@@ -640,52 +688,38 @@ func _refresh_tokens() -> void:
 		e.text = "empty"
 	for c in rules_flow.get_children():
 		c.queue_free()
+	var rs: float = 24.0 if portrait else 22.0
 	for r in run.felt.wheel_rules + run.felt.house_rules:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
-		var tok = Token.new(r, Vector2(16, 16))
-		var info: Dictionary = Content.HOUSE_RULES[r]
-		tok.hover_text = "%s%s: %s" % [info.name, " (wheel)" if r in run.felt.wheel_rules else "", info.desc]
+		var tok = Token.new(r, Vector2(rs, rs))
 		var built_in: bool = r in run.felt.wheel_rules
+		tok.rarity = Content.rarity_of(r)
 		tok.hover_target = func(_s): main.card_near(tok, InfoCard.for_rule(r, built_in))
 		tok.hover_exit = main.hide_card
-		row.add_child(tok)
-		var lbl := P.label(row, info.name, P.FONT_SMALL, P.CREAM)
-		lbl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl.mouse_filter = Control.MOUSE_FILTER_PASS
-		var rule_id: String = r
-		var wheel_rule: bool = r in run.felt.wheel_rules
-		lbl.mouse_entered.connect(func(): main.card_near(lbl, InfoCard.for_rule(rule_id, wheel_rule)))
-		lbl.mouse_exited.connect(main.hide_card)
-		rules_flow.add_child(row)
-	# Dealer vouchers last the whole run: list them under the rules.
+		rules_flow.add_child(tok)
+	# Dealer vouchers last the whole run: they sit with the rules.
 	for v in run.vouchers:
-		var vrow := HBoxContainer.new()
-		vrow.add_theme_constant_override("separation", 4)
-		var vt = Token.new(Content.VOUCHERS[v].icon, Vector2(16, 16))
-		vt.hover_text = "%s (voucher): %s" % [Content.VOUCHERS[v].name, Content.VOUCHERS[v].desc]
+		var vt = Token.new(Content.VOUCHERS[v].icon, Vector2(rs, rs))
 		var vid: String = v
 		vt.hover_target = func(_s): main.card_near(vt, InfoCard.for_voucher(vid))
 		vt.hover_exit = main.hide_card
-		vrow.add_child(vt)
-		var vl := P.label(vrow, Content.VOUCHERS[v].name, P.FONT_SMALL, P.VIOLET)
-		vl.custom_minimum_size = Vector2(RIGHT_W - 20, 16)
-		vl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		rules_flow.add_child(vrow)
-	# Your build's combos (core/synergy.gd): which of your items feed each other.
-	for cb in Synergy.active(run.felt):
-		var cl := P.label(rules_flow, "COMBO: " + cb.name, P.FONT_SMALL, P.GOLD)
-		cl.custom_minimum_size = Vector2(rules_flow.size.x, 12)
-		cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		cl.mouse_filter = Control.MOUSE_FILTER_PASS
-		var cd: Dictionary = InfoCard.for_text(cb.name, "COMBO", cb.desc, "", Synergy.parts_text(cb))
-		cl.mouse_entered.connect(func(): main.card_near(cl, cd))
-		cl.mouse_exited.connect(main.hide_card)
+		rules_flow.add_child(vt)
+	if run.felt.wheel_rules.is_empty() and run.felt.house_rules.is_empty() and run.vouchers.is_empty():
+		P.label(rules_flow, "none yet", P.FONT_SMALL, P.DIM)
+	# Your build's combos (core/synergy.gd): a count; hover it for the list.
+	var nc: int = Synergy.active(run.felt).size()
+	combos_lbl.text = "COMBOS %d" % nc if nc > 0 else ""
+
+
+## Back to betting: the spin result over the tray gives way to the tray.
+func _dismiss_score() -> void:
+	if score_view.visible and not spinning:
+		score_hold = 0.0
+		score_view.visible = false
+		spin_score_vis = false
 
 
 func _select_item(i: int) -> void:
+	_dismiss_score()
 	selected_item = -1 if selected_item == i else i
 	Sfx.play("click")
 	if selected_item >= 0:
@@ -853,71 +887,110 @@ func _draw_gauges(c: Control) -> void:
 	c.draw_rect(Rect2(5, 50, floor(166.0 * clampf(float(mp) / mt, 0.0, 1.0)), 2), P.GOLD)
 
 
+## The last numbers, newest first, as felt-coloured pills (wrapping onto a second row).
 func _draw_history(c: Control) -> void:
 	var run = main.run
 	var font := P.font()
-	c.draw_rect(Rect2(0, 0, c.size.x, c.size.y), Color(0, 0, 0, 0.55))
-	c.draw_rect(Rect2(0, 0, c.size.x, c.size.y), P.WOOD, false, 1.0)
-	Art.text(c, font, Vector2(4, 12), "LAST", 8, P.DIM)
-	var x := 30.0
+	Art.text(c, font, Vector2(4, 9), "LAST NUMBERS" if not history.is_empty() else "", 8, P.DIM)
+	var x := 4.0
+	var y := 13.0
 	for i in range(history.size() - 1, -1, -1):
 		var p: int = history[i]
 		var col: Color = P.GREEN if p <= 0 else (P.RED if run.felt.board.is_red(p) else P.BLACK)
-		var w := 20.0
-		var r := Rect2(x, 3, w, 12)
+		var r := Rect2(x, y, 20, 12)
 		c.draw_rect(r, col)
 		c.draw_rect(r, P.GOLD if i == history.size() - 1 else P.LINE.darkened(0.5), false, 1.0)
-		Art.text(c, font, Vector2(r.get_center().x, 12), run.felt.board.label(p), 8, P.CREAM, true)
-		x += w + 3
-		if x > c.size.x - 22:
-			break
+		Art.text(c, font, Vector2(r.get_center().x, y + 9), run.felt.board.label(p), 8, P.CREAM, true)
+		x += 23.0
+		if x > c.size.x - 20:
+			x = 4.0
+			y += 14.0
+			if y + 12 > c.size.y:
+				break
 
 
+## The wooden tray under the felt: three bays (bet chips, the rack, House Rules).
+func _draw_tray(c: Control) -> void:
+	var r := Rect2(Vector2.ZERO, c.size)
+	c.draw_rect(r, P.WOOD_DARK)
+	c.draw_rect(Rect2(0, 0, r.size.x, 3), P.WOOD.lightened(0.15))
+	c.draw_rect(Rect2(0, 3, r.size.x, 1), Color(0, 0, 0, 0.5))
+	c.draw_rect(r, P.BLACK, false, 1.0)
+	# Bays: sunk felt pockets in the wood.
+	var bays: Array = [Rect2(4, 6, 116, r.size.y - 10), Rect2(122, 6, 120, r.size.y - 10), Rect2(246, 6, 110, r.size.y - 10)] if portrait \
+		else [Rect2(4, 6, 118, r.size.y - 10), Rect2(126, 6, 162, r.size.y - 10), Rect2(292, 6, 154, r.size.y - 10)]
+	for i in range(bays.size()):
+		var b: Rect2 = bays[i]
+		var lit: bool = i == 1 and main.run != null and not main.run.inventory.is_empty()
+		c.draw_rect(b, P.FELT.darkened(0.45))
+		c.draw_rect(Rect2(b.position, Vector2(b.size.x, 1)), Color(0, 0, 0, 0.6))
+		var edge: Color = P.WOOD.darkened(0.2)
+		if lit:   # chips waiting in the rack: the bay glows until they're placed
+			edge = P.GOLD.lerp(P.CREAM, 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0))
+		c.draw_rect(b, edge, false, 1.0)
+
+
+## The spin's result, over the tray while it counts: the pocket, the Take it made (big), and a
+## pill for every bet and chip that paid. Fades back to the tray a few seconds after the spin.
 func _draw_score(c: Control) -> void:
-	c.draw_rect(Rect2(0, 0, c.size.x, c.size.y), Color(0.02, 0.07, 0.04, 0.85))
-	c.draw_rect(Rect2(0, 0, c.size.x, c.size.y), P.WOOD, false, 1.0)
+	if not spin_score_vis:
+		return
+	var r := Rect2(Vector2.ZERO, c.size)
+	c.draw_rect(r, Color(0.05, 0.03, 0.02))
+	c.draw_rect(r, P.GOLD if spin_score > 0 else P.WOOD, false, 1.0)
 	var font := P.font()
 	var tfont := P.title_font()
-	if not spin_score_vis and score_rows.is_empty():
-		Art.text(c, tfont, Vector2(c.size.x / 2.0, 40), "PLACE YOUR BETS", 8, P.GOLD, true)
-		var tips := ["Take = what a spin pays minus what it lost.",
-			"Permanent chips are never lost: they score every hit.",
-			"Covering everything scores nothing. Pick your shots.",
-			"Reach the payment before the balls run out."]
-		for i in range(tips.size()):
-			Art.text(c, font, Vector2(c.size.x / 2.0, 66 + i * 14), tips[i], 8, P.DIM, true)
-		return
+	var B = main.run.felt.board
+	# The pocket, as a ball-coloured disc with its number.
+	var x := 22.0
+	for pk in [last_pocket, last_pocket2]:
+		if pk == -99:
+			continue
+		var col: Color = P.GREEN if pk <= 0 else (P.RED if B.is_red(pk) else Color("#1a1a1a"))
+		c.draw_circle(Vector2(x, 24), 15, P.GOLD, true, -1.0, false)
+		c.draw_circle(Vector2(x, 24), 13, col, true, -1.0, false)
+		Art.text(c, tfont, Vector2(x, 29), B.label(pk), 8, P.CREAM, true)
+		x += 34.0
+	# The Take, big, popping as it grows.
 	var big := "+%d" % int(round(spin_score))
-	var size := 16 if score_pop < 0.5 else 24
-	Art.text(c, tfont, Vector2(c.size.x / 2.0, 30), big, size, P.GOLD if spin_score > 0 else P.DIM, true)
+	var sz := 24 if score_pop > 0.3 else 16
+	Art.text(c, tfont, Vector2(x + 4, 33 if sz == 24 else 29), big, sz, P.GOLD if spin_score > 0 else P.DIM)
+	var bw := tfont.get_string_size(big, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x
 	if hits >= 2:
 		var hue := fmod(Time.get_ticks_msec() / 900.0, 1.0)
 		var cc := Color.from_hsv(hue, 0.45, 1.0) if hits >= 4 else P.CYAN
-		Art.text(c, font, Vector2(c.size.x - 12 - font.get_string_size("x%d HITS" % hits, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 14), "x%d HITS" % hits, 8, cc)
-	var y := 52.0
-	var fit_rows: int = maxi(1, int((c.size.y - 52.0 - 26.0) / 14.0) + 1)
-	for row in score_rows.slice(maxi(0, score_rows.size() - fit_rows)):
+		Art.text(c, tfont, Vector2(x + 12 + bw, 29), "x%d HITS" % hits, 8, cc)
+	elif spin_score <= 0.0 and not spinning:
+		Art.text(c, font, Vector2(x + 12 + bw, 28), "NOTHING ON IT", 8, P.DIM)
+	# One pill per scoring event: its icon and amount, coloured by kind.
+	var px := 6.0
+	var py := 48.0
+	for row in score_rows:
 		var col: Color = {"win": P.GOOD, "bonus": P.CYAN, "loss": P.DANGER, "mult": P.VIOLET, "cash": P.GOLD, "push": P.DIM}.get(row.kind, P.CREAM)
-		var ic: String = {"win": "bet", "bonus": "perm", "loss": "bet", "mult": "red_streak", "cash": "cash", "push": "bet"}.get(row.kind, "bet")
-		if row.has("icon") and row.icon != "":
-			ic = row.icon
-		Art.icon(c, ic, Vector2(16, y - 3), 1)
-		Art.text(c, font, Vector2(28, y), row.text, 8, P.CREAM)
 		var amt: String = row.amount
-		var w := font.get_string_size(amt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-		Art.text(c, font, Vector2(c.size.x - 10 - w, y), amt, 8, col)
-		y += 14.0
-	if receipt != "" and not spinning:
-		c.draw_rect(Rect2(4, c.size.y - 26, c.size.x - 8, 1), P.LINE.darkened(0.5))
-		var rw := font.get_string_size(receipt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-		Art.text(c, font, Vector2(c.size.x / 2.0, c.size.y - 15), receipt if rw < c.size.x - 12 else receipt.substr(0, 60) + "...", 8, P.CREAM, true)
-		Art.text(c, font, Vector2(c.size.x / 2.0, c.size.y - 5), "click for the full calculation", 8, P.DIM, true)
+		var w: float = 22.0 + font.get_string_size(amt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+		if px + w > c.size.x - 6:
+			px = 6.0
+			py += 20.0
+			if py + 18 > c.size.y:
+				break
+		var pr := Rect2(px, py, w, 17)
+		c.draw_rect(pr, col.darkened(0.75))
+		c.draw_rect(pr, col.darkened(0.2), false, 1.0)
+		var ic: String = row.get("icon", "")
+		if ic == "":
+			ic = {"win": "bet", "loss": "bet", "mult": "red_streak", "cash": "cash", "push": "bet"}.get(row.kind, "bet")
+		Art.icon(c, ic, Vector2(px + 9, py + 8), 1)
+		Art.text(c, font, Vector2(px + 18, py + 12), amt, 8, col)
+		px += w + 4.0
 
 
 # --- Input ------------------------------------------------------------------------
 
 ## Zoom the felt so small targets (splits, corners) are big enough for a finger.
 func _zoom_enabled() -> bool:
+	if felt_view.size.x * ZOOM > P.W:   # the felt already fills the screen
+		return false
 	if portrait:   # the upright felt is already big enough to tap
 		return main.profile.settings.get("zoom_felt", false)
 	return main.profile.settings.get("zoom_felt", false) or DisplayServer.is_touchscreen_available()
@@ -941,6 +1014,7 @@ func _unzoom() -> void:
 
 
 func _on_bet_clicked(key: String, button: int) -> void:
+	_dismiss_score()
 	var run = main.run
 	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
 		return
@@ -1038,6 +1112,8 @@ func _on_spin() -> void:
 	var rigged: int = main.tutorial.rigged_pocket(run.felt.board) if main.tutorial_on() and main.tutorial.want() == "spin" else -99
 	main.tutorial_did("spin")
 	spinning = true
+	main.hide_card(true)
+	main.buzz("tick")
 	bet_history.clear()
 	spin_btn.disabled = true
 	selected_item = -1
@@ -1051,6 +1127,7 @@ func _on_spin() -> void:
 	wheel_view.spin_to(pocket, 0.7 if fast() else 1.9, pocket2)
 	await wheel_view.spin_done
 	Sfx.play("ball_drop")
+	main.buzz("place")
 	var ctx := {"before": run.table.take, "target": run.table.target, "spins_before": run.table.spins_left,
 		"stakes": run.felt.bet_stakes(), "layout": run.felt.chips.filter(func(c): return c.is_bet()).map(func(c): return [c.bet, c.value])}
 	var res: Dictionary = run.spin(pocket, pocket2)
@@ -1060,8 +1137,11 @@ func _on_spin() -> void:
 	if pocket2 != -99:
 		history.append(pocket2)
 	history_view.queue_redraw()
+	last_pocket = pocket
+	last_pocket2 = pocket2
 	await count.play(res, ctx)
 	_log(res)
+	score_hold = 3.5   # the result stays over the tray a moment, then the tray comes back
 	var cleared: bool = run.phase == RunState.Phase.SHOP or run.phase == RunState.Phase.VICTORY
 	if cleared and ctx.spins_before <= 1:
 		log_box.append_text("[color=#f2c14e][b]*** PAID ON THE LAST BALL ***[/b][/color]\n")

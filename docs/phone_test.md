@@ -24,7 +24,9 @@ this after any big UI change, on at least one iPhone (Safari) and one Android (C
 - [ ] Every button is comfortably tappable (nothing needs a fingernail).
 
 ## Feel
-- [ ] Android: a buzz on wins, big wins and placing chips (Options > Vibration turns it off).
+- [ ] Android: a buzz on SPIN, the ball landing, wins, big wins and placing chips (Options > Vibration turns it off).
+- [ ] iPhone (iOS 18 or newer): a light haptic tick at the same moments (a few for a big win). Older iPhones: nothing, and no errors.
+- [ ] Tap a House Rule, rack chip or Cage item: its card opens and stays open after you lift your finger. The next tap anywhere closes it.
 - [ ] The pay-off chance under the wheel updates without a stutter, on Twin Ball too.
 - [ ] Screen fit (Options) shrinks the game if the browser's bars cut it off.
 

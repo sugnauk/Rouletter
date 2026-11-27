@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth", "test_chip_faces", "test_pattern_placement",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -2070,3 +2070,84 @@ func test_story_beats() -> void:
 		ids_all[sc.id] = true
 	for v in Content.VENDORS:
 		check(Story.VENDOR_INTROS.has(v), "vendor %s has an intro" % v)
+
+
+func test_chip_faces() -> void:
+	var Art = load("res://scenes/ui/art.gd")
+	var P = load("res://scenes/ui/palette.gd")
+	var missing := []
+	var bad := []
+	var seen := {}
+	var dupes := []
+	for table in [Content.CHIPS, Content.UPGRADES]:
+		for id in table:
+			if not Art.MINI.has(id):
+				missing.append(id)
+				continue
+			var rows: Array = Art.MINI[id]
+			if rows.size() != 5 or rows.any(func(r): return r.length() != 5 \
+					or Array(r.split("")).any(func(ch): return ch != "." and not Art.SPRITE_COLOURS.has(ch))):
+				bad.append(id)
+			var key := "|".join(rows)
+			if seen.has(key):
+				dupes.append([id, seen[key]])
+			seen[key] = id
+	check(missing.is_empty(), "every chip and felt upgrade has a felt-size picture %s" % [missing])
+	check(bad.is_empty(), "felt pictures are 5x5 in sprite colours %s" % [bad])
+	check(dupes.is_empty(), "felt pictures are all different %s" % [dupes])
+	# Chip colours: every kind has its own, and none can pass for a bet chip.
+	var money := [P.CHIP_COLORS.bet, Color("#2f9e44"), Color("#1c7ed6"), P.RED, P.CREAM]
+	var uncoloured := []
+	var moneyish := []
+	for id in Content.CHIPS:
+		if id == "perm":
+			continue
+		if not P.CHIP_COLORS.has(id):
+			uncoloured.append(id)
+			continue
+		var c: Color = P.CHIP_COLORS[id]
+		for m in money:
+			if Vector3(c.r - m.r, c.g - m.g, c.b - m.b).length() < 0.12:
+				moneyish.append(id)
+				break
+	check(uncoloured.is_empty(), "every chip kind has its own colour %s" % [uncoloured])
+	check(moneyish.is_empty(), "no chip colour looks like a bet chip %s" % [moneyish])
+	check(P.CHIP_COLORS.snowball != P.CHIP_COLORS.bet, "Snowball isn't bet-chip cream")
+	var ucols := {}
+	var shared := []
+	for id in Content.UPGRADES:
+		var c: Color = P.UPGRADE_COLORS.get(id, Color.BLACK)
+		if not P.UPGRADE_COLORS.has(id) or ucols.has(c.to_html()):
+			shared.append(id)
+		ucols[c.to_html()] = id
+	check(shared.is_empty(), "every felt upgrade has its own strip colour %s" % [shared])
+
+
+func test_pattern_placement() -> void:
+	var run = new_run()
+	check(not run.can_place_chip("seventh_heaven", "S4"), "Seventh Heaven can't go on 4")
+	check(run.can_place_chip("seventh_heaven", "S17"), "Seventh Heaven goes on 17")
+	check(not run.can_place_chip("odd_fellow", "S2") and run.can_place_chip("odd_fellow", "S3"), "Odd Fellow only on odd numbers")
+	check(not run.can_place_chip("penthouse", "S18") and run.can_place_chip("penthouse", "S19"), "Penthouse only on the high half")
+	check(not run.can_place_chip("teen_idol", "S12") and run.can_place_chip("teen_idol", "S13"), "Teen Idol only on 13-19")
+	check(run.can_place_chip("doorbell", "S4"), "positional chips still go on any number")
+	check(Content.place_hint("seventh_heaven").contains("7, 17 or 27"), "place hint lists the numbers")
+	check(InfoCard.chip_detail("seventh_heaven").contains("straight bet"), "card says its number is also a bet")
+	check(InfoCard.chip_detail("doorbell").contains("other numbers"), "positional card says its bonus fires elsewhere")
+	# A board with none of its numbers (Mini Wheel, Teen Idol): any number will do.
+	var mini = new_run("mini")
+	check(Content.target_numbers("teen_idol", mini.felt.board).is_empty() and mini.can_place_chip("teen_idol", "S5"), "Teen Idol anywhere on the Mini Wheel")
+	# Every pattern chip has somewhere to go on every wheel.
+	var stuck := []
+	for w in Wheels.ORDER:
+		var r = new_run(w)
+		for kind in Content.CHIPS:
+			if Content.target_numbers(kind, r.felt.board).is_empty():
+				continue
+			if not r.felt.board.all_bet_keys().any(func(k): return r.can_place_chip(kind, k)):
+				stuck.append([w, kind])
+	check(stuck.is_empty(), "every pattern chip can be placed on every wheel %s" % [stuck])
+	# On its own number it scores both ways: the straight pay and its bonus.
+	var f = felt("european", [["seventh_heaven", "S7", 1]])
+	var res: Dictionary = Resolver.resolve_spin(f, 7)
+	check(res.take > 35.0, "Seventh Heaven on 7 pays the straight bet and its bonus (got %s)" % res.take)

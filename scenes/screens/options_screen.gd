@@ -9,7 +9,7 @@ const ITEMS := [
 	["cards", "Loading cards", "The themed cards between screens. Off switches screens instantly."],
 	["shake", "Screen shake", "Shake on big wins and busts."],
 	["speed", "Game speed", "Normal takes its time. Fast is brisk. Fastest also cuts the wheel spin and the count short. The >> button at the table (or F) switches it."],
-	["vibrate", "Vibration", "A little buzz on hits, big wins and placing chips, on phones that support it (most Androids; iPhones don't let web pages vibrate)."],
+	["vibrate", "Vibration", "A little buzz on hits, big wins and placing chips, on phones: Android vibrates; iPhones (iOS 18+) give a light haptic tick instead."],
 	["zoom_felt", "Tap-to-zoom felt", "Clicking the felt first zooms it in, so splits and corners are easy to hit. Always on for touch screens."],
 ]
 

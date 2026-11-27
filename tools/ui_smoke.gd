@@ -528,7 +528,13 @@ func _process(delta: float) -> void:
 		[62.5, func():
 			print("TUTORIAL: step ", main.tutorial.idx if main.tutorial != null else -1, " take ", main.run.table.take)
 			shot("55_tutorial_after_spin")],
-		[63.0, func(): get_tree().quit()],
+		[63.0, func(): _gallery()],
+		[65.0, func():
+			_close_dialogue()
+			shot("56_chip_gallery")
+			main.screens.table._on_hover("S5")],
+		[65.2, func(): shot("57_stacked_square")],
+		[65.5, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
 		plan[step][1].call()
@@ -536,6 +542,21 @@ func _process(delta: float) -> void:
 
 
 ## A real mouse event at `at` (viewport coords): pressed true/false, or null for a move.
+var touch_open := false
+var _touch_at := Vector2.ZERO
+
+
+## A finger on the glass: a screen touch in window coordinates, as a phone's browser sends it.
+func _touch(at: Vector2, pressed: bool) -> void:
+	if pressed:
+		_touch_at = at
+	var e := InputEventScreenTouch.new()
+	e.index = 0
+	e.pressed = pressed
+	e.position = get_viewport().get_final_transform() * (get_viewport().get_canvas_transform() * _touch_at)
+	Input.parse_input_event(e)
+
+
 func _mouse(at: Vector2, pressed) -> void:
 	var e: InputEvent
 	if pressed == null:
@@ -656,7 +677,46 @@ func _portrait_plan() -> Array:
 					main.screens[k].relayout(false)
 					main.screens[k].relayout(true)
 			print("ROTATE: OK")],
-		[17.2, func(): get_tree().quit()],
+		[17.2, func(): _gallery()],
+		[19.2, func():
+			_close_dialogue()
+			shot("p16_chip_gallery")
+			main.screens.table._on_hover("S5")],
+		[19.4, func():
+			shot("p17_stacked_square")
+			# Touch: a tapped card ignores hover-off, and the next press anywhere closes it.
+			var t := InputEventScreenTouch.new()
+			t.pressed = false
+			main._input(t)
+			main.hide_card(true)
+			main.screens.table._on_hover("S5")
+			main.hide_card()
+			var stays: bool = main.card.visible
+			t.pressed = true
+			main._input(t)   # the same tap that opened it: still open
+			var same_tap: bool = main.card.visible
+			main.card.shown_at -= 1000
+			main._input(t)   # a later press: closed
+			print("STICKY CARD: ", "OK" if stays and same_tap and not main.card.visible else "FAIL %s %s %s" % [stays, same_tap, main.card.visible])
+			var m := InputEventMouseMotion.new()
+			main._input(m)
+			print("MOUSE MODE: ", "OK" if not main.touch_mode else "FAIL")
+			# A real finger: tap a House Rule icon in the tray (through Input, with mouse emulation).
+			main.hide_card(true)
+			main.run.felt.house_rules.append("crowd_pleaser")
+			main.screens.table.refresh()],
+		[19.5, func():
+			var tok: Control = main.screens.table.rules_flow.get_child(main.screens.table.rules_flow.get_child_count() - 1)
+			_touch(tok.get_global_rect().get_center(), true)],
+		[19.55, func(): _touch(Vector2.ZERO, false)],
+		[19.7, func():
+			touch_open = main.card.visible
+			shot("p18_touch_card")
+			_touch(main.fx.get_global_transform() * Vector2(60, 300), true)],   # the next press, on an empty spot
+		[19.75, func(): _touch(Vector2.ZERO, false)],
+		[19.9, func():
+			print("TOUCH CARD: ", "OK" if touch_open and not main.card.visible and main.touch_mode else "FAIL open=%s after=%s touch=%s" % [touch_open, main.card.visible, main.touch_mode])],
+		[20.2, func(): get_tree().quit()],
 	]
 
 
@@ -695,6 +755,50 @@ func _empty_pocket(run) -> int:
 		if not covered:
 			return p
 	return 0
+
+
+## Every chip kind and felt upgrade laid out on one felt, with a bet chip beside a Snowball on 1,
+## to check each placed item reads differently at felt size.
+func _gallery() -> void:
+	main.end_tutorial()
+	main.start_run("european")
+	_close_dialogue()
+	var r = main.run
+	r.skip_table_offer()
+	for c in r.felt.perm_chips():
+		r.felt.remove(c.id)
+	r.inventory.clear()
+	r.felt.add_chip("snowball", "S1", 1)
+	r.place_bet("S1", 1)
+	var n := 0
+	for kind in Content.CHIPS:
+		if kind == "snowball":
+			continue
+		var best := ""
+		var low := 99
+		for k in r.felt.board.all_bet_keys():
+			if r.can_place_chip(kind, k):
+				var cnt: int = r.felt.chips_on(k).size()
+				if cnt < low:
+					low = cnt
+					best = k
+		if best != "":
+			r.felt.add_chip(kind, best, 3 if n % 5 == 0 else 1)
+			n += 1
+	var sq := 2
+	for up in Content.UPGRADES:
+		match Content.UPGRADES[up].target:
+			"outside":
+				r.felt.bet_upgrades["DOZ%d" % (1 + r.felt.bet_upgrades.size() % 3)] = up
+			"even":
+				r.felt.bet_upgrades[["RED", "BLACK", "ODD", "EVEN", "LOW", "HIGH"][r.felt.bet_upgrades.size() % 6]] = up
+			_:
+				r.felt.square_upgrades[sq] = up
+				sq += 2
+	# A crowded square: four items on 5 (three show, then a "+1").
+	for kind in ["magnet", "keystone", "echo", "compounding"]:
+		r.felt.add_chip(kind, "S5", 2)
+	main.screens.table.refresh()
 
 
 func shot(n: String) -> void:

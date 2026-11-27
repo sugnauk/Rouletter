@@ -611,6 +611,10 @@ func can_place_chip(kind: String, key: String) -> bool:
 		return can_bet_on(key) or (straight and not felt.boss_is("no_outside"))
 	if Content.CHIPS.get(kind, {}).get("line_only", false):
 		return felt.board.is_line_bet(key)
+	if straight:
+		var targets := Content.target_numbers(kind, felt.board)
+		if not targets.is_empty():
+			return Board.straight_number(key) in targets
 	return straight
 
 
