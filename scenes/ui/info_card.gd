@@ -36,7 +36,13 @@ func show_at(at: Vector2, d: Dictionary) -> void:
 			_wrap(para, font, P.DIM)
 	if str(d.get("foot", "")) != "":
 		_wrap(str(d.foot), font, d.get("foot_col", P.GOLD))
-	_h = PAD * 2 + 26 + _lines.size() * 10
+	# The other chips on the same square: a row each (icon, name, level), then what it does.
+	for o in d.get("others", []):
+		_lines.append(["", P.CREAM, o])
+		_wrap(str(o.body), font, P.CREAM)
+	_h = PAD * 2 + 26
+	for l in _lines:
+		_h += 18 if l.size() > 2 else 10
 	size = Vector2(W, _h)
 	var pos := at + Vector2(14, 10)
 	if pos.x + W > P.W - 4:
@@ -84,6 +90,14 @@ func _draw() -> void:
 	draw_string(font, Vector2(tx, PAD + 20), str(data.get("sub", "")), HORIZONTAL_ALIGNMENT_LEFT, W - tx - PAD, 8, P.CYAN)
 	var y := PAD + 26 + 9
 	for l in _lines:
+		if l.size() > 2:   # another chip on this square
+			var o: Dictionary = l[2]
+			draw_rect(Rect2(PAD, y - 6, W - PAD * 2, 1), Color(col, 0.35))
+			Art.icon(self, o.icon, Vector2(PAD + 6, y + 4), 1)
+			draw_string(font, Vector2(PAD + 16, y + 7), str(o.title).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, W - PAD * 2 - 16, 8, o.get("col", col))
+			draw_string(font, Vector2(W - PAD - font.get_string_size(str(o.sub), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, y + 7), str(o.sub), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, P.CYAN)
+			y += 18
+			continue
 		draw_string(font, Vector2(PAD, y), l[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 8, l[1])
 		y += 10
 
@@ -136,6 +150,16 @@ static func for_chip(c, run = null) -> Dictionary:
 		d.foot_col = P.CYAN
 		facts.append("NEW")
 		d.sub = "  ".join(facts)
+	return d
+
+
+## Every chip you own on one square: the first in full, the rest as rows under it.
+static func for_square(perms: Array, run = null) -> Dictionary:
+	var d := for_chip(perms[0], run)
+	if perms.size() > 1:
+		d.title = "%s  (+%d here)" % [d.title, perms.size() - 1]
+		d.others = perms.slice(1).map(func(c): return {"icon": c.kind, "title": Content.CHIPS[c.kind].name,
+			"sub": "LV %d" % c.value + ("  x%d" % c.copies if c.copies > 1 else ""), "body": Content.CHIPS[c.kind].desc, "col": _rar_col(c.kind)})
 	return d
 
 

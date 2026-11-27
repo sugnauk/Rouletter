@@ -3,6 +3,11 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.53
+- **Every chip on a crowded square shows.** Several chips on one number shrink a little and fan out so each one's face stays visible (up to three, counting a bet). Any more turn the last slot into a dark "+N" token.
+- **Hovering a square lists every chip on it,** not just one: the first in full, then a row for each of the others with its icon, name, level and what it does. This works on the table and in the Cage.
+- An item's level number is drawn after all the chips, so the next chip never covers it.
+
 ## 0.0.52
 - **Every item on the felt has its own face.** Each chip kind shows a small picture of its own (a snowflake for Snowball, a U magnet, a key, a ticket...) on a dark inlay, in its own colour.
   - Item chips have gold edge spots; bet chips keep cream ones, so a Snowball no longer looks like a 1 chip.

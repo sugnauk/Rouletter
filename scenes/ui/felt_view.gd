@@ -430,15 +430,26 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	var entries := []
 	if bet_total > 0:
 		entries.append({"col": Art.denom_color(bet_total), "kind": "bet", "value": bet_total, "frozen": false})
-	for c in perms.slice(0, 2):
+	# Up to three chips show (the bet counts as one); the rest are a "+N" tag.
+	var shown: int = mini(perms.size(), 3 - entries.size())
+	if perms.size() > shown:
+		shown -= 1   # the last slot becomes a "+N" token
+	var hidden: int = perms.size() - shown
+	for c in perms.slice(0, shown):
 		entries.append({"col": P.chip_color(c.kind), "kind": c.kind, "value": c.value, "frozen": c.id == run.felt.frozen_id, "mod": c.mod,
 			"fresh": run.fresh.has(str(c.id))})
+	if hidden > 0:
+		entries.append({"col": P.BLACK, "kind": "more", "value": hidden, "frozen": false})
 	var is_line := line_rects.has(k)
 	var rad := 6.0 if (is_line or _is_strip(r) or not Board.is_straight(k)) else 7.0
-	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
 	var n := entries.size()
-	var spacing := minf(2.0 * rad - 1.0, (r.size.x - 2.0 * rad - 2.0) / maxf(1.0, n - 1.0)) if not is_line else 6.0
-	spacing = maxf(spacing, 5.0)
+	if n > 1 and not is_line:
+		rad = 5.0   # several chips share the square: smaller, so every face stays in view
+	var scale: float = 1.0 + (pops.get(k, 0.0) * 1.6)
+	# Each chip overlaps the one before it by no more than its rim, so every face is visible.
+	var spacing := rad + 3.0 if n > 1 else 0.0
+	if is_line:
+		spacing = 6.0
 	var first: Vector2   # centre of the first chip; the rest fan out to the right
 	if is_line:
 		first = r.get_center() - Vector2((n - 1) * spacing / 2.0, 0)
@@ -458,6 +469,12 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 	for i in range(n):
 		var e: Dictionary = entries[i]
 		var p := (first + Vector2(i * spacing, 0)).floor()
+		if e.kind == "more":   # more chips than fit: hover the square for all of them
+			draw_circle(p, rad, Color("#120c0a"), true, -1.0, false)
+			draw_arc(p, rad, 0, TAU, 16, P.GOLD, 1.0, false)
+			var mt := "+%d" % e.value
+			draw_string(font, p + Vector2(-floor(font.get_string_size(mt, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT_SMALL).x / 2.0), 3), mt, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT_SMALL, P.GOLD)
+			continue
 		Art.chip(self, p, rad * scale, e.col, e.kind, 0, e.frozen)
 		if e.get("fresh", false):
 			# Placed since the last spin: still provisional, so a dashed cyan ring.
@@ -474,7 +491,13 @@ func _draw_chips(k: String, r: Rect2, font: Font) -> void:
 		if e.kind != "bet" and Content.rarity_of(e.kind) == "legendary":
 			var g := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 200.0)
 			draw_arc(p, rad + 1.5, 0, TAU, 16, Color(P.GOLD, 0.35 + 0.45 * g), 1.0, false)
+	# Second pass, so no chip covers another's number.
+	for i in range(n):
+		var e: Dictionary = entries[i]
+		var p := (first + Vector2(i * spacing, 0)).floor()
 		var v: int = e.value
+		if e.kind == "more":
+			continue
 		if v > 1 and e.kind != "bet":
 			# An item's level sits on its rim, so the picture on its face stays clear.
 			_tiny(font, p + Vector2(rad - 3, rad + 2), str(v) if v < 100 else "99+")

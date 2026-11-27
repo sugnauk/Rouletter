@@ -531,7 +531,9 @@ func _process(delta: float) -> void:
 		[63.0, func(): _gallery()],
 		[65.0, func():
 			_close_dialogue()
-			shot("56_chip_gallery")],
+			shot("56_chip_gallery")
+			main.screens.table._on_hover("S5")],
+		[65.2, func(): shot("57_stacked_square")],
 		[65.5, func(): get_tree().quit()],
 	]
 	while step < plan.size() and t >= plan[step][0]:
@@ -663,7 +665,9 @@ func _portrait_plan() -> Array:
 		[17.2, func(): _gallery()],
 		[19.2, func():
 			_close_dialogue()
-			shot("p16_chip_gallery")],
+			shot("p16_chip_gallery")
+			main.screens.table._on_hover("S5")],
+		[19.4, func(): shot("p17_stacked_square")],
 		[19.6, func(): get_tree().quit()],
 	]
 
@@ -743,6 +747,9 @@ func _gallery() -> void:
 			_:
 				r.felt.square_upgrades[sq] = up
 				sq += 2
+	# A crowded square: four items on 5 (three show, then a "+1").
+	for kind in ["magnet", "keystone", "echo", "compounding"]:
+		r.felt.add_chip(kind, "S5", 2)
 	main.screens.table.refresh()
 
 

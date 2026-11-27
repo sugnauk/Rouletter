@@ -923,9 +923,7 @@ func _on_felt_hover(k: String) -> void:
 	if perms.is_empty() or selected_item >= 0:
 		main.hide_card()
 		return
-	var d := InfoCard.for_chip(perms[0], main.run)
-	if perms.size() > 1:
-		d.body += "\nAlso here: " + ", ".join(perms.slice(1).map(func(c): return "%s x%d" % [Content.CHIPS[c.kind].name, c.value]))
+	var d := InfoCard.for_square(perms, main.run)
 	main.card_at_felt(felt_view, k, d)
 
 

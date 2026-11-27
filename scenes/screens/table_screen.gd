@@ -390,9 +390,7 @@ func _on_hover(k: String) -> void:
 	if perms.is_empty() or spinning or selected_item >= 0:
 		main.hide_card()
 	else:
-		var d := InfoCard.for_chip(perms[0], main.run)
-		if perms.size() > 1:
-			d.body += "\nAlso here: " + ", ".join(perms.slice(1).map(func(c): return "%s x%d" % [Content.CHIPS[c.kind].name, c.value]))
+		var d := InfoCard.for_square(perms, main.run)
 		main.card_at_felt(felt_view, k, d)
 	if k == "" or spinning:
 		_status(felt_view.describe(k) if k != "" else _hint())
