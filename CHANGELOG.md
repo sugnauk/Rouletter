@@ -3,6 +3,16 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.66
+- **You can see the home table's number is right.** The pockets on that wheel are only a couple of pixels wide, so the ball's pocket was impossible to read.
+  - The winning pocket now lights up gold on the wheel.
+  - The number hangs on a thin gold line straight down to the ball, to one side, clear of the croupier.
+  - The ball is a touch bigger, with a dark outline.
+  - The screenshot run still checks 40 rounds and confirms the pocket under the ball is the number shown.
+- **A real croupier holds the rake.** They stand just behind the far rail beside the wheel, facing you: green visor, white shirt, red bow tie, black jacket. Their arm reaches out and their hand holds the stick.
+  - The rake rests by their side, reaches down the table and rakes the losing chips back towards them.
+- **The rake never goes through the winner.** The losing stacks now sit together in one column the winner isn't in, and the rake sweeps only that lane. The winner is left alone and gets paid.
+
 ## 0.0.65
 - **The felt is a cloth shape now.**
   - The brown wooden frame behind it is gone, including the brown that filled the empty corners under the zero and beside the 2:1 column. The room shows through, and a soft shadow sits under the cloth.
