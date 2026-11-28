@@ -1,12 +1,18 @@
 extends Control
-## The Gilded Ace after midnight: damask wallpaper, a wainscot rail, pools of lamplight,
-## drifting smoke motes and a neon sign that occasionally buzzes. Purely decorative.
+## The Gilded Ace after midnight, out of focus: the same room as the home screen's live table,
+## seen past the screen you're using. A deep night gradient (ink blue up top, burgundy low down),
+## soft bokeh from the other tables and the bar, two lamp glows that breathe, smoke motes that
+## catch their light, and a vignette. It fills the whole window. Purely decorative.
 
 const P := preload("res://scenes/ui/palette.gd")
 
+const TOP := Color("#0b0e18")
+const LOW := Color("#1a0a10")
+
 var t := 0.0
 var motes: Array = []
-var lamps: Array = [Vector2(352, 70), Vector2(92, 110)]
+var bokeh: Array = []
+var lamps: Array = [Vector2(0.62, 0.12), Vector2(0.18, 0.2)]   ## as fractions of the window
 var sign_on := true
 
 
@@ -15,64 +21,60 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
-	for i in range(28):
-		motes.append({"p": Vector2(rng.randf() * 640, rng.randf() * 360), "v": rng.randf_range(2, 7), "ph": rng.randf() * TAU})
+	for i in range(30):
+		motes.append({"p": Vector2(rng.randf(), rng.randf()), "v": rng.randf_range(0.006, 0.02), "ph": rng.randf() * TAU})
+	var cols := [Color("#ffb347"), Color("#ff6b8b"), Color("#ffd98a"), Color("#ffb347"), Color("#7fb8ff")]
+	for i in range(34):
+		bokeh.append({"p": Vector2(rng.randf(), rng.randf_range(0.04, 0.7)), "r": rng.randf_range(4.0, 16.0),
+			"c": cols[rng.randi() % cols.size()], "ph": rng.randf() * TAU, "tw": rng.randf() < 0.3})
 
 
 func _process(delta: float) -> void:
 	t += delta
 	for m in motes:
 		m.p.y -= m.v * delta
-		m.p.x += sin(t * 0.7 + m.ph) * delta * 3.0
-		if m.p.y < -2:
-			m.p.y = 362
+		m.p.x += sin(t * 0.7 + m.ph) * delta * 0.004
+		if m.p.y < -0.01:
+			m.p.y = 1.01
 	sign_on = not (fmod(t, 7.3) > 6.9 and fmod(t * 20.0, 2.0) > 1.0)
 	queue_redraw()
 
 
 func _draw() -> void:
-	# The 640x360 design is centred; the wall and floor run on past it to fill any extra window space.
-	var off := ((size - Vector2(640, 360)) / 2.0).floor()
-	draw_set_transform(off)
-	var ex := off.x + 16.0
-	var ey := off.y + 16.0
-	var wall := Color("#140d0f")
-	draw_rect(Rect2(-off.x, -off.y, size.x, 300 + off.y), wall)
-	# Damask diamonds.
-	var pat := wall.lightened(0.035)
-	for y in range(-int(ceil(ey / 16.0)) * 16, 300, 16):
-		for x in range(-int(ceil(ex / 16.0)) * 16, 640 + int(ex), 16):
-			var o := 8 if posmod(y / 16, 2) == 1 else 0
-			var c := Vector2(x + o, y + 8)
-			draw_rect(Rect2(c - Vector2(1, 3), Vector2(2, 6)), pat)
-			draw_rect(Rect2(c - Vector2(3, 1), Vector2(6, 2)), pat)
-	# Wainscot and floor.
-	draw_rect(Rect2(-off.x, 300, size.x, 60 + off.y), Color("#1d120c"))
-	draw_rect(Rect2(-off.x, 300, size.x, 2), P.WOOD)
-	for x in range(-int(ceil(off.x / 40.0)) * 40, 640 + int(off.x), 40):
-		draw_rect(Rect2(x + 4, 308, 32, 46 + off.y), Color("#24170f"))
-	# Lamplight pools (banded, like dithered 16-bit lighting).
+	var W := size.x
+	var H := size.y
+	# The night gradient, in bands so it stays pixel-crisp.
+	var bands := 14
+	for i in range(bands):
+		var col := TOP.lerp(LOW, float(i) / (bands - 1))
+		draw_rect(Rect2(0, floor(H * i / bands), W, ceil(H / bands) + 1), col)
+	# Lamp glows overhead, breathing slowly.
 	for li in range(lamps.size()):
-		var l: Vector2 = lamps[li]
-		var breathe := 1.0 + 0.18 * sin(t * 0.6 + li * 2.1)   # the lamps breathe, slowly
+		var l: Vector2 = lamps[li] * size
+		var breathe := 1.0 + 0.2 * sin(t * 0.6 + li * 2.1)
 		for i in range(5):
-			var rr := 150.0 - i * 26.0
-			draw_circle(l, rr, Color(1.0, 0.78, 0.45, (0.02 + i * 0.007) * breathe), true, -1.0, false)
-	# Smoke motes.
+			draw_circle(l, 170.0 - i * 30.0, Color(1.0, 0.76, 0.45, (0.014 + i * 0.006) * breathe), true, -1.0, false)
+	# Bokeh: the other tables and the bar, far away and out of focus.
+	for b in bokeh:
+		var a: float = 0.07 + (0.05 * sin(t * 1.1 + b.ph) if b.tw else 0.0)
+		var c: Vector2 = b.p * size
+		draw_circle(c, b.r, Color(b.c, a * 0.6), true, -1.0, false)
+		draw_circle(c, b.r * 0.72, Color(b.c, a), true, -1.0, false)
+		draw_circle(c, b.r * 0.4, Color(b.c, a * 0.8), true, -1.0, false)
+	# Smoke motes, brighter where the lamps catch them.
 	for m in motes:
-		# Motes catch the light: brighter near a lamp.
+		var mp: Vector2 = m.p * size
 		var near := 0.0
 		for l in lamps:
-			near = maxf(near, 1.0 - clampf(m.p.distance_to(l) / 160.0, 0.0, 1.0))
-		draw_rect(Rect2(m.p.round(), Vector2(1, 1)), Color(1, 0.88, 0.65, 0.10 + 0.25 * near))
+			near = maxf(near, 1.0 - clampf(mp.distance_to(l * size) / 170.0, 0.0, 1.0))
+		draw_rect(Rect2(mp.round(), Vector2(1, 1)), Color(1, 0.88, 0.65, 0.08 + 0.28 * near))
 	# A soft vignette pulls the eye to the middle (banded, to stay pixel-crisp).
-	draw_set_transform(Vector2.ZERO)
 	for i in range(6):
-		var a := 0.13 - i * 0.02
-		draw_rect(Rect2(0, 0, size.x, (6 - i) * 4.0), Color(0, 0, 0, a))
-		draw_rect(Rect2(0, size.y - (6 - i) * 4.0, size.x, (6 - i) * 4.0), Color(0, 0, 0, a))
-		draw_rect(Rect2(0, 0, (6 - i) * 5.0, size.y), Color(0, 0, 0, a))
-		draw_rect(Rect2(size.x - (6 - i) * 5.0, 0, (6 - i) * 5.0, size.y), Color(0, 0, 0, a))
+		var a := 0.16 - i * 0.025
+		draw_rect(Rect2(0, 0, W, (6 - i) * 5.0), Color(0, 0, 0, a))
+		draw_rect(Rect2(0, H - (6 - i) * 5.0, W, (6 - i) * 5.0), Color(0, 0, 0, a))
+		draw_rect(Rect2(0, 0, (6 - i) * 6.0, H), Color(0, 0, 0, a))
+		draw_rect(Rect2(W - (6 - i) * 6.0, 0, (6 - i) * 6.0, H), Color(0, 0, 0, a))
 
 
 ## Small neon sign, drawn by screens that have room for it.

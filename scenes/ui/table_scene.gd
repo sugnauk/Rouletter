@@ -1,7 +1,8 @@
 extends Control
 ## The home screen's live table: a roulette table seen over the shoulder, in chunky pixel 3D.
-## Everything is drawn in code into a small SubViewport (320x180, or 180x150 on a phone held
-## upright) and shown at 2x with nearest filtering, so it reads as low-res pixel art.
+## Everything is drawn in code into a SubViewport at the game's own pixel size (one scene pixel
+## per UI pixel) and shown with nearest filtering, so it reads as pixel art. It fills the whole
+## window (main.gd hosts it behind the game frame), with no letterbox borders.
 ##
 ## A simple pinhole camera (proj) looks down the felt to the wheel at the far end. Every ~9s:
 ## the wheel spins and the ball drops into a pocket, a marker pops over the wheel, the winning
@@ -30,6 +31,10 @@ var order: Array = []
 var t := 0.0
 var res := Vector2i(320, 180)
 var focus_x := 0.68           ## where the table sits across the picture (0..1)
+var focus_y := 0.36           ## the horizon, down the picture (0..1)
+var k := 1.0                  ## pixel sizes scale with the render (1 = a 320x180 picture)
+var sway := 1.0               ## how far the camera drifts (less on a phone held upright)
+var tall := false             ## laid out for a phone held upright (the title's logo sits up top)
 var _cam := Vector3.ZERO
 var _f := 150.0
 var _bokeh: Array = []
@@ -66,19 +71,35 @@ func _ready() -> void:
 			"c": [Color("#ffb347"), Color("#ff6b6b"), Color("#ffd98a"), Color("#7fd1ff")][rng.randi() % 4], "ph": rng.randf() * TAU})
 	for i in range(22):
 		_motes.append({"x": rng.randf(), "y": rng.randf(), "v": rng.randf_range(0.01, 0.03), "ph": rng.randf() * TAU})
-	set_size_px(Vector2(640, 360), Vector2i(320, 180), 0.68)
+	fill(Vector2(640, 360), Rect2(0, 0, 640, 360), 1.0, false)
 
 
-## Show the scene at `px` on screen, rendered at `r` pixels (2x upscale), table at `fx` across.
-func set_size_px(px: Vector2, r: Vector2i, fx: float) -> void:
+## Fill `px` (the whole window, in window units). `frame` is where the game's play area sits in
+## it and `scale` its zoom: the scene renders one pixel per game pixel, and frames the table to
+## the play area (right of the menu in landscape; centred in the upper half on a phone held upright).
+func fill(px: Vector2, frame: Rect2, scale: float, tall: bool) -> void:
+	var rs: float = 1.0 / maxf(0.1, scale)
+	var r := Vector2i(maxi(64, int(ceil(px.x * rs))), maxi(64, int(ceil(px.y * rs))))
+	var fr := Rect2(frame.position * rs, frame.size * rs)   # the play area, in scene pixels
 	res = r
-	focus_x = fx
 	vp.size = r
 	canvas.size = Vector2(r)
 	size = px
 	shown.size = px
 	shown.position = Vector2.ZERO
-	_f = r.y * 1.05
+	self.tall = tall
+	if tall:
+		focus_x = (fr.position.x + fr.size.x * 0.5) / r.x
+		focus_y = (fr.position.y + fr.size.y * 0.17) / r.y
+		sway = 0.35
+		_f = fr.size.x * 0.8
+		k = fr.size.x / 180.0
+	else:
+		focus_x = (fr.position.x + fr.size.x * 0.66) / r.x
+		focus_y = (fr.position.y + fr.size.y * 0.36) / r.y
+		sway = 1.0
+		_f = fr.size.y * 1.05
+		k = fr.size.y / 180.0
 
 
 func _process(delta: float) -> void:
@@ -117,7 +138,7 @@ func _new_round(rnd: int) -> void:
 func proj(p: Vector3) -> Vector2:
 	var r := p - _cam
 	var d := maxf(0.25, r.z)
-	return Vector2(res.x * focus_x + _f * r.x / d, res.y * 0.36 - _f * r.y / d)
+	return Vector2(res.x * focus_x + _f * r.x / d, res.y * focus_y - _f * r.y / d)
 
 
 func _depth(p: Vector3) -> float:
@@ -137,12 +158,21 @@ func _disc(c: Vector3, r: float, col: Color, segs: int = 12) -> void:
 	canvas.draw_colored_polygon(pts, col)
 
 
+## A thin ring lying on the table (the wheel's brass rims).
+func _ring(c: Vector3, r: float, col: Color, segs: int = 40) -> void:
+	var pts := PackedVector2Array()
+	for i in range(segs + 1):
+		var a := TAU * i / segs
+		pts.append(proj(c + Vector3(cos(a) * r, 0, sin(a) * r)))
+	canvas.draw_polyline(pts, col, maxf(1.0, k * 0.6))
+
+
 # --- Drawing ------------------------------------------------------------------------------
 
 func _draw_scene() -> void:
 	var W := float(res.x)
 	var H := float(res.y)
-	_cam = Vector3(0.3 * sin(t * 0.13), 2.25 + 0.08 * sin(t * 0.21), -0.6 + 0.25 * sin(t * 0.09))
+	_cam = Vector3(0.3 * sway * sin(t * 0.13), 2.25 + 0.08 * sin(t * 0.21), -0.6 + 0.25 * sway * sin(t * 0.09))
 	var ph: float = fmod(t, LOOP)
 	_draw_room(W, H)
 	_draw_table(ph)
@@ -153,25 +183,18 @@ func _draw_scene() -> void:
 	_draw_front(W, H)
 
 
-## The room behind: warm dark wall bands, out-of-focus lights, a faint neon sign.
+## The room behind: warm dark wall bands and out-of-focus lights (the logo names the place).
 func _draw_room(W: float, H: float) -> void:
-	var bands := [Color("#120a0a"), Color("#170d0c"), Color("#1c100d"), Color("#21130f"), Color("#1a0f0c")]
-	for i in range(bands.size()):
-		canvas.draw_rect(Rect2(0, H * i / bands.size(), W, H / bands.size() + 1), bands[i])
+	# The same night as every other screen's backdrop: ink blue up top, burgundy low down.
+	var nb := 12
+	for i in range(nb):
+		var col := Color("#0b0e18").lerp(Color("#1a0a10"), float(i) / (nb - 1))
+		canvas.draw_rect(Rect2(0, floor(H * i / nb), W, ceil(H / nb) + 1), col)
 	for b in _bokeh:
 		var a := 0.16 + 0.08 * sin(t * 0.8 + b.ph)
 		var c := Vector2(b.x * W, b.y * H)
-		canvas.draw_circle(c, b.r, Color(b.c, a * 0.5), true, -1.0, false)
-		canvas.draw_circle(c, b.r * 0.6, Color(b.c, a), true, -1.0, false)
-	var on: bool = not (fmod(t, 6.1) > 5.8 and fmod(t * 18.0, 2.0) > 1.0)
-	var sx := W * focus_x
-	var font := P.font()
-	var txt := "GILDED ACE"
-	var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-	var col := Color("#ff7aa8") if on else Color("#5a2a3a")
-	if on:
-		canvas.draw_rect(Rect2(sx - tw / 2.0 - 4, 6, tw + 8, 13), Color(col, 0.10))
-	canvas.draw_string(font, Vector2(sx - tw / 2.0, 16), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, Color(col, 0.75))
+		canvas.draw_circle(c, b.r * k, Color(b.c, a * 0.5), true, -1.0, false)
+		canvas.draw_circle(c, b.r * k * 0.6, Color(b.c, a), true, -1.0, false)
 
 
 ## The table: rail, felt, the betting grid with its numbers' colours, and lamplight on the felt.
@@ -213,12 +236,12 @@ func _draw_lamps() -> void:
 		var top := proj(Vector3(sw, 6.0, lz))
 		var at := Vector3(sw, 3.4, lz)
 		var s := proj(at)
-		canvas.draw_line(top, s, Color("#0a0606"), 1.0)
+		canvas.draw_line(top, s, Color("#0a0606"), maxf(1.0, k * 0.7))
 		var w: float = _f * 0.55 / _depth(at)
-		var h: float = maxf(3.0, w * 0.45)
+		var h: float = maxf(3.0 * k, w * 0.45)
 		canvas.draw_colored_polygon(PackedVector2Array([s + Vector2(-w * 0.35, 0), s + Vector2(w * 0.35, 0), s + Vector2(w * 0.6, h), s + Vector2(-w * 0.6, h)]), Color("#1f5a3a"))
-		canvas.draw_rect(Rect2(s.x - w * 0.6, s.y + h - 1, w * 1.2, 1), Color("#3d8a5c"))
-		canvas.draw_rect(Rect2(s.x - w * 0.45, s.y + h, w * 0.9, 1), Color(1.0, 0.92, 0.65, 0.9))
+		canvas.draw_rect(Rect2(s.x - w * 0.6, s.y + h - k, w * 1.2, k), Color("#3d8a5c"))
+		canvas.draw_rect(Rect2(s.x - w * 0.45, s.y + h, w * 0.9, k), Color(1.0, 0.92, 0.65, 0.9))
 		# The cone of light down to the felt.
 		var f1 := proj(Vector3(sw - 1.3, 0.0, lz))
 		var f2 := proj(Vector3(sw + 1.3, 0.0, lz))
@@ -235,8 +258,10 @@ func _draw_wheel(ph: float) -> void:
 	else:
 		wa = 2.4 * 4.0 - 0.25 * 16.0 + (ph - 4.0) * 0.25
 	wa += _round * 1.3
-	_disc(c + Vector3(0, -0.02, 0), 2.35, WOOD_DARK, 24)
-	_disc(c, 2.2, WOOD, 28)
+	_disc(c + Vector3(0, -0.02, 0), 2.35, WOOD_DARK, 40)
+	_disc(c, 2.2, WOOD, 40)
+	_disc(c + Vector3(0, 0.004, 0), 2.0, WOOD.darkened(0.3), 40)   # the ball track
+	_ring(c + Vector3(0, 0.006, 0), 2.2, Color("#c9a050"))          # a brass rim
 	var n := order.size()
 	for i in range(n):
 		var a0 := wa + TAU * i / n
@@ -245,15 +270,23 @@ func _draw_wheel(ph: float) -> void:
 		var col: Color = GREEN if p <= 0 else (RED if board.is_red(p) else BLACK)
 		_quad(c + Vector3(cos(a0) * 1.3, 0.01, sin(a0) * 1.3), c + Vector3(cos(a1) * 1.3, 0.01, sin(a1) * 1.3),
 			c + Vector3(cos(a1) * 1.88, 0.01, sin(a1) * 1.88), c + Vector3(cos(a0) * 1.88, 0.01, sin(a0) * 1.88), col)
-	_disc(c + Vector3(0, 0.02, 0), 1.3, Color("#4a2e18"), 20)
-	_disc(c + Vector3(0, 0.03, 0), 0.7, Color("#6b4423"), 14)
-	# The turret: a chrome post with a glint that turns with the wheel.
+		# Frets: thin brass dividers between the pockets.
+		canvas.draw_line(proj(c + Vector3(cos(a0) * 1.3, 0.02, sin(a0) * 1.3)), proj(c + Vector3(cos(a0) * 1.88, 0.02, sin(a0) * 1.88)), Color("#b8924a"), 1.0)
+	_ring(c + Vector3(0, 0.015, 0), 1.88, Color("#c9a050"))
+	_disc(c + Vector3(0, 0.02, 0), 1.3, Color("#4a2e18"), 32)
+	_ring(c + Vector3(0, 0.025, 0), 1.3, Color("#8a6a3a"))
+	_disc(c + Vector3(0, 0.03, 0), 0.7, Color("#6b4423"), 24)
+	# The turret: a chrome post whose four arms turn with the wheel, catching the light.
 	var tb := proj(c + Vector3(0, 0.03, 0))
 	var tt := proj(c + Vector3(0, 0.6, 0))
-	canvas.draw_line(tb, tt, Color("#c9ccd6"), 2.0)
-	var g := proj(c + Vector3(cos(wa) * 0.3, 0.3, sin(wa) * 0.3))
-	canvas.draw_line(tt, g, Color("#e6e9f0"), 1.0)
-	canvas.draw_rect(Rect2(tt - Vector2(1, 1), Vector2(2, 2)), Color.WHITE)
+	canvas.draw_line(tb, tt, Color("#c9ccd6"), maxf(2.0, 1.5 * k))
+	for arm in range(4):
+		var aa := wa + arm * TAU / 4.0
+		var tip := proj(c + Vector3(cos(aa) * 0.55, 0.32, sin(aa) * 0.55))
+		var mid := proj(c + Vector3(0, 0.36, 0))
+		canvas.draw_line(mid, tip, Color("#e6e9f0") if sin(aa) < 0.0 else Color("#8d909a"), maxf(1.0, k * 0.8))
+		canvas.draw_circle(tip, maxf(1.0, k * 0.9), Color("#f4f6fb"), true, -1.0, false)
+	canvas.draw_circle(tt, maxf(1.0, k), Color.WHITE, true, -1.0, false)
 	# The ball: round the rim against the spin, spiralling in, then riding its pocket.
 	var bp: Vector3
 	var win_i: int = order.find(_win)
@@ -271,19 +304,23 @@ func _draw_wheel(ph: float) -> void:
 		var a2 := wa + TAU * (win_i + 0.5) / n
 		bp = c + Vector3(cos(a2) * 1.6, 0.06, sin(a2) * 1.6)
 	var bs := proj(bp)
-	canvas.draw_rect(Rect2(bs - Vector2(1, 1), Vector2(3, 2)), Color("#f4f1e8"))
-	canvas.draw_rect(Rect2(bs - Vector2(1, 1), Vector2(1, 1)), Color.WHITE)
+	var br: float = maxf(1.2, 1.3 * k)
+	canvas.draw_circle(bs + Vector2(0, br * 0.6), br, Color(0, 0, 0, 0.45), true, -1.0, false)   # its shadow
+	canvas.draw_circle(bs, br, Color("#f4f1e8"), true, -1.0, false)
+	canvas.draw_rect(Rect2(bs - Vector2(br * 0.5, br * 0.6), Vector2(maxf(1.0, k * 0.6), maxf(1.0, k * 0.6))), Color.WHITE)
 	# The result marker pops up over the wheel once the ball has settled.
 	if ph > 4.2 and ph < 8.6:
 		var up := proj(c + Vector3(0, 1.5 + 0.1 * sin(t * 4.0), 0))
 		var mc: Color = GREEN if _win <= 0 else (RED if board.is_red(_win) else BLACK)
 		var font := P.font()
 		var lab := str(_win)
-		var lw := font.get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
-		var box := Rect2(up.x - lw / 2.0 - 3, up.y - 7, lw + 6, 11)
-		canvas.draw_rect(box.grow(1), P.GOLD)
+		var fs: int = 8 * maxi(1, int(round(k)))
+		var lw := font.get_string_size(lab, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var pad: float = 3.0 * k
+		var box := Rect2(up.x - lw / 2.0 - pad, up.y - fs, lw + pad * 2.0, fs + pad)
+		canvas.draw_rect(box.grow(maxf(1.0, k * 0.7)), P.GOLD)
 		canvas.draw_rect(box, mc)
-		canvas.draw_string(font, Vector2(box.position.x + 3, box.position.y + 9), lab, HORIZONTAL_ALIGNMENT_LEFT, -1, 8, P.CREAM)
+		canvas.draw_string(font, Vector2(box.position.x + pad, box.end.y - pad * 0.7), lab, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, P.CREAM)
 
 
 func _square_centre(n: int) -> Vector3:
@@ -308,16 +345,18 @@ func _draw_chips(ph: float) -> void:
 			h += int(clampf((ph - 6.8) / 0.12, 0.0, 6.0))   # the payout piles on
 		for i in range(h):
 			var q := p + Vector3(0, 0.07 * i, 0)
-			_disc(q + Vector3(0, -0.02, 0), 0.2, Color(s.col.darkened(0.55), fade), 10)
-			_disc(q, 0.2, Color(s.col, fade), 10)
-			var e1 := proj(q + Vector3(-0.2, 0, 0))
-			canvas.draw_rect(Rect2(e1 + Vector2(1, 0), Vector2(1, 1)), Color(1, 1, 1, 0.6 * fade))
+			_disc(q + Vector3(0, -0.02, 0), 0.2, Color(s.col.darkened(0.55), fade), 16)
+			_disc(q, 0.2, Color(s.col, fade), 16)
+			# Edge spots: the white inserts every casino chip has.
+			for sp in [-0.2, 0.2, 0.0]:
+				var e1 := proj(q + Vector3(sp, 0, -0.19 if sp == 0.0 else 0.0))
+				canvas.draw_rect(Rect2(e1 - Vector2(0, k * 0.5), Vector2(maxf(1.0, k), maxf(1.0, k * 0.6))), Color(1, 1, 1, 0.55 * fade))
 		var top := p + Vector3(0, 0.07 * h, 0)
-		_disc(top, 0.12, Color(s.col.lightened(0.3), fade), 8)
+		_disc(top, 0.12, Color(s.col.lightened(0.3), fade), 12)
 		if s.win and ph > 4.2 and ph < 8.5:
 			var ts := proj(top + Vector3(0, 0.15, 0))
 			var g := 0.5 + 0.5 * sin(t * 8.0)
-			canvas.draw_rect(Rect2(ts - Vector2(0, 2 + g * 2), Vector2(1, 1)), Color(P.GOLD, 0.8))
+			canvas.draw_rect(Rect2(ts - Vector2(0, (2 + g * 2) * k), Vector2(maxf(1.0, k), maxf(1.0, k))), Color(P.GOLD, 0.8))
 
 
 ## Where the rake head is along the table (99 = not out).
@@ -337,27 +376,27 @@ func _draw_rake(ph: float) -> void:
 	var hand := Vector3(2.9, 1.0, head_z - 1.6 + (1.0 - reach) * 0.8)
 	var hs := proj(head)
 	var hn := proj(hand)
-	canvas.draw_line(hs, hn, Color("#c8a46a"), 1.0)
+	canvas.draw_line(hs, hn, Color("#c8a46a"), maxf(1.0, k * 0.8))
 	var a := proj(head + Vector3(-0.45, 0, 0))
 	var b := proj(head + Vector3(0.45, 0, 0))
-	canvas.draw_line(a, b, Color("#d8b47a"), 2.0)
+	canvas.draw_line(a, b, Color("#d8b47a"), maxf(2.0, k * 1.4))
 	# Sleeve: a black dinner jacket with a white cuff, coming in off the right edge.
-	var elbow := Vector2(res.x - 14, hn.y + 18)
+	var elbow := Vector2(res.x - 14 * k, hn.y + 18 * k)
 	var jacket := Color("#14111a")
-	canvas.draw_colored_polygon(PackedVector2Array([hn + Vector2(1, -3), hn + Vector2(5, 3), elbow + Vector2(6, 8), elbow + Vector2(-5, -2)]), jacket)
-	canvas.draw_colored_polygon(PackedVector2Array([elbow + Vector2(-5, -2), elbow + Vector2(6, 8), Vector2(res.x + 2, res.y * 0.9), Vector2(res.x + 2, elbow.y - 10)]), jacket)
-	canvas.draw_line(hn + Vector2(1, -3), elbow + Vector2(-5, -2), Color("#2a2433"), 1.0)
-	canvas.draw_rect(Rect2(hn - Vector2(2, 3), Vector2(5, 5)), Color("#e8e0d0"))
-	canvas.draw_rect(Rect2(hn - Vector2(3, 1), Vector2(3, 3)), Color("#d9a47a"))
+	canvas.draw_colored_polygon(PackedVector2Array([hn + Vector2(1, -3) * k, hn + Vector2(5, 3) * k, elbow + Vector2(6, 8) * k, elbow + Vector2(-5, -2) * k]), jacket)
+	canvas.draw_colored_polygon(PackedVector2Array([elbow + Vector2(-5, -2) * k, elbow + Vector2(6, 8) * k, Vector2(res.x + 2, res.y * 0.9), Vector2(res.x + 2, elbow.y - 10 * k)]), jacket)
+	canvas.draw_line(hn + Vector2(1, -3) * k, elbow + Vector2(-5, -2) * k, Color("#2a2433"), maxf(1.0, k * 0.6))
+	canvas.draw_rect(Rect2(hn - Vector2(2, 3) * k, Vector2(5, 5) * k), Color("#e8e0d0"))
+	canvas.draw_rect(Rect2(hn - Vector2(3, 1) * k, Vector2(3, 3) * k), Color("#d9a47a"))
 
 
 ## Foreground: the near rail out of focus, smoke, and a soft vignette.
 func _draw_front(W: float, H: float) -> void:
 	for m in _motes:
 		var a := 0.10 + 0.08 * sin(t * 1.3 + m.ph)
-		canvas.draw_rect(Rect2(m.x * W + sin(t * 0.5 + m.ph) * 3.0, m.y * H, 1, 1), Color(WARM, a))
+		canvas.draw_rect(Rect2(m.x * W + sin(t * 0.5 + m.ph) * 3.0 * k, m.y * H, maxf(1.0, k * 0.7), maxf(1.0, k * 0.7)), Color(WARM, a))
 	for i in range(6):
 		var a := 0.32 - i * 0.05
-		canvas.draw_rect(Rect2(0, i * 2, W, 2), Color(0, 0, 0, a))
-		canvas.draw_rect(Rect2(0, H - (i + 1) * 3, W, 3), Color(0, 0, 0, a))
-		canvas.draw_rect(Rect2(W - (i + 1) * 3, 0, 3, H), Color(0, 0, 0, a * 0.7))
+		canvas.draw_rect(Rect2(0, i * 2 * k, W, 2 * k), Color(0, 0, 0, a))
+		canvas.draw_rect(Rect2(0, H - (i + 1) * 3 * k, W, 3 * k), Color(0, 0, 0, a))
+		canvas.draw_rect(Rect2(W - (i + 1) * 3 * k, 0, 3 * k, H), Color(0, 0, 0, a * 0.7))

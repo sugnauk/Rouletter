@@ -6,6 +6,7 @@ const P := preload("res://scenes/ui/palette.gd")
 const Tutorial := preload("res://core/tutorial.gd")
 const DialogueBox := preload("res://scenes/ui/dialogue_box.gd")
 const Backdrop := preload("res://scenes/ui/backdrop.gd")
+const TableScene := preload("res://scenes/ui/table_scene.gd")
 const FxLayer := preload("res://scenes/ui/fx.gd")
 const Transition := preload("res://scenes/ui/transition.gd")
 const PauseMenu := preload("res://scenes/ui/pause_menu.gd")
@@ -32,6 +33,7 @@ const SCREENS := {
 var run
 var profile
 var frame: Control  ## the fixed 640x360 play area, centred in whatever window we get
+var home_scene      ## the live table behind the home screen, filling the whole window
 var stage: Control
 var screens: Dictionary = {}
 var current: String = ""
@@ -65,6 +67,9 @@ func _ready() -> void:
 		run = RunState.new()
 		profile = Profile.new()
 	add_child(Backdrop.new())
+	home_scene = TableScene.new()
+	home_scene.visible = false
+	add_child(home_scene)
 	frame = Control.new()
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.size = Vector2(640, 360)
@@ -149,6 +154,8 @@ func _recenter() -> void:
 	var x: float = vis_pos.x + (vis_size.x - used.x) / 2.0
 	var y: float = vis_pos.y + ((vis_size.y - used.y) / 2.0 if not (clipped or fit < 0.999) else 0.0)
 	frame.position = Vector2(x, y).floor()
+	if home_scene != null:
+		home_scene.fill(size, Rect2(frame.position, dim * s), s, P.portrait)
 
 
 ## Does the screen on show have a portrait layout yet? (Screens without one keep landscape.)
@@ -202,6 +209,8 @@ func show_screen(n: String) -> void:
 		s.visible = false
 	var changed: bool = current != n
 	current = n
+	if home_scene != null:
+		home_scene.visible = n == "title"
 	if card != null:
 		card.hide_card()
 	if changed and veil != null and not fast_ui and speed() < Profile.SPEEDS.size() - 1:

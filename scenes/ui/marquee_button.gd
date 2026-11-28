@@ -18,11 +18,20 @@ const BRASS := Color("#8a6a3a")
 var accent: Color = P.GOLD     ## trim / lit-bulb colour (a "hero" button can use another)
 var pulse := false             ## the trim breathes gently even when not hovered
 var marquee := false           ## light bulbs round the border (hero buttons only)
+var link := false              ## a text link (the home menu): no face, a gold underline and chip on hover
 var _t := 0.0
 var _flash := 0.0
 
 
+var _hover_at := 0.0
+
+
+func _t_hover() -> float:
+	return _t - _hover_at
+
+
 func _ready() -> void:
+	mouse_entered.connect(func(): _hover_at = _t)
 	button_down.connect(func():
 		_flash = 1.0
 		queue_redraw())
@@ -37,7 +46,7 @@ func _process(delta: float) -> void:
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta * 4.0)
 	# Redraw only while something moves: a press flash, a pulse, hover, or a marquee's twinkle.
-	if _flash > 0.0 or pulse or (marquee and (is_hovered() or int(_t * 8.0) % 4 == 0)):
+	if _flash > 0.0 or pulse or (marquee and (is_hovered() or int(_t * 8.0) % 4 == 0)) or (link and is_hovered()):
 		queue_redraw()
 
 
@@ -45,6 +54,17 @@ func _draw() -> void:
 	var r := Rect2(Vector2.ZERO, size)
 	var hot: bool = is_hovered() and not disabled
 	var down: bool = button_pressed or _flash > 0.5
+	if link:
+		# Text link: on hover a chip slides up beside it and a gold underline draws across.
+		if hot:
+			var cy: float = floor(size.y / 2.0)
+			var grow: float = clampf(_t_hover() * 6.0, 0.0, 1.0)
+			draw_circle(Vector2(5, cy), 3.5, accent.darkened(0.5), true, -1.0, false)
+			draw_circle(Vector2(5, cy - 1), 3.5, accent, true, -1.0, false)
+			draw_circle(Vector2(5, cy - 1), 1.5, accent.darkened(0.35), true, -1.0, false)
+			var tw: float = get_theme_font("font").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, get_theme_font_size("font_size")).x
+			draw_rect(Rect2(14, size.y - 3, floor(tw * grow), 1), accent)
+		return
 	if marquee:
 		var trim: Color = BULB_OFF if disabled else (accent if hot or pulse else accent.darkened(0.45))
 		if pulse and not hot and not disabled:
