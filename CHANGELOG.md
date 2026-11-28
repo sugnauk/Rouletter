@@ -3,6 +3,22 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.63
+- **The home table's number now matches the ball.**
+  - **The cause:** the landing pocket was worked out with integer maths on an angle (`posmod` instead of `fposmod`), so the marker could name a different pocket from the one the ball sat in.
+  - **Fixed and smoother:** the ball is now placed relative to the wheel. It slows against the pockets to a stop as it drops in, so it can't lurch or drift into a neighbour. It settles within its own pocket, and the number appears only once it has.
+  - **Checked:** the screenshot run tests 40 rounds and confirms the pocket under the ball is always the number shown.
+- **One lamp over the table:** a single, larger green-glass lamp, hung high, with one broad cone of light over the wheel and the felt.
+- **The room comes alive, behind every screen:**
+  - the out-of-focus lights drift and breathe;
+  - now and then someone walks past in the background, sometimes in a hat or carrying a tray;
+  - smoke curls up from below;
+  - a far table's lights flare when someone over there wins;
+  - brass catches the light.
+
+  It's lively on the home screen and calmer behind the table and the Cage, so it never competes with the felt.
+- **New option, Background motion:** On, Calm (calm everywhere) or Off (holds the room still).
+
 ## 0.0.62
 - **The Cage no longer locks the felt after you buy a felt upgrade.** A bought upgrade waits for you to lay it, and until now every click on the felt tried to lay it instead.
   - Chips in your rack couldn't be placed, and clicking anywhere else did nothing, with no explanation.

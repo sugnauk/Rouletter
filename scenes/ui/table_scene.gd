@@ -13,6 +13,7 @@ extends Control
 const P := preload("res://scenes/ui/palette.gd")
 const Art := preload("res://scenes/ui/art.gd")
 const Board := preload("res://core/board.gd")
+const Ambience := preload("res://scenes/ui/ambience.gd")
 
 const LOOP := 9.0
 const WHEEL_C := Vector3(0.0, 0.05, 9.3)
@@ -44,6 +45,8 @@ var tall := false             ## laid out for a phone held upright (the title's 
 var _cam := Vector3.ZERO
 var _f := 150.0
 var _bokeh: Array = []
+var amb = Ambience.new(1974, 30, 0.04, 0.5)   ## the room's life: drifting lights, passers-by, smoke
+var level := 1.0                               ## 1 full, 0.5 calm, 0 still (main sets it)
 var _motes: Array = []
 var _stacks: Array = []       ## {x, z, n, col, win}: this round's chips
 var _round := -1
@@ -112,6 +115,7 @@ func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	t += delta
+	amb.update(delta, level)
 	for m in _motes:
 		m.y -= m.v * delta
 		if m.y < 0.0:
@@ -163,49 +167,57 @@ func _wheel_angle(rnd: int, ph: float) -> float:
 	return 0.7 + rnd * _loop_turn + _wheel_turn(ph)
 
 
-## The ball's speed round the rim (against the wheel): fast off the croupier's hand, slowing.
-func _ball_speed(x: float) -> float:
-	return 0.9 + 3.6 * pow(maxf(0.0, 1.0 - x / T_LAND), 1.5)
+## How fast the ball runs round the rim *relative to the pockets* (against the wheel). It falls
+## smoothly to zero at the moment the ball drops in, so it catches its pocket without a lurch.
+func _ball_rel_speed(x: float) -> float:
+	return 4.9 * pow(maxf(0.0, 1.0 - x / T_LAND), 1.3)
 
 
-## Where the ball is round the rim on its own (no wheel): integrated, always the same way.
-func _ball_free(rnd: int, x: float) -> float:
+## The ball's angle relative to the wheel (integrated relative speed).
+func _ball_rel(rnd: int, x: float) -> float:
 	var steps := 36
-	var dx := x / steps
+	var dx := minf(x, T_LAND) / steps
 	var sum := 0.0
 	for i in range(steps):
-		sum += _ball_speed((i + 0.5) * dx) * dx
+		sum += _ball_rel_speed((i + 0.5) * dx) * dx
 	return rnd * 2.3 - sum
 
 
 ## The pocket (index into the wheel order) the ball lands in this round: wherever it comes down.
 func _land_index(rnd: int) -> int:
-	var rel := posmod(_ball_free(rnd, T_LAND) - _wheel_angle(rnd, T_LAND), TAU)
+	var rel := fposmod(_ball_rel(rnd, T_LAND), TAU)
 	return int(rel / TAU * order.size()) % order.size()
 
 
 ## The ball in the world, and how visible it is (it fades out as the croupier picks it up at
-## the end of a round, and fades in at the rim when it's launched again).
+## the end of a round, and fades in at the rim when it's launched again). It is always placed
+## relative to the wheel, so once it drops in it can only settle within its own pocket.
 func _ball_at(rnd: int, ph: float) -> Array:
 	var n := order.size()
-	var free_a := _ball_free(rnd, ph)
+	var rel := _ball_rel(rnd, ph)
 	var r := RIM_R
 	var y := 0.1
-	var a := free_a
 	if ph > T_LAND - 0.8:
 		r = lerpf(RIM_R, POCKET_R, smoothstep(T_LAND - 0.8, T_LAND, ph))   # spiralling in
 	if ph > T_LAND:
-		# Ride the wheel in the pocket it fell into, blending smoothly off the free path.
-		var land_rel := _ball_free(rnd, T_LAND) - _wheel_angle(rnd, T_LAND)
-		var centre: float = (floor(posmod(land_rel, TAU) / TAU * n) + 0.5) * TAU / n
-		var rel_unwrapped: float = land_rel + (centre - posmod(land_rel, TAU))
-		var ride: float = _wheel_angle(rnd, ph) + rel_unwrapped
-		var b := smoothstep(T_LAND, T_SETTLE, ph)
-		a = lerpf(free_a, ride, b)
+		# Settle from where it touched down to the middle of that pocket (under half a pocket).
+		var land_rel := _ball_rel(rnd, T_LAND)
+		var centre: float = (floor(fposmod(land_rel, TAU) / TAU * n) + 0.5) * TAU / n
+		var rel_centre: float = land_rel + (centre - fposmod(land_rel, TAU))
+		rel = lerpf(land_rel, rel_centre, smoothstep(T_LAND, T_SETTLE, ph))
 		var kk := clampf((ph - T_LAND) / (T_SETTLE - T_LAND), 0.0, 1.0)
 		y = lerpf(0.1, 0.06, kk) + 0.12 * exp(-5.0 * kk) * absf(sin(kk * 3.0 * PI))   # three shrinking hops
+	var a: float = _wheel_angle(rnd, ph) + rel
 	var vis := smoothstep(0.0, 0.3, ph) * (1.0 - smoothstep(8.4, 8.9, ph))
 	return [WHEEL_C + Vector3(cos(a) * r, y, sin(a) * r), vis]
+
+
+## Which pocket (index into the wheel order) the ball is sitting over right now, by the same
+## angle maths the wheel is drawn with (for the smoke test).
+func _pocket_under_ball(rnd: int, ph: float) -> int:
+	var b: Vector3 = _ball_at(rnd, ph)[0] - WHEEL_C
+	var rel := fposmod(atan2(b.z, b.x) - _wheel_angle(rnd, ph), TAU)
+	return int(rel / TAU * order.size()) % order.size()
 
 
 ## The rake head: rests by the croupier's side, reaches in at the near end, sweeps to the wheel,
@@ -280,11 +292,8 @@ func _draw_room(W: float, H: float) -> void:
 	for i in range(nb):
 		var col := Color("#0b0e18").lerp(Color("#1a0a10"), float(i) / (nb - 1))
 		canvas.draw_rect(Rect2(0, floor(H * i / nb), W, ceil(H / nb) + 1), col)
-	for b in _bokeh:
-		var a := 0.16 + 0.08 * sin(t * 0.8 + b.ph)
-		var c := Vector2(b.x * W, b.y * H)
-		canvas.draw_circle(c, b.r * k, Color(b.c, a * 0.5), true, -1.0, false)
-		canvas.draw_circle(c, b.r * k * 0.6, Color(b.c, a), true, -1.0, false)
+	# The room's life (scenes/ui/ambience.gd); the table is drawn over the passers-by.
+	amb.draw_back(canvas, Vector2(W, H), maxf(level, 0.01), k * 0.9)
 
 
 ## The table: rail, felt, the betting grid with its numbers' colours, and lamplight on the felt.
@@ -294,9 +303,9 @@ func _draw_table(ph: float) -> void:
 	_quad(Vector3(-2.7, -0.4, 0.4), Vector3(2.7, -0.4, 0.4), Vector3(2.7, 0.0, 0.4), Vector3(-2.7, 0.0, 0.4), WOOD_DARK)
 	_quad(Vector3(-2.35, 0.0, 0.8), Vector3(2.35, 0.0, 0.8), Vector3(2.35, 0.0, 11.6), Vector3(-2.35, 0.0, 11.6), FELT)
 	# Lamplight pools, banded like dithered light.
-	for lz in [5.0, 8.4]:
-		for i in range(3):
-			_disc(Vector3(0, 0.001, lz), 2.2 - i * 0.6, Color(WARM, 0.05 + i * 0.03), 16)
+	var lsw := _lamp_sway()
+	for i in range(4):
+		_disc(Vector3(lsw, 0.001, LAMP_Z), 3.6 - i * 0.8, Color(WARM, 0.04 + i * 0.025), 20)
 	# The grid: 12 rows of 3 along the table, the zero at the far end, a dozens strip beside it.
 	for row in range(12):
 		for c in range(3):
@@ -304,7 +313,7 @@ func _draw_table(ph: float) -> void:
 			var x0 := -1.2 + c * 0.8
 			var z0 := 1.6 + row * 0.45
 			var col: Color = RED if board.is_red(n) else BLACK
-			if n == _win and ph > 4.2:
+			if n == _win and ph > T_SETTLE + 0.1:
 				col = col.lerp(P.GOLD, 0.5 + 0.4 * sin(t * 10.0))
 			_quad(Vector3(x0 + 0.04, 0.002, z0 + 0.03), Vector3(x0 + 0.76, 0.002, z0 + 0.03),
 				Vector3(x0 + 0.76, 0.002, z0 + 0.42), Vector3(x0 + 0.04, 0.002, z0 + 0.42), col)
@@ -320,22 +329,32 @@ func _draw_table(ph: float) -> void:
 
 
 ## Pendant lamps over the table: a cord, a green glass shade, a warm glow under it.
+const LAMP_Z := 6.6   ## one lamp, hung high over the middle of the table
+
+
+## The lamp's gentle swing (its light pool swings with it).
+func _lamp_sway() -> float:
+	return 0.08 * sin(t * 0.7)
+
+
+## One big green-glass pendant lamp over the table: a cord, the shade, and a broad cone of light
+## that takes in both the wheel and the betting grid.
 func _draw_lamps() -> void:
-	for lz in [5.0, 8.4]:
-		var sw := 0.05 * sin(t * 0.9 + lz)
-		var top := proj(Vector3(sw, 6.0, lz))
-		var at := Vector3(sw, 3.4, lz)
-		var s := proj(at)
-		canvas.draw_line(top, s, Color("#0a0606"), maxf(1.0, k * 0.7))
-		var w: float = _f * 0.55 / _depth(at)
-		var h: float = maxf(3.0 * k, w * 0.45)
-		canvas.draw_colored_polygon(PackedVector2Array([s + Vector2(-w * 0.35, 0), s + Vector2(w * 0.35, 0), s + Vector2(w * 0.6, h), s + Vector2(-w * 0.6, h)]), Color("#1f5a3a"))
-		canvas.draw_rect(Rect2(s.x - w * 0.6, s.y + h - k, w * 1.2, k), Color("#3d8a5c"))
-		canvas.draw_rect(Rect2(s.x - w * 0.45, s.y + h, w * 0.9, k), Color(1.0, 0.92, 0.65, 0.9))
-		# The cone of light down to the felt.
-		var f1 := proj(Vector3(sw - 1.3, 0.0, lz))
-		var f2 := proj(Vector3(sw + 1.3, 0.0, lz))
-		canvas.draw_colored_polygon(PackedVector2Array([s + Vector2(-w * 0.5, h), s + Vector2(w * 0.5, h), f2, f1]), Color(WARM, 0.045))
+	var sw := _lamp_sway()
+	var at := Vector3(sw, 4.3, LAMP_Z)
+	var s := proj(at)
+	canvas.draw_line(proj(Vector3(sw * 0.3, 9.0, LAMP_Z)), s, Color("#0a0606"), maxf(1.0, k * 0.7))
+	var w: float = _f * 1.0 / _depth(at)
+	var h: float = maxf(4.0 * k, w * 0.42)
+	var cone := PackedVector2Array([s + Vector2(-w * 0.5, h), s + Vector2(w * 0.5, h),
+		proj(Vector3(sw + 2.6, 0.0, LAMP_Z + 3.2)), proj(Vector3(sw + 2.8, 0.0, LAMP_Z - 3.4)),
+		proj(Vector3(sw - 2.8, 0.0, LAMP_Z - 3.4)), proj(Vector3(sw - 2.6, 0.0, LAMP_Z + 3.2))])
+	canvas.draw_colored_polygon(cone, Color(WARM, 0.04))
+	canvas.draw_colored_polygon(PackedVector2Array([s + Vector2(-w * 0.32, 0), s + Vector2(w * 0.32, 0), s + Vector2(w * 0.6, h), s + Vector2(-w * 0.6, h)]), Color("#1f5a3a"))
+	canvas.draw_colored_polygon(PackedVector2Array([s + Vector2(-w * 0.32, 0), s + Vector2(-w * 0.12, 0), s + Vector2(-w * 0.3, h), s + Vector2(-w * 0.6, h)]), Color("#2e7a50"))
+	canvas.draw_rect(Rect2(s.x - w * 0.6, s.y + h - k, w * 1.2, k), Color("#4a9a6a"))
+	canvas.draw_rect(Rect2(s.x - w * 0.42, s.y + h, w * 0.84, maxf(1.0, k)), Color(1.0, 0.92, 0.65, 0.95))
+	canvas.draw_rect(Rect2(s.x - w * 0.1, s.y - k, w * 0.2, k), Color("#b8924a"))   # the brass cap
 
 
 ## The wheel at the far end: a wooden bowl, pockets turning, a chrome turret, and the ball.
@@ -381,7 +400,7 @@ func _draw_wheel(ph: float) -> void:
 		canvas.draw_circle(bs, br, Color(Color("#f4f1e8"), bv), true, -1.0, false)
 		canvas.draw_rect(Rect2(bs - Vector2(br * 0.5, br * 0.6), Vector2(maxf(1.0, k * 0.6), maxf(1.0, k * 0.6))), Color(1, 1, 1, bv))
 	# The result marker pops up over the wheel once the ball has settled.
-	if ph > 4.2 and ph < 8.6:
+	if ph > T_SETTLE + 0.1 and ph < 8.6:
 		var up := proj(c + Vector3(0, 1.5 + 0.1 * sin(t * 4.0), 0))
 		var mc: Color = GREEN if _win <= 0 else (RED if board.is_red(_win) else BLACK)
 		var font := P.font()
@@ -431,7 +450,7 @@ func _draw_chips(ph: float) -> void:
 				canvas.draw_rect(Rect2(e1 - Vector2(0, k * 0.5), Vector2(maxf(1.0, k), maxf(1.0, k * 0.6))), Color(1, 1, 1, 0.55 * fade))
 		var top := p + Vector3(0, 0.07 * h, 0)
 		_disc(top, 0.12, Color(s.col.lightened(0.3), fade), 12)
-		if s.win and ph > 4.2 and ph < 8.5:
+		if s.win and ph > T_SETTLE + 0.1 and ph < 8.5:
 			var ts := proj(top + Vector3(0, 0.15, 0))
 			var g := 0.5 + 0.5 * sin(t * 8.0)
 			canvas.draw_rect(Rect2(ts - Vector2(0, (2 + g * 2) * k), Vector2(maxf(1.0, k), maxf(1.0, k))), Color(P.GOLD, 0.8))
@@ -459,6 +478,7 @@ func _draw_rake(ph: float) -> void:
 
 ## Foreground: the near rail out of focus, smoke, and a soft vignette.
 func _draw_front(W: float, H: float) -> void:
+	amb.draw_front(canvas, Vector2(W, H), maxf(level, 0.01), k)
 	for m in _motes:
 		var a := 0.10 + 0.08 * sin(t * 1.3 + m.ph)
 		canvas.draw_rect(Rect2(m.x * W + sin(t * 0.5 + m.ph) * 3.0 * k, m.y * H, maxf(1.0, k * 0.7), maxf(1.0, k * 0.7)), Color(WARM, a))

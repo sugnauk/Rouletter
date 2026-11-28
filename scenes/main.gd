@@ -34,6 +34,7 @@ var run
 var profile
 var frame: Control  ## the fixed 640x360 play area, centred in whatever window we get
 var home_scene      ## the live table behind the home screen, filling the whole window
+var backdrop        ## the out-of-focus room behind every screen (scenes/ui/backdrop.gd)
 var stage: Control
 var screens: Dictionary = {}
 var current: String = ""
@@ -66,7 +67,8 @@ func _ready() -> void:
 	else:
 		run = RunState.new()
 		profile = Profile.new()
-	add_child(Backdrop.new())
+	backdrop = Backdrop.new()
+	add_child(backdrop)
 	home_scene = TableScene.new()
 	home_scene.visible = false
 	add_child(home_scene)
@@ -211,6 +213,7 @@ func show_screen(n: String) -> void:
 	current = n
 	if home_scene != null:
 		home_scene.visible = n == "title"
+	_apply_motion()
 	if card != null:
 		card.hide_card()
 	if changed and veil != null and not fast_ui and speed() < Profile.SPEEDS.size() - 1:
@@ -676,8 +679,21 @@ func _input(event: InputEvent) -> void:
 		touch_mode = false
 
 
+## How lively the room is: full on the home screen, calm behind play (the table and the Cage),
+## and the Options setting can make it calm everywhere or hold it still.
+func _apply_motion() -> void:
+	var m: int = int(profile.settings.get("motion", 0)) if profile != null else 0
+	var calm_here: bool = current in ["table", "shop"]
+	var lvl: float = 0.0 if m == 2 else (0.5 if (m == 1 or calm_here) else 1.0)
+	if backdrop != null:
+		backdrop.level = lvl
+	if home_scene != null:
+		home_scene.level = 0.0 if m == 2 else (0.5 if m == 1 else 1.0)
+
+
 func set_option(key: String, value) -> void:
 	profile.settings[key] = value
+	_apply_motion()
 	crt.visible = profile.settings.crt
 	_recenter()
 	apply_speed()

@@ -31,7 +31,7 @@ var act2_runs: int = 0
 var act2_wins: int = 0
 ## Player options (Options screen). Missing keys fall back to these defaults.
 const DEFAULT_SETTINGS := {"crt": true, "cb_marks": false, "cards": true, "shake": true, "music": 0.6, "sfx": 1.0, "zoom_felt": false,
-	"fit": 1.0, "speed": 0, "vibrate": true}
+	"fit": 1.0, "speed": 0, "vibrate": true, "motion": 0}
 ## Game speed (the >> button): Normal takes its time, Fast is brisk, Fastest also cuts the spin and
 ## the count short. time: Engine.time_scale; short: use the shortened wheel spin and count.
 const SPEEDS := [

@@ -683,6 +683,15 @@ func _check_motion() -> void:
 			worst_rake = maxf(worst_rake, rp.distance_to(prev_r) / sc.k)
 		prev_r = rp
 	print("BALL SMOOTH: ", "OK" if worst_ball < 4.0 else "FAIL", " (worst step %.2f)" % worst_ball)
+	# Once the ball has settled, the pocket under it is the number on the marker.
+	var wrong := []
+	for rnd in range(40):
+		var want: int = sc.order[sc._land_index(rnd)]
+		for ph in [sc.T_SETTLE + 0.11, 5.5, 7.0, 8.3]:
+			var got: int = sc.order[sc._pocket_under_ball(rnd, ph)]
+			if got != want:
+				wrong.append([rnd, ph, want, got])
+	print("BALL POCKET: ", "OK" if wrong.is_empty() else "FAIL %s" % [wrong.slice(0, 4)])
 	print("RAKE SMOOTH: ", "OK" if worst_rake < 4.0 else "FAIL", " (worst step %.2f)" % worst_rake)
 
 
