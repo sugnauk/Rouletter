@@ -3,6 +3,12 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.65
+- **The felt is a cloth shape now.**
+  - The brown wooden frame behind it is gone, including the brown that filled the empty corners under the zero and beside the 2:1 column. The room shows through, and a soft shadow sits under the cloth.
+  - Its outside corners are smoothly rounded, with crisp pixel steps: the zero end, the 2:1 column, and the ends of the dozen and even-money strips. Inner corners stay square.
+  - The corners are found automatically, so this works on every wheel (one, two or three zeros, the Mini wheel, call bets), held sideways or upright, at the table and in the Cage.
+
 ## 0.0.64
 - **The felt can't be locked by leftover state any more.**
   - **Rosa's tutorial** now belongs to the run it started on. A guided run that was quit or abandoned can no longer gate another run's bets. It's put away when you continue, abandon, finish a run or start the flow again.

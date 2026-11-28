@@ -66,6 +66,8 @@ var press_t := 0.0
 ## This wheel's felt and rail colours (each wheel has its own table skin).
 var felt_col: Color = P.FELT
 var rail_col: Color = P.WOOD
+var round_corners: Dictionary = {}   ## key -> Vector4 radii (tl, tr, br, bl) for the felt's outer corners
+const CORNER_R := 5.0
 
 
 func layout() -> void:
@@ -123,7 +125,43 @@ func layout() -> void:
 	if vertical:
 		_turn(h)
 	size = custom_minimum_size
+	_find_corners()
 	queue_redraw()
+
+
+## Which corners of which squares are the outside corners of the whole felt (they get rounded).
+## A corner is outside when nothing of the felt lies just beyond it: left/right, up/down or
+## diagonally. Shared edges and inner (concave) corners stay square.
+func _find_corners() -> void:
+	round_corners.clear()
+	var all: Array = rects.values()
+	var outside := func(pt: Vector2) -> bool:
+		for o in all:
+			if o.has_point(pt):
+				return false
+		return true
+	for k in rects:
+		var r: Rect2 = rects[k]
+		var e := 1.5
+		var tl: bool = outside.call(r.position + Vector2(-e, e)) and outside.call(r.position + Vector2(e, -e)) and outside.call(r.position + Vector2(-e, -e))
+		var trp := Vector2(r.end.x, r.position.y)
+		var tr: bool = outside.call(trp + Vector2(e, e)) and outside.call(trp + Vector2(-e, -e)) and outside.call(trp + Vector2(e, -e))
+		var br: bool = outside.call(r.end + Vector2(e, -e)) and outside.call(r.end + Vector2(-e, e)) and outside.call(r.end + Vector2(e, e))
+		var blp := Vector2(r.position.x, r.end.y)
+		var bl: bool = outside.call(blp + Vector2(-e, -e)) and outside.call(blp + Vector2(e, e)) and outside.call(blp + Vector2(-e, e))
+		if tl or tr or br or bl:
+			round_corners[k] = Vector4(CORNER_R if tl else 0.0, CORNER_R if tr else 0.0, CORNER_R if br else 0.0, CORNER_R if bl else 0.0)
+
+
+## A cell-shaped rectangle: square, or rounded on the felt's outside corners.
+func _cell(r: Rect2, k: String, fill: Color, border: Color = Color(0, 0, 0, 0), width: int = 1) -> void:
+	if round_corners.has(k):
+		Art.rbox_corners(self, r, fill, border, round_corners[k], width)
+		return
+	if fill.a > 0.0:
+		draw_rect(r, fill)
+	if border.a > 0.0:
+		draw_rect(r, border, false, float(width))
 
 
 ## Turn the landscape layout on its side: landscape x runs down the screen, and the rows read
@@ -274,8 +312,11 @@ func _draw() -> void:
 		return
 	var B = run.felt.board
 	var font := P.font()
-	draw_rect(Rect2(Vector2(-3, -3), size + Vector2(6, 6)), rail_col.darkened(0.45))
-	draw_rect(Rect2(Vector2(-2, -2), size + Vector2(4, 4)), rail_col)
+	# No frame: the felt is a cut-out cloth shape on the table, with a soft shadow under it.
+	for k in rects:
+		var sr: Rect2 = (rects[k] as Rect2).grow(1.0)
+		sr.position.y += 2.0
+		_cell(sr, k, Color(0, 0, 0, 0.35))
 	var held := not legal.is_empty() or not twins.is_empty()   ## placing something: dim where it can't go
 	var glow := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 160.0)
 	var arc: Array = run.felt.arc_pockets()
@@ -314,14 +355,17 @@ func _draw() -> void:
 			bg = bg.lerp(P.DANGER, 0.5 * nears[k] / 0.5)
 			r.position.x += round(sin(nears[k] * 60.0) * 1.5)
 		var inner := r.grow(-1.0)
-		draw_rect(inner, bg)
-		# Felt nap: a sparse dither so the cloth doesn't read as flat UI.
+		var rc: Vector4 = round_corners.get(k, Vector4.ZERO)
+		_cell(inner, k, bg)
+		# Felt nap: a sparse dither so the cloth doesn't read as flat UI (kept off rounded corners).
 		var seed := hash(k)
 		for d in range(int(r.size.x * r.size.y / 40.0)):
 			var px := r.position + Vector2(1 + (seed >> (d % 13)) % int(max(1.0, r.size.x - 2)), 1 + (seed * (d + 3) >> 4) % int(max(1.0, r.size.y - 2)))
+			if rc != Vector4.ZERO and _in_round_corner(px, r, rc):
+				continue
 			draw_rect(Rect2(px, Vector2(1, 1)), bg.darkened(0.12))
-		draw_rect(Rect2(inner.position, Vector2(inner.size.x, 1)), bg.lightened(0.12))
-		draw_rect(r, P.LINE.darkened(0.25), false, 1.0)
+		draw_rect(Rect2(inner.position + Vector2(rc.x, 0), Vector2(inner.size.x - rc.x - rc.y, 1)), bg.lightened(0.12))
+		_cell(r, k, Color(0, 0, 0, 0), P.LINE.darkened(0.25))
 		if marks and Board.is_straight(k) and B.is_red(Board.straight_number(k)):
 			var m := (r.position + Vector2(3, r.size.y - 4)).floor()
 			draw_rect(Rect2(m + Vector2(1, 0), Vector2(1, 3)), P.CREAM)
@@ -357,11 +401,11 @@ func _draw() -> void:
 		draw_string(font, Vector2(tx, floor(ty)), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fsize, tcol)
 		_draw_chips(k, r, font)
 		if twins.has(k):
-			draw_rect(r.grow(-1.0), Color(P.GOOD, glow), false, 2.0)
+			_cell(r.grow(-1.0), k, Color(0, 0, 0, 0), Color(P.GOOD, glow), 2)
 		elif legal.has(k):
-			draw_rect(r.grow(-1.0), Color(P.GOLD, glow), false, 2.0)
+			_cell(r.grow(-1.0), k, Color(0, 0, 0, 0), Color(P.GOLD, glow), 2)
 		elif held:
-			draw_rect(r, Color(0, 0, 0, 0.55))
+			_cell(r, k, Color(0, 0, 0, 0.55))
 	_draw_line_zones(font)
 	_draw_ghost(font)
 	for f in floaters:
@@ -370,6 +414,20 @@ func _draw() -> void:
 		var pos: Vector2 = (f.pos - Vector2(w / 2.0, 0)).floor()
 		draw_string(font, pos + Vector2(1, 1), f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT, Color(0, 0, 0, a))
 		draw_string(font, pos, f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, P.FONT, Color(f.col, a))
+
+
+## Is pixel `px` inside one of `r`'s rounded corners (the cut-away part)?
+func _in_round_corner(px: Vector2, r: Rect2, rc: Vector4) -> bool:
+	var rr := CORNER_R + 1.0
+	if rc.x > 0.0 and px.x < r.position.x + rr and px.y < r.position.y + rr:
+		return true
+	if rc.y > 0.0 and px.x > r.end.x - rr and px.y < r.position.y + rr:
+		return true
+	if rc.z > 0.0 and px.x > r.end.x - rr and px.y > r.end.y - rr:
+		return true
+	if rc.w > 0.0 and px.x < r.position.x + rr and px.y > r.end.y - rr:
+		return true
+	return false
 
 
 ## The chip being placed, drawn faintly where it would land (or a red cross where it can't).
