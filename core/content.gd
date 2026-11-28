@@ -469,7 +469,7 @@ const ROUTES := {
 }
 ## Between-table events: someone in the Cage offers a choice.
 const EVENTS := {
-	"dolores_tip": {"who": "Dolores", "text": "Psst. The Enforcer's table is next. I can get you an extra ball, or slip you a couple of bucks.",
+	"dolores_tip": {"who": "Rosa", "text": "Psst. The Enforcer's at my table next. I can spin you an extra ball, or slip you a couple of bucks.",
 		"options": [["An extra ball", "+1 ball at the next table."], ["$2", "+$2 now."]]},
 	"lou_bet": {"who": "Lucky Lou", "text": "Side bet, pal: $3 says you can't clear the next one with 2 balls to spare. You do, I pay $9.",
 		"options": [["Take the bet", "Pay $3. Clear the next table with 2+ balls left: +$9."], ["Pass", "Keep your money."]]},

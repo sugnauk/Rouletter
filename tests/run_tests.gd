@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth", "test_chip_faces", "test_pattern_placement",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth", "test_chip_faces", "test_pattern_placement", "test_cast",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1098,7 +1098,7 @@ func test_table_variety() -> void:
 	check(r7.inventory.back().get("flaw", "") == "hot", "the Fence's free chip is hot")
 	r7.shop.event = "dolores_tip"
 	r7.answer_event(0)
-	check("extra_spin" in r7.favours, "Dolores' extra ball")
+	check("extra_spin" in r7.favours, "Rosa's extra ball")
 
 
 func test_long_term() -> void:
@@ -1269,7 +1269,7 @@ func test_onboarding() -> void:
 	vet.start_run(21, "european", Profile.default_unlocks())
 	check(vet.feature_on("event") and vet.table.objective != "", "veterans get everything from the start")
 	for k in ["free_chip", "job", "condition", "route", "event", "refine"]:
-		check(Story.TIPS.has(k), "Dolores explains %s" % k)
+		check(Story.TIPS.has(k), "Rosa explains %s" % k)
 
 
 func test_explosive() -> void:
@@ -2151,3 +2151,29 @@ func test_pattern_placement() -> void:
 	var f = felt("european", [["seventh_heaven", "S7", 1]])
 	var res: Dictionary = Resolver.resolve_spin(f, 7)
 	check(res.take > 35.0, "Seventh Heaven on 7 pays the straight bet and its bonus (got %s)" % res.take)
+
+
+func test_cast() -> void:
+	var Portraits = load("res://scenes/ui/portraits.gd")
+	# Rosa, the croupier, is the guide now: nobody is still called Dolores.
+	var left := []
+	for path in ["res://core/story.gd", "res://core/tutorial.gd", "res://core/content.gd", "res://core/run_state.gd",
+			"res://scenes/main.gd", "res://scenes/screens/casebook_screen.gd", "res://scenes/screens/table_overlays.gd"]:
+		if FileAccess.get_file_as_string(path).contains("Dolores"):
+			left.append(path)
+	check(left.is_empty(), "no Dolores left in the game %s" % [left])
+	check(Story.TUTORIAL.table.lines.any(func(l): return l.speaker == "Rosa"), "Rosa explains the table")
+	# Every speaker and every Enforcer has a portrait of their own (no hashed fallback).
+	var missing := []
+	var speakers := {}
+	for k in Story.TUTORIAL:
+		for l in Story.TUTORIAL[k].lines:
+			speakers[l.speaker] = true
+	for l in Story.INTRO:
+		speakers[l.speaker] = true
+	for k in Content.ENFORCERS:
+		speakers[Content.ENFORCERS[k].name] = true
+	for who in speakers:
+		if who != "Narrator" and not Portraits.has(who):
+			missing.append(who)
+	check(missing.is_empty(), "every speaker has a portrait %s" % [missing])

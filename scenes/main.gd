@@ -462,14 +462,14 @@ func say(lines: Array, done: Callable = Callable()) -> void:
 # --- The guided first run (core/tutorial.gd) ----------------------------------------------------
 
 var tutorial = null      ## a Tutorial while the first run is being guided, else null
-var _tut_said := -1      ## the step Dolores last explained
+var _tut_said := -1      ## the step Rosa last explained
 
 
 func tutorial_on() -> bool:
 	return tutorial != null and tutorial.active
 
 
-## Dolores explains the current step (once), with a Skip button on every line.
+## Rosa explains the current step (once), with a Skip button on every line.
 func tutorial_prompt() -> void:
 	if not tutorial_on() or dialogue.is_open() or _tut_said == tutorial.idx:
 		return
@@ -478,7 +478,7 @@ func tutorial_prompt() -> void:
 	_tut_said = tutorial.idx
 	var lines := []
 	for t in tutorial.step().say:
-		lines.append({"speaker": "Dolores", "text": t})
+		lines.append({"speaker": "Rosa", "text": t})
 	dialogue.on_skip = end_tutorial
 	dialogue.say(lines, func():
 		dialogue.on_skip = Callable()

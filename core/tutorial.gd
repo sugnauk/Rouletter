@@ -1,5 +1,5 @@
 extends RefCounted
-## The guided first run: Dolores walks a brand-new player through one table and the Cage, one
+## The guided first run: Rosa, the croupier, walks a brand-new player through one table and the Cage, one
 ## action at a time. Pure logic (no UI): the table and Cage screens ask `allows()` before acting,
 ## report actions with `did()`, and read `step()` for what to light up and say.
 ##
@@ -14,21 +14,21 @@ const DONE_ID := "tutorial_done"
 ##   want: place_col | place_num | bet_red | spin | buy | leave
 const STEPS := [
 	{"want": "place_col", "status": "Put your Box Office on a column (a lit 2:1 box).",
-		"say": ["Welcome to the Gilded Ace, sugar. I'm Dolores. Let's get you through your first table.",
+		"say": ["Welcome to the Gilded Ace. I'm Rosa, I run this table. Let's get you through your first one.",
 			"You start with two chips that stay on the felt all run. That ticket-shaped one is a Box Office: it pays every time its column comes in. Tap it in your rack, then tap a lit column."]},
 	{"want": "place_num", "status": "Put your Magnet on any number.",
 		"say": ["Now the Magnet: it goes on a single number, and if the ball lands right next to it, it slides on and pays. Pick any number you like."]},
 	{"want": "bet_red", "status": "Tap RED to bet on it.",
-		"say": ["Those chips are yours for keeps. Betting chips come off your stack each spin. Tap RED to bet on it: it comes in about half the time."]},
+		"say": ["Those chips are yours for keeps. Betting chips come off your stack each spin. Tap RED to bet on it: it comes in about half the time. I'd know."]},
 	{"want": "spin", "status": "Press SPIN.",
-		"say": ["That's a table. Press SPIN, and watch the bar at the top: that's your Take, and the payment you owe."]},
+		"say": ["That's a table. Press SPIN and I'll send the ball. Watch the bar at the top: your Take, and the payment you owe."]},
 	{"want": "spin_free", "status": "",
 		"say": ["See how it all pays at once? Keep going: reach the payment before the balls run out. Your bets go back down by themselves each spin."]},
 	{"want": "buy", "status": "Drag an item off the counter onto the felt (or your rack) to buy it.",
 		"say": ["This is the Cage, where you spend what you won. Drag anything off the counter: onto the felt to buy and place it, or onto the glowing box to keep it.",
 			"Touch an item first to read its card. A chip you place here stays free to move until your next spin."]},
 	{"want": "leave", "status": "Press NEXT TABLE when you're ready.",
-		"say": ["That's all there is to it. The rest you'll learn the hard way, like the rest of us. NEXT TABLE when you're ready."]},
+		"say": ["That's all there is to it. The rest you learn at my table, the hard way. NEXT TABLE when you're ready."]},
 ]
 
 var idx := 0

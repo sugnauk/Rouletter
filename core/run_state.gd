@@ -172,7 +172,7 @@ func answer_event(opt: int) -> String:
 			out = "+1 ball at the next table."
 		["dolores_tip", 1]:
 			cash += 2
-			log_cash("Dolores", 2)
+			log_cash("Rosa", 2)
 			out = "+$2."
 		["lou_bet", 0]:
 			if cash < Content.LOU_STAKE:

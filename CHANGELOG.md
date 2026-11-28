@@ -3,6 +3,17 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.60
+- **Meet Rosa.** Dolores the cigarette girl is gone. Your guide is now **Rosa Marchetti, the night-shift croupier** who runs your table: green visor, black waistcoat, a sleek dark bob, and a tiny casino chip for an earring. Every one of her lines is rewritten in her voice (dry, warm, and it's her felt). The tutorial teaches the same steps, and old saves keep working.
+- **Every portrait is redrawn.** Characters are now half-body busts on a 48x48 grid with proper pixel-art shading: a key light from the top left, a warm rim light, three tones per material, a dark outline, and expressions (warm, sly, stern, bored, grin) that set each face's brows and mouth.
+  - Hair now has real styles, including bouffants that sit behind the head.
+  - Fedoras, caps and a top hat, lapels, waistcoats, ties and bow ties, pearls, chains, badges, shades, glasses, and cigar smoke that drifts.
+- **The three wheel Enforcers have their own faces at last:**
+  - **The Twins:** two faces, one fair and one dark, sharing a frame;
+  - **The Mechanic:** a red cap, a grease smudge and a wrench;
+  - **The Ringmaster:** a top hat, a red coat with gold braid, and a moustache.
+- A test now checks that every speaker and Enforcer has a portrait of their own.
+
 ## 0.0.59
 - **The home table moves smoothly.**
   - **The wheel:** its angle carries on from round to round, so it never jumps when a new spin starts. Each push eases in, then slows to a drift.

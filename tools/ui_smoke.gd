@@ -29,7 +29,11 @@ func _process(delta: float) -> void:
 				main.profile.seen_beats.append("tutorial_done")
 			shot("01_title")
 			_check_motion()
-			_check_footer()],
+			_check_footer()
+			_cast_sheet(true)],
+		[0.64, func():
+			shot("cast_sheet")
+			_cast_sheet(false)],
 		[0.7, func():
 			main.profile.best_grade = 2
 			main.screens.select.grade = 2
@@ -176,10 +180,10 @@ func _process(delta: float) -> void:
 			main.say([{"speaker": "Mr. Vance", "text": "Portrait check."}])],
 		[24.5, func(): shot("15_portrait_vance")],
 		[24.6, func():
-			main.dialogue.lines = [{"speaker": "Dolores", "text": "Portrait check."}]
+			main.dialogue.lines = [{"speaker": "Rosa", "text": "Portrait check."}]
 			main.dialogue.idx = 0
 			main.dialogue._show_line()],
-		[24.9, func(): shot("16_portrait_dolores")],
+		[24.9, func(): shot("16_portrait_rosa")],
 		[25, func():
 			main.dialogue.lines = [{"speaker": "Madame Oro", "text": "Portrait check."}]
 			main.dialogue._show_line()],
@@ -523,7 +527,7 @@ func _process(delta: float) -> void:
 			ts.refresh()],
 		[59.4, func(): shot("54_tutorial_bet_red")],
 		[59.5, func():
-			_close_dialogue()   # Dolores explains the bet step first
+			_close_dialogue()   # Rosa explains the bet step first
 			var ts = main.screens.table
 			ts._on_bet_clicked("RED", MOUSE_BUTTON_LEFT)
 			_close_dialogue()
@@ -585,6 +589,32 @@ func _run_plan(plan: Array) -> void:
 
 ## The home table's ball and rake move continuously: sample two whole loops at 120 fps and
 ## report the biggest step between frames (in scene pixels, per scene-pixel scale k).
+var _sheet: Control = null
+
+
+## Every cast member's portrait in one grid (a contact sheet), over the screen for one shot.
+func _cast_sheet(on: bool) -> void:
+	if not on:
+		if _sheet != null:
+			_sheet.queue_free()
+			_sheet = null
+		return
+	var Portraits = load("res://scenes/ui/portraits.gd")
+	var names: Array = Portraits.CAST.keys()
+	names.append("Narrator")
+	_sheet = Control.new()
+	_sheet.size = Vector2(640, 360)
+	_sheet.draw.connect(func():
+		_sheet.draw_rect(Rect2(0, 0, 640, 360), Color("#0b0a10"))
+		for i in range(names.size()):
+			var x: float = 6 + (i % 9) * 70
+			var y: float = 6 + (i / 9) * 88
+			Portraits.draw(_sheet, names[i], Rect2(x, y, 64, 64))
+			var nm: String = names[i]
+			_sheet.draw_string(P.font(), Vector2(x, y + 74), nm.to_upper().substr(0, 13), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, P.CREAM))
+	main.frame.add_child(_sheet)
+
+
 ## The home footer: the phone tip (as the web build shows it) never touches the version.
 func _check_footer() -> void:
 	var ts = main.screens.title

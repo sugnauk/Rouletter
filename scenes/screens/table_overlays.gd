@@ -2,7 +2,7 @@
 ## The table screen's overlays and quick edits, split out of table_screen.gd:
 ##   - the free pick-1-of-3 chip panel at the start of every table
 ##   - the touch long-press bet menu, and the quick edits it shares with Shift/Ctrl/Alt-click
-##   - Dolores' first-time tips for the table's systems
+##   - Rosa's first-time tips for the table's systems
 ## `t` is the table screen.
 
 const P := preload("res://scenes/ui/palette.gd")
@@ -24,7 +24,7 @@ func _init(table) -> void:
 	t = table
 
 
-## Dolores explains each new system the first time it turns up (one at a time).
+## Rosa explains each new system the first time it turns up (one at a time).
 func first_time_tips(run) -> void:
 	if t.main.dialogue.is_open() or t.spinning or t.main.tutorial_on():
 		return
