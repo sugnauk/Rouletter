@@ -93,7 +93,7 @@ Full-run win rate: French 14%, European 18%, American 7%, Mini 17%, Triple Zero 
 
 ## Roadmap ("The Floor Above")
 1. Done: vendor Cage (Cashier, Pit Boss), title card and loading cards, Undo and touch controls, branch CI.
-2. Done: story cast (Dolores, Lucky Lou, Abe, Big Sal, the vendors), milestone beats (first Enforcer, third run, first win, six runs without a win), interludes before nights 2-4, vendor introductions, a Journal screen that replays every scene, and the Act I epilogue when the marker is paid.
+2. Done: story cast (Rosa, Lucky Lou, Abe, Big Sal, the vendors), milestone beats (first Enforcer, third run, first win, six runs without a win), interludes before nights 2-4, vendor introductions, a Journal screen that replays every scene, and the Act I epilogue when the marker is paid.
 3. Done: Loan Shark, Fence and flaws; inside-bet content (Bridge chip, Cornerstone upgrade, Split Decision rule); multipliers (Kingmaker chip x1.5, Momentum rule +25% per scoring spin in a row).
 4. Done: Act II (nights 5-8 upstairs, the Owner), three new Enforcers, Sunrise and Cheater's wheels, Act II story beats and interludes, `tools/sim.gd -- act=2`.
 5. Vouchers, Dealer favours, run saves, endless mode, onboarding and accessibility.
@@ -140,7 +140,7 @@ CI: `.github/workflows/test-branch.yml` runs the tests and the smoke screenshots
 - **Free chips (v0.0.26):** every table opens with a free pick of one special chip from three (`RunState.table_offer`). The Cashier stocks 3 chips, and Permanents show up in about 15% of shop slots (`PERM_CHANCE`). Bot wins: French 35%, European 28%, American 23%, Mini 40%, Triple Zero 21%, Sunrise 29%, Cheater's 4%.
 
 ## Depth pass (v0.0.27-0.0.32)
-- **Onboarding:** new players get one system per night (`RunState.ONBOARD_NIGHT`), each explained once by Dolores (`Story.TIPS`).
+- **Onboarding:** new players get one system per night (`RunState.ONBOARD_NIGHT`), each explained once by Rosa (`Story.TIPS`).
 - **Touch:** a long press opens the bet menu. Previews are cached by felt signature.
 - **Builds:**
   - Scaling rules (Crowd Pleaser, Purist, High Stakes).

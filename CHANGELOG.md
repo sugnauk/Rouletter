@@ -3,6 +3,40 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.62
+- **The Cage no longer locks the felt after you buy a felt upgrade.** A bought upgrade waits for you to lay it, and until now every click on the felt tried to lay it instead.
+  - Chips in your rack couldn't be placed, and clicking anywhere else did nothing, with no explanation.
+  - Now a rack chip you're holding still goes down where it can (its spots light up). Clicking anywhere else says "Your Fat Box is waiting: click a glowing spot to lay it", and NEXT TABLE explains why it won't go yet.
+- **No more permanent lock:** an upgrade with no room left on the felt can't be bought any more. Before, buying one left it with nowhere to go, and the Cage could never be left.
+
+## 0.0.61
+- **NEXT TABLE lights up when you're done in the Cage.** Once every chip is placed and there's nothing left you can afford (no item, reroll or bigger stack), it becomes a lit marquee and the hint says "All set".
+- **Oro's Coin is worth winning.** It used to add a flat +10 when a zero hit, less than any $5 chip sitting on the zero (35 per level). Now a zero adds +10 and then doubles the whole spin, so a chip on 0 pays (35 + 10) x2 = 90.
+- **Undo works on your first bet.** Placing a bet refreshed the screen before the bet was recorded, so Undo stayed greyed out until a second bet.
+- **The tutorial can't get stuck.** If you took the RED bet off before the first spin, you couldn't put it back. Now RED can go back on, and Rosa's step returns to "bet on RED" until it does.
+- The screenshot run now checks that the felt still takes a bet after viewing a House Rule (mouse and touch), that Undo works after the first bet, and that NEXT TABLE lights up only when you're done.
+
+## 0.0.60
+- **Meet Rosa.** Dolores the cigarette girl is gone. Your guide is now **Rosa Marchetti, the night-shift croupier** who runs your table: green visor, black waistcoat, a sleek dark bob, and a tiny casino chip for an earring. Every one of her lines is rewritten in her voice (dry, warm, and it's her felt). The tutorial teaches the same steps, and old saves keep working.
+- **Every portrait is redrawn.** Characters are now half-body busts on a 48x48 grid with proper pixel-art shading: a key light from the top left, a warm rim light, three tones per material, a dark outline, and expressions (warm, sly, stern, bored, grin) that set each face's brows and mouth.
+  - Hair now has real styles, including bouffants that sit behind the head.
+  - Fedoras, caps and a top hat, lapels, waistcoats, ties and bow ties, pearls, chains, badges, shades, glasses, and cigar smoke that drifts.
+- **The three wheel Enforcers have their own faces at last:**
+  - **The Twins:** two faces, one fair and one dark, sharing a frame;
+  - **The Mechanic:** a red cap, a grease smudge and a wrench;
+  - **The Ringmaster:** a top hat, a red coat with gold braid, and a moustache.
+- A test now checks that every speaker and Enforcer has a portrait of their own.
+
+## 0.0.59
+- **The home table moves smoothly.**
+  - **The wheel:** its angle carries on from round to round, so it never jumps when a new spin starts. Each push eases in, then slows to a drift.
+  - **The ball:** it slows steadily round the rim, always the same way, then spirals in. It lands in whichever pocket it comes down in (no more steering or reversing to a pre-picked number), settles with three shrinking hops and rides the wheel. Between rounds it fades out as the croupier picks it up, and fades back in at the rim, instead of teleporting.
+  - **The croupier's rake:** it now rests by their side, clear of the wheel. It reaches in at the near end, sweeps the losing stacks to the wheel and lifts back out on one continuous path. The winner is paid once the rake is clear.
+- **Falling chips are back on the home screen.** Casino chips tumble down over the table (never over the menu), flipping as they fall, with their faces and a soft shadow.
+- **Footer fix:** the phone tip on the web build wraps into two lines and no longer runs into the version number.
+- **Rounded corners everywhere:** buttons, info cards, dialogue boxes, panels, tokens, plaques, the tray and its bays, the spin result and its pills, the ticket and the Cage windows. The corners are crisp pixel steps, not blurred. The felt's grid stays square.
+- The screenshot run now checks that the home ball and rake never jump between frames, and that the footer never overlaps.
+
 ## 0.0.58
 - **The live table fills the whole screen.** It now sits behind the game frame and stretches edge to edge on any window or phone, with no borders top and bottom.
   - It's framed to the layout: right of the menu in landscape, centred in the top half on a phone held upright.

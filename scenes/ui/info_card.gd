@@ -78,15 +78,14 @@ func _draw() -> void:
 		return
 	var r := Rect2(Vector2.ZERO, size)
 	var col: Color = data.get("col", P.GOLD)
-	draw_rect(r.grow(2), Color(0, 0, 0, 0.45))
-	draw_rect(r, Color("#140d0a"))
-	draw_rect(r, col, false, 1.0)
-	draw_rect(r.grow(-2), Color(col, 0.18), false, 1.0)   # a fine inner line: a framed card
-	draw_rect(Rect2(1, 1, size.x - 2, 1), Color(col, 0.35))
+	Art.rbox(self, r.grow(2), Color(0, 0, 0, 0.45), Color(0, 0, 0, 0), 5)
+	Art.rbox(self, r, Color("#140d0a"), col, 4)
+	Art.rbox(self, r.grow(-2), Color(0, 0, 0, 0), Color(col, 0.18), 2)   # a fine inner line: a framed card
+	draw_rect(Rect2(4, 1, size.x - 8, 1), Color(col, 0.35))
 	var icon: String = data.get("icon", "")
 	var tx := PAD
 	if icon != "":
-		draw_rect(Rect2(PAD, PAD, 22, 22), Color("#1c3a29"))
+		Art.rbox(self, Rect2(PAD, PAD, 22, 22), Color("#1c3a29"), Color(0, 0, 0, 0), 3)
 		Art.icon(self, icon, Vector2(PAD + 11, PAD + 11), 1)
 		tx = PAD + 28
 	var font := P.font()

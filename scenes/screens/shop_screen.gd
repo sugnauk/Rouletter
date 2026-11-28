@@ -252,7 +252,9 @@ func _end_stock_drag() -> void:
 ## Light the felt for whatever you're holding: a felt upgrade to lay, or a rack chip.
 func _mark_felt() -> void:
 	var run = main.run
-	if run.shop.get("pending_upgrade", "") != "":
+	if mode == "place" and selected_item >= 0 and selected_item < run.inventory.size():
+		Placing.mark(felt_view, run, selected_item)   # a held rack chip shows where it goes, even with an upgrade waiting
+	elif run.shop.get("pending_upgrade", "") != "":
 		Placing.mark_keys(felt_view, run.upgrade_targets())
 	else:
 		Placing.mark(felt_view, run, selected_item if mode == "place" else -1)
@@ -351,9 +353,8 @@ func _draw_cage() -> void:
 ## One vendor's window: wood frame, dark interior, a lamp, brass bars, velvet counter, name.
 func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
 	var accent: Color = {"cash": P.GOLD, "stack": P.RED.lightened(0.2), "loan": P.CYAN, "take": P.VIOLET}.get(Content.VENDORS[vendor].currency, P.GOLD)
-	c.draw_rect(w.grow(4), Color("#0e0b12"))
-	c.draw_rect(w.grow(2), Color("#a07c42"))
-	c.draw_rect(w.grow(1), Color("#0e0b12"))
+	Art.rbox(c, w.grow(4), Color("#0e0b12"), Color(0, 0, 0, 0), 5)
+	Art.rbox(c, w.grow(2), Color("#0e0b12"), Color("#a07c42"), 4)
 	c.draw_rect(w, Color("#0d0907"))
 	for i in range(4):
 		c.draw_circle(Vector2(w.get_center().x, w.position.y + 6), 50.0 - i * 12.0, Color(1, 0.8, 0.4, 0.03 + i * 0.01), true, -1.0, false)
@@ -441,8 +442,9 @@ func _next() -> void:
 		main.tutorial_did("leave")
 		Sfx.play("click")
 		main.route()
-	else:
-		status_lbl.text = "Lay your upgrade first."
+	elif main.run.shop.get("pending_upgrade", "") != "":
+		status_lbl.text = "Lay your %s first: click a glowing spot on the felt." % Content.UPGRADES[main.run.shop.pending_upgrade].name
+		Sfx.play("click")
 
 
 func refresh() -> void:
@@ -517,9 +519,29 @@ func refresh() -> void:
 	speed_btn.text = preload("res://core/profile.gd").SPEEDS[main.speed()].label
 	cage_view.queue_redraw()
 	_refresh_choice(run)
+	_light_next(run)
 	_first_time_tips(run)
 	main.tutorial_prompt.call_deferred()
 	_update_buy_btn()
+
+
+## Nothing left to do here (every chip placed, nothing on the counter you can afford, no reroll
+## or bigger stack in reach): NEXT TABLE lights up like the big buttons, and the hint says so.
+func _light_next(run) -> void:
+	var done: bool = choice == null and run.shop.get("pending_upgrade", "") == "" and not run.has_unplaced_chips()
+	if done:
+		for i in range(run.shop.stock.size()):
+			var item: Dictionary = run.shop.stock[i]
+			if not item.sold and run.can_afford(item) and run.buy_block(i) == "":
+				done = false
+				break
+	if done and (run.shop.get("free_rerolls", 0) > 0 or run.cash >= run.shop.reroll or run.cash >= run.stack_price()):
+		done = false
+	nb.marquee = done
+	nb.pulse = done
+	nb.queue_redraw()
+	if done and selected_item < 0 and drag_stock < 0:
+		status_lbl.text = "All set. NEXT TABLE when you're ready."
 
 
 func _first_time_tips(run) -> void:
@@ -981,10 +1003,18 @@ func _on_felt(key: String, button: int) -> void:
 	if button != MOUSE_BUTTON_LEFT or main.dialogue.is_open():
 		return
 	if run.shop.pending_upgrade != "":
+		# A felt upgrade is waiting to be laid. A rack chip you're holding still goes down where it
+		# can; otherwise the click lays the upgrade, or says plainly what's waiting.
+		if selected_item >= 0 and selected_item < run.inventory.size() and run.can_place_chip(run.inventory[selected_item].kind, key):
+			_place_selected(key)
+			return
 		if run.apply_upgrade(key):
 			felt_view.flash(key)
 			main.fx.burst(main.fx.local(felt_view.key_global(key)), 20, [P.CYAN, P.GOLD, P.CREAM])
 			Sfx.play("chip_place")
+		else:
+			status_lbl.text = "Your %s is waiting: click a glowing spot to lay it. %s" % [Content.UPGRADES[run.shop.pending_upgrade].name, Content.place_hint(run.shop.pending_upgrade)]
+			Sfx.play("click")
 		return
 	if selected_item >= 0:
 		_place_selected(key)

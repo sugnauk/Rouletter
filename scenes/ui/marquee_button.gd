@@ -7,6 +7,7 @@ extends Button
 ## `pulse` makes the trim breathe slowly (the button you probably want next). Disabled buttons go dark.
 
 const P := preload("res://scenes/ui/palette.gd")
+const Art := preload("res://scenes/ui/art.gd")
 
 const MIN_BULBS := Vector2(60, 18)
 const BULB_GAP := 6.0
@@ -69,29 +70,29 @@ func _draw() -> void:
 		var trim: Color = BULB_OFF if disabled else (accent if hot or pulse else accent.darkened(0.45))
 		if pulse and not hot and not disabled:
 			trim = accent.darkened(0.45).lerp(accent, 0.5 + 0.5 * sin(_t * 3.0))
-		draw_rect(r, trim, false, 1.0)
-		draw_rect(Rect2(1, 1, size.x - 2, 1), Color(1, 1, 1, 0.10 if not down else 0.0))
-		draw_rect(Rect2(1, size.y - 2, size.x - 2, 1), Color(0, 0, 0, 0.35))
+		Art.rbox(self, r, Color(0, 0, 0, 0), trim, 3)
+		draw_rect(Rect2(3, 1, size.x - 6, 1), Color(1, 1, 1, 0.10 if not down else 0.0))
+		draw_rect(Rect2(3, size.y - 2, size.x - 6, 1), Color(0, 0, 0, 0.35))
 		if size.x >= MIN_BULBS.x and size.y >= MIN_BULBS.y:
 			_draw_bulbs(r, hot)
 		if _flash > 0.0 and not disabled:
-			draw_rect(r.grow(-1), Color(BULB_ON, 0.18 * _flash))
+			Art.rbox(self, r.grow(-1), Color(BULB_ON, 0.18 * _flash), Color(0, 0, 0, 0), 2)
 		return
 	# Everyday: soft bevel, brass trim warming to gold, a small notch when hovered.
 	var trim2: Color = BULB_OFF if disabled else (accent if hot else BRASS)
 	if pulse and not hot and not disabled:
 		trim2 = BRASS.lerp(accent, 0.5 + 0.5 * sin(_t * 2.4))
-	draw_rect(r, trim2, false, 1.0)
+	Art.rbox(self, r, Color(0, 0, 0, 0), trim2, 3)
 	if not disabled:
-		draw_rect(Rect2(1, 1, size.x - 2, 1), Color(1, 0.9, 0.7, 0.0 if down else (0.14 if hot else 0.07)))
-		draw_rect(Rect2(1, size.y - 2, size.x - 2, 1), Color(0, 0, 0, 0.45 if not down else 0.2))
+		draw_rect(Rect2(3, 1, size.x - 6, 1), Color(1, 0.9, 0.7, 0.0 if down else (0.14 if hot else 0.07)))
+		draw_rect(Rect2(3, size.y - 2, size.x - 6, 1), Color(0, 0, 0, 0.45 if not down else 0.2))
 	if hot and size.x >= 30.0:
 		var cy: float = floor(size.y / 2.0)
 		draw_rect(Rect2(3, cy - 2, 1, 5), accent)
 		draw_rect(Rect2(4, cy - 1, 1, 3), accent)
 		draw_rect(Rect2(5, cy, 1, 1), accent)
 	if _flash > 0.0 and not disabled:
-		draw_rect(r.grow(-1), Color(accent, 0.14 * _flash))
+		Art.rbox(self, r.grow(-1), Color(accent, 0.14 * _flash), Color(0, 0, 0, 0), 2)
 
 
 ## Bulbs every few pixels round the border, chasing when hovered.

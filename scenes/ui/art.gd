@@ -595,16 +595,38 @@ static func face(ci: CanvasItem, id: String, c: Vector2, s: int = 1) -> void:
 
 
 ## A brass plaque background.
+static var _rbox_cache := {}
+
+
+## A rounded box drawn by hand: pixel-stepped corners (crisp, no blur), a fill (alpha 0 = none)
+## and a border (alpha 0 = none). Styles are cached, so it's cheap to call every frame.
+static func rbox(ci: CanvasItem, r: Rect2, fill: Color, border: Color, radius: int = 3, width: int = 1) -> void:
+	var key := "%s|%s|%d|%d" % [fill.to_html(), border.to_html(), radius, width]
+	var sb: StyleBoxFlat = _rbox_cache.get(key)
+	if sb == null:
+		sb = StyleBoxFlat.new()
+		sb.bg_color = fill
+		sb.draw_center = fill.a > 0.0
+		sb.border_color = border
+		sb.set_border_width_all(width if border.a > 0.0 else 0)
+		sb.set_corner_radius_all(radius)
+		sb.corner_detail = 3
+		sb.anti_aliasing = false
+		if _rbox_cache.size() > 512:
+			_rbox_cache.clear()
+		_rbox_cache[key] = sb
+	sb.draw(ci.get_canvas_item(), r)
+
+
 ## A plaque: dark lacquer with a brass hairline and brass corner studs (`dark` = deeper still).
 static func plaque(ci: CanvasItem, r: Rect2, dark: bool = false) -> void:
 	var base := Color("#100d14") if dark else Color("#1a1520")
 	var brass := Color("#a07c42")
-	ci.draw_rect(r, Color(0, 0, 0, 0.85))
-	ci.draw_rect(r.grow(-1), base)
-	ci.draw_rect(r.grow(-1), brass, false, 1.0)
-	ci.draw_rect(Rect2(r.position + Vector2(2, 2), Vector2(r.size.x - 4, 1)), Color(1, 0.9, 0.7, 0.08))
-	for p in [r.position + Vector2(2, 2), Vector2(r.end.x - 4, r.position.y + 2),
-			Vector2(r.position.x + 2, r.end.y - 4), r.end - Vector2(4, 4)]:
+	rbox(ci, r, Color(0, 0, 0, 0.85), Color(0, 0, 0, 0), 4)
+	rbox(ci, r.grow(-1), base, brass, 3)
+	ci.draw_rect(Rect2(r.position + Vector2(4, 2), Vector2(r.size.x - 8, 1)), Color(1, 0.9, 0.7, 0.08))
+	for p in [r.position + Vector2(3, 3), Vector2(r.end.x - 5, r.position.y + 3),
+			Vector2(r.position.x + 3, r.end.y - 5), r.end - Vector2(5, 5)]:
 		ci.draw_rect(Rect2(p, Vector2(2, 2)), P.GOLD.darkened(0.15))
 
 

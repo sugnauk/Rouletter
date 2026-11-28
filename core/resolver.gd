@@ -456,6 +456,11 @@ static func resolve_spin(felt, pocket: int) -> Dictionary:
 			take *= cm
 			res.log.chips.append("Column Crown x%.2f" % cm)
 			_mult(res, cm, "Column Crown")
+	# Oro's Coin: a zero doubles the whole spin (a chip on the zero then pays 35 x2, +10 x2).
+	if zero_hit and w.has_rule("oros_coin") and take > 0.0:
+		take *= Content.OROS_COIN_MULT
+		res.log.rules.append("Oro's Coin: the zero doubles the spin")
+		_mult(res, Content.OROS_COIN_MULT, "Oro's Coin")
 	if w.has_rule("crowd_pleaser") and take > 0.0:
 		var lv := 0
 		for pc in w.perm_chips():

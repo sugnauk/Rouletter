@@ -349,6 +349,7 @@ const RAINY_DAY_CASH := 2
 const CROWD_STEP := 0.05
 const SKIM_CUT := 0.15
 const OROS_COIN_TAKE := 10.0
+const OROS_COIN_MULT := 2.0   ## ...and then the zero's spin doubles (a flat +10 was worth less than a $5 chip on 0)
 const VELVET_ROPE_CHIPS := 2
 const HIGH_STAKES_CHIPS := 15
 const RELAY_SHARE := 0.5
@@ -469,7 +470,7 @@ const ROUTES := {
 }
 ## Between-table events: someone in the Cage offers a choice.
 const EVENTS := {
-	"dolores_tip": {"who": "Dolores", "text": "Psst. The Enforcer's table is next. I can get you an extra ball, or slip you a couple of bucks.",
+	"dolores_tip": {"who": "Rosa", "text": "Psst. The Enforcer's at my table next. I can spin you an extra ball, or slip you a couple of bucks.",
 		"options": [["An extra ball", "+1 ball at the next table."], ["$2", "+$2 now."]]},
 	"lou_bet": {"who": "Lucky Lou", "text": "Side bet, pal: $3 says you can't clear the next one with 2 balls to spare. You do, I pay $9.",
 		"options": [["Take the bet", "Pay $3. Clear the next table with 2+ balls left: +$9."], ["Pass", "Keep your money."]]},
@@ -653,7 +654,7 @@ const HOUSE_RULES := {
 	# Trophies: only from an Enforcer's stash, never sold in the Cage.
 	"sals_whistle": {"name": "Sal's Whistle", "desc": "Every 3rd spin at a table scores x1.5.", "price": 0, "unlock": 0, "trophy": true,
 		"note": "Big Sal called his spins; now you call yours."},
-	"oros_coin": {"name": "Oro's Coin", "desc": "Whenever a zero hits, +10 Take.", "price": 0, "unlock": 0, "trophy": true,
+	"oros_coin": {"name": "Oro's Coin", "desc": "Zero hits: +10 Take, then the spin's Take x2.", "price": 0, "unlock": 0, "trophy": true,
 		"note": "Madame Oro's lucky green coin."},
 	"accountants_book": {"name": "Accountant's Book", "desc": "+$1 for every spin an outside bet wins.", "price": 0, "unlock": 0, "trophy": true,
 		"note": "Balanced books, in your favour for once."},

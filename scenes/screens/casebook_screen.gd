@@ -3,7 +3,7 @@ extends Control
 ##   COLLECTION  every chip, felt upgrade, House Rule and Dealer perk, grouped by family, with
 ##               bars for seen / bought / unlocked. Locked items point at the Pawn Shop.
 ##   STORY       every story scene you've seen, by chapter, ready to replay.
-##   HOW TO PLAY short guide pages; Dolores can talk you through each one again.
+##   HOW TO PLAY short guide pages; Rosa can talk you through each one again.
 ##   RUNS        your recent runs and this week's weekly-challenge results.
 ## (Feats live in the Pawn Shop, next to the unlocks they pay for.)
 
@@ -18,7 +18,7 @@ const Token := preload("res://scenes/ui/token_button.gd")
 const TABS := [["collection", "COLLECTION"], ["story", "STORY"], ["guide", "HOW TO PLAY"], ["runs", "RUNS"]]
 const LIST_W := 372.0
 
-## How to Play pages: [title, text, story keys Dolores can replay (TUTORIAL.<k> or TIPS.<k>)].
+## How to Play pages: [title, text, story keys Rosa can replay (TUTORIAL.<k> or TIPS.<k>)].
 const GUIDE := [
 	["The table", "Each table asks for a payment, in Take, within its balls (usually 6). Click a square, a split, a corner or an outside box to bet from your stack. Winning bets pay their odds into your Take and come back to your stack; losing bets cost their chips off that spin's Take. Covering everything scores nothing: pick your shots.", ["tut_table"]],
 	["The Cage", "Between tables you visit the Cage. Each window sells something different for a different currency: the Cashier takes cash, the Pit Boss takes chips off your next stack, the Loan Shark adds to your next payment, the Dealer takes spare Take, the Fence sells cheap flawed chips.", ["tut_shop"]],
@@ -262,10 +262,10 @@ func _guide() -> void:
 			main.profile.seen_beats.erase("tutorial_done")
 		main.save_profile()
 		Sfx.play("click")
-		_show("GUIDED FIRST RUN", "Done: your next run on the European wheel will be guided again, step by step. You can skip it from any of Dolores's lines."),
+		_show("GUIDED FIRST RUN", "Done: your next run on the European wheel will be guided again, step by step. You can skip it from any of Rosa's lines."),
 		Vector2(list_w - 12, 20), P.FONT_SMALL)
 	rb.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	summary_lbl.text = "HOW TO PLAY  -  short pages on every part of the game. Dolores can talk you through any of them again."
+	summary_lbl.text = "HOW TO PLAY  -  short pages on every part of the game. Rosa can talk you through any of them again."
 	_guide_page(GUIDE[0])
 
 
@@ -279,7 +279,7 @@ func _guide_page(g: Array) -> void:
 			sc = Story.TIPS.get(k, {})
 		if not sc.is_empty():
 			lines.append_array(sc.lines)
-	_show(g[0].to_upper(), g[1], "Hear it from Dolores" if not lines.is_empty() else "", func(): _play(lines))
+	_show(g[0].to_upper(), g[1], "Hear it from Rosa" if not lines.is_empty() else "", func(): _play(lines))
 
 
 # --- RUNS ---------------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ## The cast:
 ##   Mr. Vance       - owns the Gilded Ace and your marker
-##   Dolores         - the cigarette girl; hears everything
+##   Rosa            - Rosa Marchetti, the night-shift croupier; runs your table, roots for you quietly
 ##   Lucky Lou       - a rival gambler who has been "almost even" with Vance for twenty years
 ##   Abe             - the pawnbroker on Fifth Street (the Pawn Shop)
 ##   the Cashier, the Pit Boss - vendors in the Cage
@@ -32,11 +32,11 @@ const BEATS := [
 		{"speaker": "Lucky Lou", "text": "Name's Lou. Lucky Lou. Twenty years I've been almost even with that man."},
 		{"speaker": "Lucky Lou", "text": "Almost. Remember the word. It's the most expensive one in the building."}]},
 	{"id": "regular", "title": "A Regular", "after_runs": 3, "lines": [
-		{"speaker": "Dolores", "text": "Cigarettes, cigars... you again? Third night running. You're practically furniture."},
-		{"speaker": "Dolores", "text": "Word of advice, sugar. Vance doesn't mind losers. He minds people who stop coming back."}]},
+		{"speaker": "Rosa", "text": "You again. Third night running at my table. I'm starting to save you a stool."},
+		{"speaker": "Rosa", "text": "Word from the croupier, kid: Vance doesn't mind losers. He minds people who stop coming back."}]},
 	{"id": "nine_hundred", "title": "He Prints the Felt", "after_runs": 2, "lines": [
-		{"speaker": "Dolores", "text": "You're the one paying Vance in chips? Folks say he never rigs a wheel."},
-		{"speaker": "Dolores", "text": "He doesn't need to. He prints the felt."}]},
+		{"speaker": "Rosa", "text": "You're the one paying Vance in chips? He never rigs a wheel. I'd know: I spin them."},
+		{"speaker": "Rosa", "text": "He doesn't need to. He prints the felt."}]},
 	{"id": "first_win", "title": "A Full Night", "wins": 1, "lines": [
 		{"speaker": "Narrator", "text": "Four nights, four payments. The sun comes up over the parking lot like an unpaid bill."},
 		{"speaker": "Mr. Vance", "text": "A whole shift. I had money on you not making it past Tuesday."},
@@ -52,16 +52,16 @@ const BEATS := [
 		{"speaker": "Big Sal", "text": "Four nights at his tables. Vance is talking about moving you upstairs. Nobody comes back from upstairs."},
 		{"speaker": "Narrator", "text": "Above the casino floor, a private room. Its wheel has no numbers you recognise."}]},
 	{"id": "lou_out", "title": "Almost Even", "after_runs": 8, "lines": [
-		{"speaker": "Dolores", "text": "Lou's gone. Paid off his marker last night, every cent. Walked out the front door."},
-		{"speaker": "Dolores", "text": "Then he walked right back in. Said the street felt too quiet."},
+		{"speaker": "Rosa", "text": "Lou's gone. Paid his marker last night, every cent. Walked right out the front door."},
+		{"speaker": "Rosa", "text": "Then he walked back in and took a seat at my table. Said the street was too quiet."},
 		{"speaker": "Lucky Lou", "text": "Almost even was a good place, kid. You can see both doors from there."}]},
 	{"id": "quarter", "title": "Patience", "after_runs": 12, "lines": [
 		{"speaker": "Mr. Vance", "text": "You know what the house edge really is? Patience. Mine is running out."}]},
 	{"id": "free", "title": "Act I: Paid in Full", "wins": 1, "lines": [
 		{"speaker": "Narrator", "text": "The last chip crosses the felt. The cashier counts twice. Then a third time, for Vance."},
 		{"speaker": "Mr. Vance", "text": "Paid in full. Here's your marker back. Frame it. Most people only see theirs on a tombstone."},
-		{"speaker": "Dolores", "text": "You're free, sugar. You know what free people do at four in the morning?"},
-		{"speaker": "Dolores", "text": "They go home. ...You're not going home, are you."},
+		{"speaker": "Rosa", "text": "You're free, kid. You know what free people do at four in the morning?"},
+		{"speaker": "Rosa", "text": "They go home. ...You're pulling up a stool, aren't you."},
 		{"speaker": "Mr. Vance", "text": "There's a room upstairs. Better wheels. Bigger markers. The kind of game a free man can afford."},
 		{"speaker": "Narrator", "text": "END OF ACT I. The elevator to the Floor Above has one button, and it is already lit."}]},
 	# --- Act II: the Floor Above ---
@@ -71,7 +71,7 @@ const BEATS := [
 	{"id": "owner_beaten", "title": "Across the Table", "act2_wins": 1, "lines": [
 		{"speaker": "Mr. Vance", "text": "Nobody has beaten me at my own table since 1959. I want you to know I remember his name."},
 		{"speaker": "Mr. Vance", "text": "I'm going to remember yours too. That isn't a compliment."},
-		{"speaker": "Dolores", "text": "He poured you a drink. He doesn't pour drinks. I've worked here eleven years."}]},
+		{"speaker": "Rosa", "text": "He poured you a drink. He doesn't pour drinks. I've spun his wheels eleven years."}]},
 	{"id": "act2_half", "title": "Half the Floor", "act2_runs": 3, "lines": [
 		{"speaker": "Lucky Lou", "text": "They let me up here once. I lasted four spins. You're making it look like a job."},
 		{"speaker": "Lucky Lou", "text": "Careful. In this building, when it looks like a job, it usually is one."}]},
@@ -88,7 +88,7 @@ const INTERLUDES := {
 	5: [
 		{"id": "n5_elevator", "title": "Night 5: The Elevator", "lines": [
 			{"speaker": "Narrator", "text": "The elevator has velvet walls and one button. The operator doesn't look at you. He's paid not to."},
-			{"speaker": "Dolores", "text": "Nobody sells cigarettes upstairs. They have people who light them for you."}]},
+			{"speaker": "Rosa", "text": "Nobody spins their own wheel upstairs. They have people who spin it for them. Me, tonight."}]},
 	],
 	6: [
 		{"id": "n6_lou", "title": "Night 6: Lou's Warning", "lines": [
@@ -107,8 +107,8 @@ const INTERLUDES := {
 	],
 	2: [
 		{"id": "n2_dolores", "title": "Night 2: Smoke Break", "lines": [
-			{"speaker": "Dolores", "text": "Smoke? On the house. Well. On Vance's house."},
-			{"speaker": "Dolores", "text": "The High Roller table's watching you. Up there, watching is how they bet."}]},
+			{"speaker": "Rosa", "text": "Coffee? On the house. Well. On Vance's house."},
+			{"speaker": "Rosa", "text": "The High Roller table's watching you. Up there, watching is how they bet."}]},
 		{"id": "n2_lou", "title": "Night 2: Lou's Wheel", "lines": [
 			{"speaker": "Lucky Lou", "text": "You're at my wheel tonight. Don't worry, I don't own it. Nobody owns anything here but him."},
 			{"speaker": "Lucky Lou", "text": "Tip: the zero isn't the enemy. The zero is the rent."}]},
@@ -126,49 +126,49 @@ const INTERLUDES := {
 			{"speaker": "Big Sal", "text": "Last night of the shift. Vance sends his best. That's me. I'm his best."},
 			{"speaker": "Big Sal", "text": "Nothing personal. I get paid either way. You only get paid one."}]},
 		{"id": "n4_dolores", "title": "Night 4: The Back Door", "lines": [
-			{"speaker": "Dolores", "text": "Whatever happens at that table... the back door's unlocked till four."},
-			{"speaker": "Dolores", "text": "I didn't tell you that. I don't tell anybody anything. That's why everybody tells me."}]},
+			{"speaker": "Rosa", "text": "Whatever happens at that table... the back door's unlocked till four."},
+			{"speaker": "Rosa", "text": "I didn't tell you that. Croupiers don't talk. That's why everybody talks to us."}]},
 	],
 }
 
 ## First-run lessons, played the first time you sit at a table and visit the Cage.
 const TUTORIAL := {
 	"table": {"id": "tut_table", "title": "How to Play: The Table", "lines": [
-		{"speaker": "Dolores", "text": "First time at a wheel, sugar? Listen close, I only say it once. Well. Twice, in the Journal."},
-		{"speaker": "Dolores", "text": "Click a square to bet chips from your stack. Splits and corners sit on the lines between squares."},
-		{"speaker": "Dolores", "text": "Winning bets add to your Take. Losing bets come off it. Reach the payment before your spins run out."},
-		{"speaker": "Dolores", "text": "Your bets go back down every spin by themselves. Undo or Clear to change them. Right-click to take one back. On a touch screen, hold a bet for more options."},
-		{"speaker": "Dolores", "text": "In a hurry? The >> button by the MENU (or F) speeds things up. The big moments still get their due."}]},
+		{"speaker": "Rosa", "text": "First time at a wheel? I'm Rosa, I run this table. Listen close, I only say it once. Well. Twice, in the Casebook."},
+		{"speaker": "Rosa", "text": "Tap a square to bet chips from your stack. Splits and corners sit on the lines between squares."},
+		{"speaker": "Rosa", "text": "Winning bets add to your Take, losing ones come off it. Reach the payment before your balls run out."},
+		{"speaker": "Rosa", "text": "Your bets go back down every spin by themselves. Undo or Clear to change them. Right-click takes one back; on a phone, hold a bet."},
+		{"speaker": "Rosa", "text": "In a hurry? The > button by MENU (or F) speeds my wheel up. The big moments still get their due."}]},
 	"shop": {"id": "tut_shop", "title": "How to Play: The Cage", "lines": [
-		{"speaker": "Dolores", "text": "Between tables you visit the Cage. Every window takes a different kind of money."},
-		{"speaker": "Dolores", "text": "Chips you buy go on the felt for good and score every time they hit. Place them before you leave."}]},
+		{"speaker": "Rosa", "text": "Between tables you visit the Cage. Every window takes a different kind of money."},
+		{"speaker": "Rosa", "text": "Chips you buy go on the felt for good and score every time they hit. Place them before you leave."}]},
 }
 
 ## One-time tips, the first time something new turns up.
 const TIPS := {
 	"flaw": {"id": "tip_flaw", "lines": [
-		{"speaker": "Dolores", "text": "See the red tag on that chip? CRK, HOT or STK. The Fence's goods are cheap because something's wrong with them. Hover to see what."}]},
+		{"speaker": "Rosa", "text": "See the red tag on that chip? CRK, HOT or STK. The Fence's goods are cheap for a reason. Check its card."}]},
 	"rarity": {"id": "tip_rarity", "lines": [
-		{"speaker": "Dolores", "text": "A blue frame means rare, gold means legendary. You won't see those every night, sugar."}]},
+		{"speaker": "Rosa", "text": "Blue frame: rare. Gold: legendary. I see one of those maybe once a week."}]},
 	"spare": {"id": "tip_spare", "lines": [
-		{"speaker": "Dolores", "text": "You scored past the payment. That extra is your spare Take: the Dealer takes it as payment, when he's working."}]},
+		{"speaker": "Rosa", "text": "You scored past the payment. That extra is spare Take: the Dealer takes it as payment, when he's working."}]},
 	"free_chip": {"id": "tip_free_chip", "lines": [
-		{"speaker": "Dolores", "text": "Every table, the house slips you a chip. Pick one of the three: each points your build a different way. Hover to see what it does."}]},
+		{"speaker": "Rosa", "text": "Every table, the house slips you a chip. Pick one of three: each points your build a different way."}]},
 	"job": {"id": "tip_job", "lines": [
-		{"speaker": "Dolores", "text": "See the side job in the corner? It's optional. Pull it off before you clear and you pocket a little extra."}]},
+		{"speaker": "Rosa", "text": "See the side job over the felt? Optional. Pull it off before you clear and you pocket a little extra."}]},
 	"condition": {"id": "tip_condition", "lines": [
-		{"speaker": "Dolores", "text": "Some tables have a twist tonight. It's written in the corner panel: play around it and it can even help you."}]},
+		{"speaker": "Rosa", "text": "Some tables have a twist tonight. It's written over the felt: play around it and it can even help you."}]},
 	"route": {"id": "tip_route", "lines": [
-		{"speaker": "Dolores", "text": "You get to choose your High Roller table now. The Back Room is short and easy, the Long Table is long and tight. Or take the usual."}]},
+		{"speaker": "Rosa", "text": "You choose your High Roller table now. The Back Room is short and easy, the Long Table long and tight. Or take the usual."}]},
 	"event": {"id": "tip_event", "lines": [
-		{"speaker": "Dolores", "text": "People talk to you in the Cage now. Offers come and go: take what helps, pass on the rest."}]},
+		{"speaker": "Rosa", "text": "People talk to you in the Cage now. Offers come and go: take what helps, pass on the rest."}]},
 	"refine": {"id": "tip_refine", "lines": [
-		{"speaker": "Dolores", "text": "One of your number chips has some levels on it. The Cashier can REFINE it ($6), giving it a second act. TRADE swaps a chip for a related one."}]},
+		{"speaker": "Rosa", "text": "One of your number chips has some levels on it. The Cashier can REFINE it ($6) for a second act. TRADE swaps a chip for a cousin."}]},
 	"odds": {"id": "tip_odds", "lines": [
-		{"speaker": "Dolores", "text": "A word on the odds, sugar. A chip on red, black or a column comes in about half the time, or a third. A single number comes in once in thirty-seven."},
-		{"speaker": "Dolores", "text": "Start steady on the boxes and build them up. Numbers pay big, but they want spins and backing: the rooms upstairs give you both."}]},
+		{"speaker": "Rosa", "text": "A word on the odds from the one who spins them: red, black or a column comes in about half the time, or a third. One number, once in thirty-seven."},
+		{"speaker": "Rosa", "text": "Start steady on the boxes and build them up. Numbers pay big, but they want spins and backing: upstairs gives you both."}]},
 	"level": {"id": "tip_level", "lines": [
-		{"speaker": "Dolores", "text": "You've already got one of those on the felt. Put this one right on top of it and it levels up. You lose nothing: a stack does everything both chips would do apart."}]},
+		{"speaker": "Rosa", "text": "You've already got one of those on the felt. Stack this right on top and it levels up. You lose nothing: a stack does what both chips would do apart."}]},
 }
 
 ## The first time a vendor's window opens in the Cage.
