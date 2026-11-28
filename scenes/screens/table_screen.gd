@@ -501,7 +501,12 @@ func _sync_wheel(run) -> void:
 	wheel_view.queue_redraw()
 
 
-func _status(s: String) -> void:
+var status_pin := 0.0   ## seconds a refusal stays on the status line before hovering can replace it
+
+
+func _status(s: String, force: bool = false) -> void:
+	if status_pin > 0.0 and not force:
+		return
 	status_lbl.text = s if s != "" else _hint()
 
 
@@ -509,6 +514,7 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	meter_pulse = maxf(0.0, meter_pulse - delta * 2.5)
+	status_pin = maxf(0.0, status_pin - delta)
 	meter_paid_flash = maxf(0.0, meter_paid_flash - delta * 1.2)
 	score_pop = maxf(0.0, score_pop - delta * 5.0)
 	var cash: int = main.run.cash
@@ -755,8 +761,7 @@ func _place_selected(key: String) -> void:
 	var kind: String = run.inventory[selected_item].kind
 	var twin: bool = run.felt.chips_on(key).any(func(c): return not c.is_bet() and c.kind == kind)
 	if main.tutorial_on() and not main.tutorial.allows("place", key, kind):
-		_status(main.tutorial.step().status)
-		Sfx.play("click")
+		_refuse(key, "Rosa: " + main.tutorial.step().status)
 		return
 	if run.place_chip(selected_item, key):
 		main.tutorial_did("place", key)
@@ -767,11 +772,20 @@ func _place_selected(key: String) -> void:
 			main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), "LEVEL UP!", P.GOOD)
 		Sfx.play("stack" if twin else "chip_place")
 		main.buzz("place")
-		_status("Placed. Next: %s." % Content.CHIPS[run.inventory[0].kind].name if selected_item >= 0 else "Placed.")
+		_status("Placed. Next: %s." % Content.CHIPS[run.inventory[0].kind].name if selected_item >= 0 else "Placed.", true)
 		_refresh_tokens()
 	else:
-		_status("%s can't go there: try a lit spot." % Content.CHIPS[kind].name)
-		Sfx.play("click")
+		_refuse(key, "%s can't go there: try a lit spot." % Content.CHIPS[kind].name)
+
+
+## The felt said no: say why right where you clicked, and keep the reason on the status line a
+## moment (hovering would otherwise replace it straight away).
+func _refuse(key: String, why: String) -> void:
+	Sfx.play("click")
+	_status(why, true)
+	status_pin = 2.5
+	if key != "" and (felt_view.rects.has(key) or felt_view.line_rects.has(key)):
+		main.fx.pop_text(main.fx.local(felt_view.key_global(key)) - Vector2(0, 10), why if why.length() <= 34 else why.substr(0, 32) + "...", P.CREAM, 1.2)
 
 
 # --- Drawing ------------------------------------------------------------------------
@@ -1017,8 +1031,18 @@ func _unzoom() -> void:
 func _on_bet_clicked(key: String, button: int) -> void:
 	_dismiss_score()
 	var run = main.run
-	if spinning or run.phase != RunState.Phase.TABLE or main.dialogue.is_open():
+	if spinning:
+		_refuse(key, "Wait for the ball to land.")
 		return
+	if run.phase != RunState.Phase.TABLE:
+		return
+	if main.dialogue.is_open():
+		_refuse(key, "Finish reading first (click the box).")
+		return
+	# A rack selection pointing past the end of the rack is stale: drop it, so the click bets.
+	if selected_item >= run.inventory.size():
+		selected_item = -1
+		_refresh_tokens()
 	if button == MOUSE_BUTTON_LEFT and not zoomed and _zoom_enabled():
 		_zoom()
 		return
@@ -1050,8 +1074,7 @@ func _on_bet_clicked(key: String, button: int) -> void:
 		_place_selected(key)
 		return
 	if main.tutorial_on() and not main.tutorial.allows("bet", key):
-		_status(main.tutorial.step().status)
-		Sfx.play("click")
+		_refuse(key, "Rosa: " + main.tutorial.step().status)
 		return
 	var amt: int = mini(bet_size, run.table.stack)
 	if run.place_bet(key, amt):
@@ -1062,12 +1085,12 @@ func _on_bet_clicked(key: String, button: int) -> void:
 		main.fx.fly(stack_at(), main.fx.local(felt_view.key_global(key)), Art.denom_color(amt), 1)
 		Sfx.play("chip_place")
 	elif run.is_called_spin():
-		_status("Big Sal calls this spin. No new bets.")
+		_refuse(key, "Big Sal calls this spin. No new bets.")
 	elif run.table.stack <= 0:
-		_status("Your stack is empty.")
+		_refuse(key, "Your stack is empty.")
 	else:
 		var why: String = run.bet_block_reason(key)
-		_status(why if why != "" else "Closed tonight.")
+		_refuse(key, why if why != "" else "Closed tonight.")
 
 
 func _unhandled_input(event: InputEvent) -> void:

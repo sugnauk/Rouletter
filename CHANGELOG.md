@@ -3,6 +3,13 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.64
+- **The felt can't be locked by leftover state any more.**
+  - **Rosa's tutorial** now belongs to the run it started on. A guided run that was quit or abandoned can no longer gate another run's bets. It's put away when you continue, abandon, finish a run or start the flow again.
+  - **A stale rack selection** (one pointing past the end of an empty rack) is dropped on your next click, and the click places your bet instead of doing nothing.
+- **When the felt says no, it says why.** Every refused bet or placement floats its reason over the square you clicked ("Wait for the ball to land", "Rosa: tap RED", "Your stack is empty", "Tight Felt: 6 spots at most"...). The status line holds it for a moment, so hovering can't wipe it straight away.
+- The screenshot run now plants both stale states on a live table and checks a real mouse click still places a bet ("STALE STATE").
+
 ## 0.0.63
 - **The home table's number now matches the ball.**
   - **The cause:** the landing pocket was worked out with integer maths on an angle (`posmod` instead of `fposmod`), so the marker could name a different pocket from the one the ball sat in.

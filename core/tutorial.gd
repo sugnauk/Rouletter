@@ -33,6 +33,8 @@ const STEPS := [
 
 var idx := 0
 var active := true
+var run_seed := -1       ## the run this tutorial guides (main.tutorial_on checks it still matches)
+var wheel_id := ""
 var col_key := ""        ## the column the Box Office went on (the rigged spin lands in it)
 
 
