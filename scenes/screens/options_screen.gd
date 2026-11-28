@@ -10,6 +10,7 @@ const ITEMS := [
 	["shake", "Screen shake", "Shake on big wins and busts."],
 	["speed", "Game speed", "Normal takes its time. Fast is brisk. Fastest also cuts the wheel spin and the count short. The >> button at the table (or F) switches it."],
 	["vibrate", "Vibration", "A little buzz on hits, big wins and placing chips, on phones: Android vibrates; iPhones (iOS 18+) give a light haptic tick instead."],
+	["motion", "Background motion", "The casino around you: drifting lights, people passing, smoke. On keeps it lively on the home screen and calm behind play; Calm keeps it calm everywhere; Off holds it still."],
 	["zoom_felt", "Tap-to-zoom felt", "Clicking the felt first zooms it in, so splits and corners are easy to hit. Always on for touch screens."],
 ]
 
@@ -30,12 +31,12 @@ func setup() -> void:
 	P.place(P.label(self, "OPTIONS", P.FONT_BIG, P.GOLD), Vector2(16, 8))
 	var y := 50
 	for it in ITEMS:
-		var b := P.button(self, "", _toggle.bind(it[0]), Vector2(260, 24))
+		var b := P.button(self, "", _toggle.bind(it[0]), Vector2(260, 22))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.mouse_entered.connect(func(): detail.text = it[2])
 		P.place(b, Vector2(16, y))
 		buttons[it[0]] = [b, it[1]]
-		y += 26
+		y += 24
 	panel = Panel.new()
 	P.place(panel, Vector2(292, 50), Vector2(332, 114))
 	add_child(panel)
@@ -47,27 +48,27 @@ func setup() -> void:
 		row.add_theme_constant_override("separation", 4)
 		P.place(row, Vector2(16, y))
 		add_child(row)
-		var minus := P.button(row, "-", _nudge.bind(v[0], -0.1), Vector2(24, 24))
-		var lbl := P.button(row, "", func(): pass, Vector2(204, 24))
+		var minus := P.button(row, "-", _nudge.bind(v[0], -0.1), Vector2(24, 22))
+		var lbl := P.button(row, "", func(): pass, Vector2(204, 22))
 		lbl.mouse_entered.connect(func(): detail.text = v[2])
 		minus.mouse_entered.connect(func(): detail.text = v[2])
-		P.button(row, "+", _nudge.bind(v[0], 0.1), Vector2(24, 24))
+		P.button(row, "+", _nudge.bind(v[0], 0.1), Vector2(24, 22))
 		buttons[v[0]] = [lbl, v[1]]
-		y += 26
+		y += 24
 	# Screen fit: for phone browsers that hide part of the page under their bars.
 	var fit_tip := "Shrinks the game and pins it to the top of the screen. Use it if a phone browser cuts off the bottom (try 90%). On iPhone, Share > Add to Home Screen plays full screen."
 	var frow := HBoxContainer.new()
 	frow.add_theme_constant_override("separation", 4)
 	P.place(frow, Vector2(16, y))
 	add_child(frow)
-	var fminus := P.button(frow, "-", _nudge_fit.bind(-1), Vector2(24, 24))
-	fit_lbl = P.button(frow, "", func(): pass, Vector2(204, 24))
-	P.button(frow, "+", _nudge_fit.bind(1), Vector2(24, 24))
+	var fminus := P.button(frow, "-", _nudge_fit.bind(-1), Vector2(24, 22))
+	fit_lbl = P.button(frow, "", func(): pass, Vector2(204, 22))
+	P.button(frow, "+", _nudge_fit.bind(1), Vector2(24, 22))
 	for c in [fminus, fit_lbl]:
 		c.mouse_entered.connect(func(): detail.text = fit_tip)
-	y += 26
+	y += 24
 	keys_lbl = P.label(self, "F11: fullscreen    Keys at the table: 1/2/3 chip size, Z undo, C clear, Space spin", P.FONT_SMALL, P.DIM)
-	keys_y = y + 6
+	keys_y = y + 2
 	P.place(keys_lbl, Vector2(16, keys_y))
 	back_btn = P.button(self, "Back", func(): main.close_options(), Vector2(80, 22))
 	P.place(back_btn, Vector2(16, 326))
@@ -102,7 +103,9 @@ func refresh() -> void:
 	reset_btn.visible = main.options_return == "" or main.options_return == "title"
 	for k in buttons:
 		var val = main.profile.settings.get(k, false)
-		if k == "speed":
+		if k == "motion":
+			buttons[k][0].text = "%s:  %s" % [buttons[k][1], ["ON", "CALM", "OFF"][clampi(int(val), 0, 2)]]
+		elif k == "speed":
 			var sp: Dictionary = preload("res://core/profile.gd").SPEEDS[main.speed()]
 			buttons[k][0].text = "%s:  %s  %s" % [buttons[k][1], sp.name.to_upper(), sp.label]
 		elif val is bool:
@@ -143,6 +146,10 @@ func _nudge_fit(d: int) -> void:
 func _toggle(key: String) -> void:
 	if key == "speed":
 		main.cycle_speed()
+		return
+	if key == "motion":
+		Sfx.play("click")
+		main.set_option("motion", (int(main.profile.settings.get("motion", 0)) + 1) % 3)
 		return
 	Sfx.play("click")
 	main.set_option(key, not main.profile.settings.get(key, false))

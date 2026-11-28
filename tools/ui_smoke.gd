@@ -84,6 +84,21 @@ func _process(delta: float) -> void:
 			var after: int = main.run.felt.chips_on("S8").size()
 			print("BET AFTER RULE: ", "OK" if after == _dbg_before + 1 else "FAIL %d -> %d" % [_dbg_before, after])
 			print("UNDO FIRST BET: ", "OK" if not main.screens.table.undo_btn.disabled else "FAIL")
+			# Stale state must never lock the felt: a rack selection past the end of an empty rack,
+			# and a guided-run tutorial left over from another run.
+			var t = main.screens.table
+			main.run.inventory.clear()
+			t.selected_item = 3
+			var T = load("res://core/tutorial.gd")
+			main.tutorial = T.new()
+			main.tutorial.run_seed = main.run.run_seed + 1
+			main.tutorial.wheel_id = "european"
+			_dbg_before = main.run.felt.chips_on("S9").size()
+			_mouse(t.felt_view.key_global("S9"), true)],
+		[3.12, func(): _mouse(main.screens.table.felt_view.key_global("S9"), false)],
+		[3.14, func():
+			var after: int = main.run.felt.chips_on("S9").size()
+			print("STALE STATE: ", "OK" if after == _dbg_before + 1 and main.tutorial == null else "FAIL %d -> %d tut=%s" % [_dbg_before, after, main.tutorial])
 			main.screens.table._on_spin()],
 		[5.2, func(): shot("05a_counting")],
 		[6.6, func():
@@ -683,6 +698,15 @@ func _check_motion() -> void:
 			worst_rake = maxf(worst_rake, rp.distance_to(prev_r) / sc.k)
 		prev_r = rp
 	print("BALL SMOOTH: ", "OK" if worst_ball < 4.0 else "FAIL", " (worst step %.2f)" % worst_ball)
+	# Once the ball has settled, the pocket under it is the number on the marker.
+	var wrong := []
+	for rnd in range(40):
+		var want: int = sc.order[sc._land_index(rnd)]
+		for ph in [sc.T_SETTLE + 0.11, 5.5, 7.0, 8.3]:
+			var got: int = sc.order[sc._pocket_under_ball(rnd, ph)]
+			if got != want:
+				wrong.append([rnd, ph, want, got])
+	print("BALL POCKET: ", "OK" if wrong.is_empty() else "FAIL %s" % [wrong.slice(0, 4)])
 	print("RAKE SMOOTH: ", "OK" if worst_rake < 4.0 else "FAIL", " (worst step %.2f)" % worst_rake)
 
 

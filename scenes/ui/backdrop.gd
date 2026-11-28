@@ -1,19 +1,22 @@
 extends Control
 ## The Gilded Ace after midnight, out of focus: the same room as the home screen's live table,
 ## seen past the screen you're using. A deep night gradient (ink blue up top, burgundy low down),
-## soft bokeh from the other tables and the bar, two lamp glows that breathe, smoke motes that
-## catch their light, and a vignette. It fills the whole window. Purely decorative.
+## the room's life (scenes/ui/ambience.gd: drifting lights, people passing, smoke, far-table
+## flashes), two lamp glows that breathe, motes that catch their light, and a vignette. It fills
+## the whole window. Purely decorative; `level` (set by main) keeps it calm behind play.
 
 const P := preload("res://scenes/ui/palette.gd")
+const Ambience := preload("res://scenes/ui/ambience.gd")
 
 const TOP := Color("#0b0e18")
 const LOW := Color("#1a0a10")
 
 var t := 0.0
 var motes: Array = []
-var bokeh: Array = []
 var lamps: Array = [Vector2(0.62, 0.12), Vector2(0.18, 0.2)]   ## as fractions of the window
 var sign_on := true
+var level := 1.0          ## how lively the room is: 1 full, 0.5 calm (behind play), 0 still (main sets it)
+var amb = Ambience.new(7, 34, 0.04, 0.7)
 
 
 func _ready() -> void:
@@ -23,17 +26,16 @@ func _ready() -> void:
 	rng.seed = 7
 	for i in range(30):
 		motes.append({"p": Vector2(rng.randf(), rng.randf()), "v": rng.randf_range(0.006, 0.02), "ph": rng.randf() * TAU})
-	var cols := [Color("#ffb347"), Color("#ff6b8b"), Color("#ffd98a"), Color("#ffb347"), Color("#7fb8ff")]
-	for i in range(34):
-		bokeh.append({"p": Vector2(rng.randf(), rng.randf_range(0.04, 0.7)), "r": rng.randf_range(4.0, 16.0),
-			"c": cols[rng.randi() % cols.size()], "ph": rng.randf() * TAU, "tw": rng.randf() < 0.3})
 
 
 func _process(delta: float) -> void:
-	t += delta
+	amb.update(delta, level)
+	if level <= 0.0:
+		return
+	t += delta * (0.6 + 0.4 * level)
 	for m in motes:
-		m.p.y -= m.v * delta
-		m.p.x += sin(t * 0.7 + m.ph) * delta * 0.004
+		m.p.y -= m.v * delta * level
+		m.p.x += sin(t * 0.7 + m.ph) * delta * 0.004 * level
 		if m.p.y < -0.01:
 			m.p.y = 1.01
 	sign_on = not (fmod(t, 7.3) > 6.9 and fmod(t * 20.0, 2.0) > 1.0)
@@ -54,13 +56,8 @@ func _draw() -> void:
 		var breathe := 1.0 + 0.2 * sin(t * 0.6 + li * 2.1)
 		for i in range(5):
 			draw_circle(l, 170.0 - i * 30.0, Color(1.0, 0.76, 0.45, (0.014 + i * 0.006) * breathe), true, -1.0, false)
-	# Bokeh: the other tables and the bar, far away and out of focus.
-	for b in bokeh:
-		var a: float = 0.07 + (0.05 * sin(t * 1.1 + b.ph) if b.tw else 0.0)
-		var c: Vector2 = b.p * size
-		draw_circle(c, b.r, Color(b.c, a * 0.6), true, -1.0, false)
-		draw_circle(c, b.r * 0.72, Color(b.c, a), true, -1.0, false)
-		draw_circle(c, b.r * 0.4, Color(b.c, a * 0.8), true, -1.0, false)
+	# The room: drifting lights, people passing, far tables flaring (scenes/ui/ambience.gd).
+	amb.draw_back(self, size, level)
 	# Smoke motes, brighter where the lamps catch them.
 	for m in motes:
 		var mp: Vector2 = m.p * size
@@ -68,6 +65,7 @@ func _draw() -> void:
 		for l in lamps:
 			near = maxf(near, 1.0 - clampf(mp.distance_to(l * size) / 170.0, 0.0, 1.0))
 		draw_rect(Rect2(mp.round(), Vector2(1, 1)), Color(1, 0.88, 0.65, 0.08 + 0.28 * near))
+	amb.draw_front(self, size, level)
 	# A soft vignette pulls the eye to the middle (banded, to stay pixel-crisp).
 	for i in range(6):
 		var a := 0.16 - i * 0.025

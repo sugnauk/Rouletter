@@ -34,6 +34,7 @@ var run
 var profile
 var frame: Control  ## the fixed 640x360 play area, centred in whatever window we get
 var home_scene      ## the live table behind the home screen, filling the whole window
+var backdrop        ## the out-of-focus room behind every screen (scenes/ui/backdrop.gd)
 var stage: Control
 var screens: Dictionary = {}
 var current: String = ""
@@ -66,7 +67,8 @@ func _ready() -> void:
 	else:
 		run = RunState.new()
 		profile = Profile.new()
-	add_child(Backdrop.new())
+	backdrop = Backdrop.new()
+	add_child(backdrop)
 	home_scene = TableScene.new()
 	home_scene.visible = false
 	add_child(home_scene)
@@ -211,6 +213,7 @@ func show_screen(n: String) -> void:
 	current = n
 	if home_scene != null:
 		home_scene.visible = n == "title"
+	_apply_motion()
 	if card != null:
 		card.hide_card()
 	if changed and veil != null and not fast_ui and speed() < Profile.SPEEDS.size() - 1:
@@ -251,6 +254,7 @@ func delete_saved_run() -> void:
 
 
 func continue_run() -> void:
+	_drop_tutorial()
 	if run.load_from(run_save_path()):
 		run_feats = []
 		Sfx.play("click")
@@ -325,6 +329,7 @@ func route() -> void:
 
 
 func begin_flow() -> void:
+	_drop_tutorial()
 	if "intro" not in profile.seen_beats:
 		say(Story.INTRO, func():
 			profile.seen_beats.append("intro")
@@ -355,6 +360,8 @@ func start_run(wheel: String, acts: int = 1, grade: int = 0, opts: Dictionary = 
 	if Tutorial.DONE_ID not in profile.seen_beats and wheel == "european" and opts.get("challenge", "") == "" \
 			and opts.get("weekly", "") == "" and opts.get("starter", "") == "":
 		tutorial = Tutorial.new()
+		tutorial.run_seed = run.run_seed
+		tutorial.wheel_id = run.wheel_id
 		run.table_offer = []
 	elif Story.TUTORIAL.table.id not in profile.seen_beats:
 		_queue_scene(Story.TUTORIAL.table)
@@ -411,6 +418,7 @@ func _queue_scene(scene: Dictionary) -> void:
 
 
 func _on_run_ended(won: bool) -> void:
+	_drop_tutorial()
 	delete_saved_run()
 	check_feats("end", {"won": won, "wheels_won": profile.wheels_won})
 	if won and run.challenge != "":
@@ -465,8 +473,23 @@ var tutorial = null      ## a Tutorial while the first run is being guided, else
 var _tut_said := -1      ## the step Rosa last explained
 
 
+## True while the guided run is on, and only for the run it was started for: a tutorial left
+## over from a run that was quit or abandoned must never gate another run's felt.
 func tutorial_on() -> bool:
-	return tutorial != null and tutorial.active
+	if tutorial == null or not tutorial.active:
+		return false
+	if run == null or run.run_seed != tutorial.run_seed or run.wheel_id != tutorial.wheel_id:
+		_drop_tutorial()
+		return false
+	return true
+
+
+## Put the guided run away without marking it done (it runs again on the next fresh first run).
+func _drop_tutorial() -> void:
+	tutorial = null
+	_tut_said = -1
+	if dialogue != null:
+		dialogue.on_skip = Callable()
 
 
 ## Rosa explains the current step (once), with a Skip button on every line.
@@ -640,6 +663,7 @@ func quit_to_title() -> void:
 
 
 func abandon_run() -> void:
+	_drop_tutorial()
 	if run.abandon():
 		route()
 
@@ -676,8 +700,21 @@ func _input(event: InputEvent) -> void:
 		touch_mode = false
 
 
+## How lively the room is: full on the home screen, calm behind play (the table and the Cage),
+## and the Options setting can make it calm everywhere or hold it still.
+func _apply_motion() -> void:
+	var m: int = int(profile.settings.get("motion", 0)) if profile != null else 0
+	var calm_here: bool = current in ["table", "shop"]
+	var lvl: float = 0.0 if m == 2 else (0.5 if (m == 1 or calm_here) else 1.0)
+	if backdrop != null:
+		backdrop.level = lvl
+	if home_scene != null:
+		home_scene.level = 0.0 if m == 2 else (0.5 if m == 1 else 1.0)
+
+
 func set_option(key: String, value) -> void:
 	profile.settings[key] = value
+	_apply_motion()
 	crt.visible = profile.settings.crt
 	_recenter()
 	apply_speed()
