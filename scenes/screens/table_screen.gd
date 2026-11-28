@@ -898,8 +898,7 @@ func _draw_history(c: Control) -> void:
 		var p: int = history[i]
 		var col: Color = P.GREEN if p <= 0 else (P.RED if run.felt.board.is_red(p) else P.BLACK)
 		var r := Rect2(x, y, 20, 12)
-		c.draw_rect(r, col)
-		c.draw_rect(r, P.GOLD if i == history.size() - 1 else P.LINE.darkened(0.5), false, 1.0)
+		Art.rbox(c, r, col, P.GOLD if i == history.size() - 1 else P.LINE.darkened(0.5), 2)
 		Art.text(c, font, Vector2(r.get_center().x, y + 9), run.felt.board.label(p), 8, P.CREAM, true)
 		x += 23.0
 		if x > c.size.x - 20:
@@ -913,22 +912,21 @@ func _draw_history(c: Control) -> void:
 func _draw_tray(c: Control) -> void:
 	var r := Rect2(Vector2.ZERO, c.size)
 	# Dark leather with a brass lip along the top.
-	c.draw_rect(r, Color("#120f16"))
-	c.draw_rect(Rect2(0, 0, r.size.x, 2), Color("#a07c42"))
-	c.draw_rect(Rect2(0, 2, r.size.x, 1), Color(0, 0, 0, 0.6))
-	c.draw_rect(r, Color(0, 0, 0, 0.9), false, 1.0)
+	Art.rbox(c, r, Color("#120f16"), Color(0, 0, 0, 0.9), 4)
+	c.draw_rect(Rect2(4, 0, r.size.x - 8, 2), Color("#a07c42"))
+	c.draw_rect(Rect2(4, 2, r.size.x - 8, 1), Color(0, 0, 0, 0.6))
 	# Bays: sunk felt pockets in the wood.
 	var bays: Array = [Rect2(4, 6, 116, r.size.y - 10), Rect2(122, 6, 120, r.size.y - 10), Rect2(246, 6, 110, r.size.y - 10)] if portrait \
 		else [Rect2(4, 6, 118, r.size.y - 10), Rect2(126, 6, 162, r.size.y - 10), Rect2(292, 6, 154, r.size.y - 10)]
 	for i in range(bays.size()):
 		var b: Rect2 = bays[i]
 		var lit: bool = i == 1 and main.run != null and not main.run.inventory.is_empty()
-		c.draw_rect(b, P.FELT.darkened(0.45))
-		c.draw_rect(Rect2(b.position, Vector2(b.size.x, 1)), Color(0, 0, 0, 0.6))
+		Art.rbox(c, b, P.FELT.darkened(0.45), Color(0, 0, 0, 0), 3)
+		c.draw_rect(Rect2(b.position + Vector2(3, 0), Vector2(b.size.x - 6, 1)), Color(0, 0, 0, 0.6))
 		var edge: Color = Color("#6a5232")
 		if lit:   # chips waiting in the rack: the bay glows until they're placed
 			edge = P.GOLD.lerp(P.CREAM, 0.5 + 0.5 * sin(Time.get_ticks_msec() / 220.0))
-		c.draw_rect(b, edge, false, 1.0)
+		Art.rbox(c, b, Color(0, 0, 0, 0), edge, 3)
 
 
 ## The spin's result, over the tray while it counts: the pocket, the Take it made (big), and a
@@ -937,8 +935,7 @@ func _draw_score(c: Control) -> void:
 	if not spin_score_vis:
 		return
 	var r := Rect2(Vector2.ZERO, c.size)
-	c.draw_rect(r, Color(0.05, 0.03, 0.02))
-	c.draw_rect(r, P.GOLD if spin_score > 0 else P.WOOD, false, 1.0)
+	Art.rbox(c, r, Color(0.05, 0.03, 0.02), P.GOLD if spin_score > 0 else Color("#6a5232"), 4)
 	var font := P.font()
 	var tfont := P.title_font()
 	var B = main.run.felt.board
@@ -976,8 +973,7 @@ func _draw_score(c: Control) -> void:
 			if py + 18 > c.size.y:
 				break
 		var pr := Rect2(px, py, w, 17)
-		c.draw_rect(pr, col.darkened(0.75))
-		c.draw_rect(pr, col.darkened(0.2), false, 1.0)
+		Art.rbox(c, pr, col.darkened(0.75), col.darkened(0.2), 3)
 		var ic: String = row.get("icon", "")
 		if ic == "":
 			ic = {"win": "bet", "loss": "bet", "mult": "red_streak", "cash": "cash", "push": "bet"}.get(row.kind, "bet")

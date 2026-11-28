@@ -1,6 +1,7 @@
 ﻿extends Node
 
 const Content := preload("res://core/content.gd")
+const P := preload("res://scenes/ui/palette.gd")
 ## Scripted UI smoke test with screenshots. Runs inside the real game (autoloads included):
 ##   godot --path . -- smoke=<out_dir> profile=user://smoke_profile.json
 ## Walks title -> intro dialogue -> wheel select -> table -> spin -> shop -> upgrade ->
@@ -26,7 +27,9 @@ func _process(delta: float) -> void:
 		[0.6, func():
 			if "tutorial_done" not in main.profile.seen_beats:   # the guided run has its own tour below
 				main.profile.seen_beats.append("tutorial_done")
-			shot("01_title")],
+			shot("01_title")
+			_check_motion()
+			_check_footer()],
 		[0.7, func():
 			main.profile.best_grade = 2
 			main.screens.select.grade = 2
@@ -580,9 +583,49 @@ func _run_plan(plan: Array) -> void:
 		step += 1
 
 
+## The home table's ball and rake move continuously: sample two whole loops at 120 fps and
+## report the biggest step between frames (in scene pixels, per scene-pixel scale k).
+## The home footer: the phone tip (as the web build shows it) never touches the version.
+func _check_footer() -> void:
+	var ts = main.screens.title
+	ts.hint_lbl.text = "On a phone: Share > Add to Home Screen plays full screen. Options > Screen fit if it's cut off."
+	var lines: int = maxi(1, ts.hint_lbl.get_line_count())
+	var hint := Rect2(ts.hint_lbl.position, Vector2(ts.hint_lbl.size.x, lines * 10.0))
+	var font: Font = P.font()
+	var vw: float = font.get_string_size(ts.ver_lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var ver := Rect2(ts.ver_lbl.position + Vector2(ts.ver_lbl.size.x - vw, 0), Vector2(vw, 10))
+	print("FOOTER: ", "OK" if not hint.intersects(ver) else "FAIL %s vs %s" % [hint, ver])
+
+
+func _check_motion() -> void:
+	var sc = main.home_scene
+	var worst_ball := 0.0
+	var worst_rake := 0.0
+	var prev_b = null
+	var prev_r = null
+	for i in range(int(2 * sc.LOOP * 120)):
+		var tt: float = i / 120.0
+		var rnd := int(tt / sc.LOOP)
+		var ph: float = fmod(tt, sc.LOOP)
+		var b: Array = sc._ball_at(rnd, ph)
+		var bp: Vector2 = sc.proj(b[0])
+		if prev_b != null and b[1] > 0.5 and prev_b[1] > 0.5:
+			worst_ball = maxf(worst_ball, bp.distance_to(prev_b[0]) / sc.k)
+		prev_b = [bp, b[1]]
+		var rp: Vector2 = sc.proj(sc._rake_head(ph))
+		if prev_r != null:
+			worst_rake = maxf(worst_rake, rp.distance_to(prev_r) / sc.k)
+		prev_r = rp
+	print("BALL SMOOTH: ", "OK" if worst_ball < 4.0 else "FAIL", " (worst step %.2f)" % worst_ball)
+	print("RAKE SMOOTH: ", "OK" if worst_rake < 4.0 else "FAIL", " (worst step %.2f)" % worst_rake)
+
+
 func _portrait_plan() -> Array:
 	return [
-		[0.6, func(): shot("p01_title")],
+		[0.6, func():
+			shot("p01_title")
+			_check_motion()
+			_check_footer()],
 		[0.7, func():
 			main.profile.best_grade = 2
 			main.start_run("european")],

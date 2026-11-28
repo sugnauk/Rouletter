@@ -351,9 +351,8 @@ func _draw_cage() -> void:
 ## One vendor's window: wood frame, dark interior, a lamp, brass bars, velvet counter, name.
 func _draw_window(c: Control, w: Rect2, vendor: String) -> void:
 	var accent: Color = {"cash": P.GOLD, "stack": P.RED.lightened(0.2), "loan": P.CYAN, "take": P.VIOLET}.get(Content.VENDORS[vendor].currency, P.GOLD)
-	c.draw_rect(w.grow(4), Color("#0e0b12"))
-	c.draw_rect(w.grow(2), Color("#a07c42"))
-	c.draw_rect(w.grow(1), Color("#0e0b12"))
+	Art.rbox(c, w.grow(4), Color("#0e0b12"), Color(0, 0, 0, 0), 5)
+	Art.rbox(c, w.grow(2), Color("#0e0b12"), Color("#a07c42"), 4)
 	c.draw_rect(w, Color("#0d0907"))
 	for i in range(4):
 		c.draw_circle(Vector2(w.get_center().x, w.position.y + 6), 50.0 - i * 12.0, Color(1, 0.8, 0.4, 0.03 + i * 0.01), true, -1.0, false)

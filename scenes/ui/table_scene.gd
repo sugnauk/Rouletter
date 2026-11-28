@@ -15,6 +15,12 @@ const Art := preload("res://scenes/ui/art.gd")
 const Board := preload("res://core/board.gd")
 
 const LOOP := 9.0
+const WHEEL_C := Vector3(0.0, 0.05, 9.3)
+const T_LAND := 3.7          ## the ball reaches the pockets
+const T_SETTLE := 4.4        ## ...and has settled into one, riding the wheel
+const RIM_R := 2.08
+const POCKET_R := 1.6
+const REST := Vector3(2.6, 0.5, 4.5)   ## the rake, held by the croupier's side between sweeps
 const RED := Color("#b8262d")
 const BLACK := Color("#1b1a1f")
 const GREEN := Color("#1f7a3e")
@@ -119,7 +125,7 @@ func _process(delta: float) -> void:
 ## Set out the chips for a round: three losing stacks and one on the number that will win.
 func _new_round(rnd: int) -> void:
 	_round = rnd
-	_win = order[(rnd * 13 + 5) % order.size()]
+	_win = order[_land_index(rnd)]
 	_stacks.clear()
 	var spots := [[0, 1], [2, 4], [1, 7], [0, 10], [2, 2], [1, 9]]
 	for i in range(3):
@@ -130,6 +136,90 @@ func _new_round(rnd: int) -> void:
 		_stacks.append({"n": n, "h": 2 + (rnd + i) % 4, "col": Art.denom_color([1, 5, 10, 25][(rnd + i) % 4]), "win": false})
 	if _win > 0:
 		_stacks.append({"n": _win, "h": 3, "col": Art.denom_color(5), "win": true})
+
+
+# --- Motion: everything is a continuous function of time, so nothing ever jumps ---------
+
+## The wheel's speed during a round: the croupier's push eases in, then it slows to a drift.
+func _wheel_speed(x: float) -> float:
+	var push := smoothstep(0.0, 0.5, x) * pow(maxf(0.0, 1.0 - x / 4.5), 2.0)
+	return 0.35 + 1.4 * push
+
+
+## The wheel's turn within a round (integrated speed). Rounds chain on, so the angle never resets.
+func _wheel_turn(x: float) -> float:
+	var steps := 36
+	var dx := x / steps
+	var sum := 0.0
+	for i in range(steps):
+		sum += _wheel_speed((i + 0.5) * dx) * dx
+	return sum
+
+
+var _loop_turn := -1.0
+func _wheel_angle(rnd: int, ph: float) -> float:
+	if _loop_turn < 0.0:
+		_loop_turn = _wheel_turn(LOOP)
+	return 0.7 + rnd * _loop_turn + _wheel_turn(ph)
+
+
+## The ball's speed round the rim (against the wheel): fast off the croupier's hand, slowing.
+func _ball_speed(x: float) -> float:
+	return 0.9 + 3.6 * pow(maxf(0.0, 1.0 - x / T_LAND), 1.5)
+
+
+## Where the ball is round the rim on its own (no wheel): integrated, always the same way.
+func _ball_free(rnd: int, x: float) -> float:
+	var steps := 36
+	var dx := x / steps
+	var sum := 0.0
+	for i in range(steps):
+		sum += _ball_speed((i + 0.5) * dx) * dx
+	return rnd * 2.3 - sum
+
+
+## The pocket (index into the wheel order) the ball lands in this round: wherever it comes down.
+func _land_index(rnd: int) -> int:
+	var rel := posmod(_ball_free(rnd, T_LAND) - _wheel_angle(rnd, T_LAND), TAU)
+	return int(rel / TAU * order.size()) % order.size()
+
+
+## The ball in the world, and how visible it is (it fades out as the croupier picks it up at
+## the end of a round, and fades in at the rim when it's launched again).
+func _ball_at(rnd: int, ph: float) -> Array:
+	var n := order.size()
+	var free_a := _ball_free(rnd, ph)
+	var r := RIM_R
+	var y := 0.1
+	var a := free_a
+	if ph > T_LAND - 0.8:
+		r = lerpf(RIM_R, POCKET_R, smoothstep(T_LAND - 0.8, T_LAND, ph))   # spiralling in
+	if ph > T_LAND:
+		# Ride the wheel in the pocket it fell into, blending smoothly off the free path.
+		var land_rel := _ball_free(rnd, T_LAND) - _wheel_angle(rnd, T_LAND)
+		var centre: float = (floor(posmod(land_rel, TAU) / TAU * n) + 0.5) * TAU / n
+		var rel_unwrapped: float = land_rel + (centre - posmod(land_rel, TAU))
+		var ride: float = _wheel_angle(rnd, ph) + rel_unwrapped
+		var b := smoothstep(T_LAND, T_SETTLE, ph)
+		a = lerpf(free_a, ride, b)
+		var kk := clampf((ph - T_LAND) / (T_SETTLE - T_LAND), 0.0, 1.0)
+		y = lerpf(0.1, 0.06, kk) + 0.12 * exp(-5.0 * kk) * absf(sin(kk * 3.0 * PI))   # three shrinking hops
+	var vis := smoothstep(0.0, 0.3, ph) * (1.0 - smoothstep(8.4, 8.9, ph))
+	return [WHEEL_C + Vector3(cos(a) * r, y, sin(a) * r), vis]
+
+
+## The rake head: rests by the croupier's side, reaches in at the near end, sweeps to the wheel,
+## then lifts back out. One continuous path.
+func _rake_head(ph: float) -> Vector3:
+	var start := Vector3(0.9, 0.04, 1.9)
+	var finish := Vector3(0.2, 0.04, 7.4)
+	if ph < 4.7 or ph > 8.4:
+		return REST
+	if ph < 5.5:
+		return REST.lerp(start, smoothstep(4.7, 5.5, ph))
+	if ph < 7.6:
+		return start.lerp(finish, smoothstep(5.5, 7.6, ph))
+	return finish.lerp(REST, smoothstep(7.6, 8.4, ph))
 
 
 # --- Camera -------------------------------------------------------------------------------
@@ -250,14 +340,8 @@ func _draw_lamps() -> void:
 
 ## The wheel at the far end: a wooden bowl, pockets turning, a chrome turret, and the ball.
 func _draw_wheel(ph: float) -> void:
-	var c := Vector3(0.0, 0.05, 9.3)
-	# Wheel angle: fast then slowing, and a slow drift while it rests.
-	var wa: float
-	if ph < 4.0:
-		wa = 2.4 * ph - 0.25 * ph * ph
-	else:
-		wa = 2.4 * 4.0 - 0.25 * 16.0 + (ph - 4.0) * 0.25
-	wa += _round * 1.3
+	var c := WHEEL_C
+	var wa: float = _wheel_angle(_round, ph)
 	_disc(c + Vector3(0, -0.02, 0), 2.35, WOOD_DARK, 40)
 	_disc(c, 2.2, WOOD, 40)
 	_disc(c + Vector3(0, 0.004, 0), 2.0, WOOD.darkened(0.3), 40)   # the ball track
@@ -288,26 +372,14 @@ func _draw_wheel(ph: float) -> void:
 		canvas.draw_circle(tip, maxf(1.0, k * 0.9), Color("#f4f6fb"), true, -1.0, false)
 	canvas.draw_circle(tt, maxf(1.0, k), Color.WHITE, true, -1.0, false)
 	# The ball: round the rim against the spin, spiralling in, then riding its pocket.
-	var bp: Vector3
-	var win_i: int = order.find(_win)
-	if ph < 3.0:
-		var ba := -3.6 * ph + 0.3 * ph * ph
-		bp = c + Vector3(cos(ba) * 2.08, 0.1, sin(ba) * 2.08)
-	elif ph < 4.0:
-		var k := ph - 3.0
-		var ba2 := -3.6 * 3.0 + 0.3 * 9.0 - 2.0 * k
-		var target := wa + TAU * (win_i + 0.5) / n
-		var a := lerp_angle(ba2, target, k * k)
-		var rr := lerpf(2.08, 1.6, k)
-		bp = c + Vector3(cos(a) * rr, 0.08 + absf(sin(k * 18.0)) * 0.12 * (1.0 - k), sin(a) * rr)
-	else:
-		var a2 := wa + TAU * (win_i + 0.5) / n
-		bp = c + Vector3(cos(a2) * 1.6, 0.06, sin(a2) * 1.6)
-	var bs := proj(bp)
-	var br: float = maxf(1.2, 1.3 * k)
-	canvas.draw_circle(bs + Vector2(0, br * 0.6), br, Color(0, 0, 0, 0.45), true, -1.0, false)   # its shadow
-	canvas.draw_circle(bs, br, Color("#f4f1e8"), true, -1.0, false)
-	canvas.draw_rect(Rect2(bs - Vector2(br * 0.5, br * 0.6), Vector2(maxf(1.0, k * 0.6), maxf(1.0, k * 0.6))), Color.WHITE)
+	var ball: Array = _ball_at(_round, ph)
+	var bs := proj(ball[0])
+	var bv: float = ball[1]
+	if bv > 0.01:
+		var br: float = maxf(1.2, 1.3 * k)
+		canvas.draw_circle(bs + Vector2(0, br * 0.6), br, Color(0, 0, 0, 0.45 * bv), true, -1.0, false)   # its shadow
+		canvas.draw_circle(bs, br, Color(Color("#f4f1e8"), bv), true, -1.0, false)
+		canvas.draw_rect(Rect2(bs - Vector2(br * 0.5, br * 0.6), Vector2(maxf(1.0, k * 0.6), maxf(1.0, k * 0.6))), Color(1, 1, 1, bv))
 	# The result marker pops up over the wheel once the ball has settled.
 	if ph > 4.2 and ph < 8.6:
 		var up := proj(c + Vector3(0, 1.5 + 0.1 * sin(t * 4.0), 0))
@@ -331,18 +403,24 @@ func _square_centre(n: int) -> Vector3:
 
 ## Chip stacks: discs piled up, each with a light rim. Losers get raked away; the winner is paid.
 func _draw_chips(ph: float) -> void:
-	var rake_z := _rake_z(ph)
-	var fade: float = 1.0 - clampf((ph - 8.5) / 0.5, 0.0, 1.0)
+	var head := _rake_head(ph)
 	for s in _stacks:
+		var fade: float = 1.0 - smoothstep(8.4, 8.9, ph)
 		var p := _square_centre(s.n)
 		var h: int = s.h
-		if not s.win and ph > 5.4 and rake_z < 99.0 and p.z <= rake_z:
-			p.z = rake_z   # swept along in front of the rake
-			p.x = lerpf(p.x, 0.0, clampf((ph - 5.4) / 2.0, 0.0, 1.0))
-		if not s.win and ph > 7.5:
-			continue
-		if s.win and ph > 6.8:
-			h += int(clampf((ph - 6.8) / 0.12, 0.0, 6.0))   # the payout piles on
+		if not s.win:
+			# Losing stacks are pushed along in front of the rake once it reaches them...
+			if ph > 5.5 and p.z <= head.z - 0.25:
+				p.z = maxf(p.z, head.z - 0.25)
+				p.x = lerpf(p.x, head.x, smoothstep(5.5, 7.6, ph) * 0.8)
+			if ph > 7.6:
+				p.z = 7.15
+			# ...and taken off at the wheel end.
+			fade = 1.0 - smoothstep(7.4, 7.9, ph)
+			if fade <= 0.01:
+				continue
+		elif ph > 7.7:
+			h += int(clampf((ph - 7.7) / 0.1, 0.0, 6.0))   # the payout piles on once the rake is clear
 		for i in range(h):
 			var q := p + Vector3(0, 0.07 * i, 0)
 			_disc(q + Vector3(0, -0.02, 0), 0.2, Color(s.col.darkened(0.55), fade), 16)
@@ -359,21 +437,10 @@ func _draw_chips(ph: float) -> void:
 			canvas.draw_rect(Rect2(ts - Vector2(0, (2 + g * 2) * k), Vector2(maxf(1.0, k), maxf(1.0, k))), Color(P.GOLD, 0.8))
 
 
-## Where the rake head is along the table (99 = not out).
-func _rake_z(ph: float) -> float:
-	if ph < 5.0 or ph > 7.8:
-		return 99.0
-	var k := clampf((ph - 5.0) / 2.4, 0.0, 1.0)
-	return lerpf(1.2, 7.4, k * k * (3.0 - 2.0 * k))
-
-
 ## The croupier's arm and rake, reaching in from the right.
 func _draw_rake(ph: float) -> void:
-	var rz := _rake_z(ph)
-	var head_z: float = rz if rz < 99.0 else 8.6
-	var reach: float = 1.0 if rz < 99.0 else 0.0
-	var head := Vector3(lerpf(1.4, 0.2, reach), 0.04, head_z)
-	var hand := Vector3(2.9, 1.0, head_z - 1.6 + (1.0 - reach) * 0.8)
+	var head := _rake_head(ph)
+	var hand := head + Vector3(2.0, 0.9, -1.4)   # the handle's end, in the croupier's hand
 	var hs := proj(head)
 	var hn := proj(hand)
 	canvas.draw_line(hs, hn, Color("#c8a46a"), maxf(1.0, k * 0.8))

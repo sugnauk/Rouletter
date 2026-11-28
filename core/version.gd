@@ -4,7 +4,7 @@ extends RefCounted
 ## The deploy workflow overwrites BUILD with the commit hash and build time, so "dev" means a
 ## local/editor run.
 
-const VERSION := "0.0.58"
+const VERSION := "0.0.59"
 const BUILD := "dev"
 
 

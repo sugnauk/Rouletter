@@ -114,12 +114,14 @@ static func cosy(bg: Color, border: Color = Color("#8a6a3a"), margin: int = 3) -
 	return s
 
 
-static func box(bg: Color, border: Color, width: int = 1, margin: int = 3) -> StyleBoxFlat:
+## A flat panel style: pixel-stepped rounded corners (no blur), `radius` pixels.
+static func box(bg: Color, border: Color, width: int = 1, margin: int = 3, radius: int = 3) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
 	s.bg_color = bg
 	s.border_color = border
 	s.set_border_width_all(width)
-	s.set_corner_radius_all(0)
+	s.set_corner_radius_all(radius)
+	s.corner_detail = 3
 	s.content_margin_left = margin + 1
 	s.content_margin_right = margin + 1
 	s.content_margin_top = margin

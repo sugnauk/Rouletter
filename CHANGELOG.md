@@ -3,6 +3,16 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.59
+- **The home table moves smoothly.**
+  - **The wheel:** its angle carries on from round to round, so it never jumps when a new spin starts. Each push eases in, then slows to a drift.
+  - **The ball:** it slows steadily round the rim, always the same way, then spirals in. It lands in whichever pocket it comes down in (no more steering or reversing to a pre-picked number), settles with three shrinking hops and rides the wheel. Between rounds it fades out as the croupier picks it up, and fades back in at the rim, instead of teleporting.
+  - **The croupier's rake:** it now rests by their side, clear of the wheel. It reaches in at the near end, sweeps the losing stacks to the wheel and lifts back out on one continuous path. The winner is paid once the rake is clear.
+- **Falling chips are back on the home screen.** Casino chips tumble down over the table (never over the menu), flipping as they fall, with their faces and a soft shadow.
+- **Footer fix:** the phone tip on the web build wraps into two lines and no longer runs into the version number.
+- **Rounded corners everywhere:** buttons, info cards, dialogue boxes, panels, tokens, plaques, the tray and its bays, the spin result and its pills, the ticket and the Cage windows. The corners are crisp pixel steps, not blurred. The felt's grid stays square.
+- The screenshot run now checks that the home ball and rake never jump between frames, and that the footer never overlaps.
+
 ## 0.0.58
 - **The live table fills the whole screen.** It now sits behind the game frame and stretches edge to edge on any window or phone, with no borders top and bottom.
   - It's framed to the layout: right of the menu in landscape, centred in the top half on a phone held upright.

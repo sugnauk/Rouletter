@@ -30,6 +30,10 @@ var board_text := ["", "", 0.0]   ## markers line, next-unlock line, progress 0.
 var portrait := false
 var hint_lbl: Label
 var ver_lbl: Label
+var chips_view: Control   ## casino chips tumbling down over the table
+var falling := []         ## {pos, vel, spin, a, col, kind, rad}
+var _next_chip := 1.0
+const CHIP_KINDS := ["bet", "magnet", "snowball", "ace", "crown", "keystone", "mint", "clover", "box_office", "echo"]
 
 
 func setup() -> void:
@@ -37,6 +41,10 @@ func setup() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade.draw.connect(_draw_shade)
 	add_child(shade)
+	chips_view = Control.new()
+	chips_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chips_view.draw.connect(_draw_chips)
+	add_child(chips_view)
 	sign_view = Control.new()
 	sign_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	sign_view.draw.connect(_draw_sign)
@@ -97,9 +105,10 @@ func relayout(tall: bool) -> void:
 		P.place(continue_info, Vector2(30, 5), Vector2(TICKET.x - 34, 36))
 		P.place(new_btn, Vector2(24, 296))
 		P.place(continue_btn, Vector2(230, 296))
-		hint_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-		P.place(hint_lbl, Vector2(28, 344), Vector2(360, 10))
-		P.place(ver_lbl, Vector2(408, 344), Vector2(224, 10))
+		# The tip wraps into two lines on the left; the version keeps the bottom-right corner.
+		hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		P.place(hint_lbl, Vector2(28, 338), Vector2(372, 20))
+		P.place(ver_lbl, Vector2(408, 348), Vector2(224, 10))
 	else:
 		P.place(sign_view, Vector2(50, 10), Vector2(260, 64))
 		P.place(board_view, Vector2(102, 76), PLAQUE)
@@ -111,8 +120,8 @@ func relayout(tall: bool) -> void:
 		P.place(ticket_view, Vector2(136, 512), Vector2(204, 44))
 		P.place(continue_info, Vector2(30, 5), Vector2(170, 36))
 		hint_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		P.place(hint_lbl, Vector2(20, 570), Vector2(320, 24))
-		P.place(ver_lbl, Vector2(116, 624), Vector2(224, 10))
+		P.place(hint_lbl, Vector2(20, 566), Vector2(320, 30))
+		P.place(ver_lbl, Vector2(20, 618), Vector2(320, 10))
 	if main != null:
 		refresh()
 
@@ -131,8 +140,35 @@ func _process(delta: float) -> void:
 		_flicker -= delta
 	elif randf() < delta * 0.25:
 		_flicker = randf_range(0.08, 0.3)
+	# Chips tumble down over the table every few seconds, clear of the menu.
+	_next_chip -= delta
+	if _next_chip <= 0.0 and falling.size() < 8:
+		_next_chip = randf_range(1.2, 3.0)
+		var kind: String = CHIP_KINDS[randi() % CHIP_KINDS.size()]
+		var cols := [P.RED, P.GOLD, P.CREAM, Color("#3f6fd1"), P.GOOD]
+		falling.append({"pos": Vector2(randf_range(40, 320) if portrait else randf_range(320, 620), -12.0),
+			"vel": Vector2(randf_range(-12, 12), randf_range(40, 70)), "spin": randf_range(-3, 3), "a": 0.0,
+			"col": cols[randi() % cols.size()] if kind == "bet" else P.chip_color(kind), "kind": kind, "rad": randf_range(5.0, 8.0)})
+	var floor_y: float = 370.0 if portrait else P.H + 20.0   # on a phone they fall behind the menu's dark floor
+	for f in falling:
+		f.pos += f.vel * delta
+		f.vel.y += 30.0 * delta
+		f.a += f.spin * delta
+	falling = falling.filter(func(f): return f.pos.y < floor_y)
+	chips_view.queue_redraw()
 	sign_view.queue_redraw()
 	board_view.queue_redraw()
+
+
+## The tumbling chips: flipping as they fall (squashed by the turn), with a soft shadow.
+func _draw_chips() -> void:
+	for f in falling:
+		var squash: float = maxf(0.25, absf(cos(f.a)))
+		chips_view.draw_set_transform(f.pos + Vector2(2, 3), 0.0, Vector2(1.0, squash))
+		chips_view.draw_circle(Vector2.ZERO, f.rad, Color(0, 0, 0, 0.3), true, -1.0, false)
+		chips_view.draw_set_transform(f.pos, 0.0, Vector2(1.0, squash))
+		Art.chip(chips_view, Vector2.ZERO, f.rad, f.col, f.kind if squash > 0.6 else "")
+	chips_view.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 ## A soft shade under the menu: from the left in landscape, up from the bottom on a phone.
@@ -169,9 +205,8 @@ func _draw_board() -> void:
 	var c := board_view
 	var r := Rect2(Vector2.ZERO, PLAQUE)
 	var hot: bool = board_view.is_hovered()
-	c.draw_rect(r.grow(1), Color(0, 0, 0, 0.5))
-	c.draw_rect(r, Color(0.07, 0.05, 0.07, 0.92))
-	c.draw_rect(r, P.GOLD if hot else Color("#8a6a3a"), false, 1.0)
+	Art.rbox(c, r.grow(1), Color(0, 0, 0, 0.5), Color(0, 0, 0, 0), 4)
+	Art.rbox(c, r, Color(0.07, 0.05, 0.07, 0.92), P.GOLD if hot else Color("#8a6a3a"), 3)
 	Art.icon(c, "cash", Vector2(12, 15), 1)
 	Art.text(c, P.font(), Vector2(24, 12), board_text[0], 8, P.GOLD)
 	Art.text(c, P.font(), Vector2(PLAQUE.x - 6 - P.font().get_string_size("PAWN SHOP >", HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x, 12), "PAWN SHOP >", 8, P.GOLD if hot else P.DIM)
@@ -186,12 +221,13 @@ func _draw_board() -> void:
 func _draw_ticket() -> void:
 	var c := ticket_view
 	var r := Rect2(Vector2.ZERO, ticket_view.size)
-	c.draw_rect(r, Color("#e8dcc0"))
-	c.draw_rect(Rect2(0, 0, 24, r.size.y), Color("#c94a3a"))
+	Art.rbox(c, r, Color("#c94a3a"), Color(0, 0, 0, 0), 3)
+	Art.rbox(c, Rect2(24, 0, r.size.x - 24, r.size.y), Color("#e8dcc0"), Color(0, 0, 0, 0), 3)
+	c.draw_rect(Rect2(24, 0, 4, r.size.y), Color("#e8dcc0"))   # square where the stub tears off
 	for yy in range(2, int(r.size.y), 4):
 		c.draw_rect(Rect2(24, yy, 1, 2), Color("#8a7a60"))
 	Art.text(c, P.font(), Vector2(12, 26), "RUN", 8, P.CREAM, true)
-	c.draw_rect(r, Color("#8a6420"), false, 1.0)
+	Art.rbox(c, r, Color(0, 0, 0, 0), Color("#8a6420"), 3)
 
 
 func refresh() -> void:
