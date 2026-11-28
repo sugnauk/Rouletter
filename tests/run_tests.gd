@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth", "test_chip_faces", "test_pattern_placement", "test_cast", "test_tutorial_red_back",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth", "test_chip_faces", "test_pattern_placement", "test_cast", "test_tutorial_red_back", "test_pending_upgrade",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -2190,3 +2190,23 @@ func test_tutorial_red_back() -> void:
 	check(tut.allows("bet", "RED"), "RED can go back on at the spin step")
 	check(not tut.allows("bet", "S5"), "...but nothing else")
 	check(tut.allows("take_back"), "and a bet can come off")
+
+
+func test_pending_upgrade() -> void:
+	var run = new_run()
+	run.phase = RunState.Phase.SHOP
+	# An upgrade with nowhere to go can't be bought (it would block the Cage for good).
+	for k in ["COL1", "COL2", "COL3", "DOZ1", "DOZ2", "DOZ3"]:
+		run.felt.bet_upgrades[k] = "gold_trim"
+	run.cash = 99
+	run.shop.stock = [{"type": "upgrade", "id": "fat_box", "vendor": "cashier", "currency": "cash", "price": 5, "sold": false}]
+	run.shop["pending_upgrade"] = ""
+	check(Content.UPGRADES.fat_box.target == "outside", "fat_box goes on columns and dozens")
+	check(run.buy_block(0) != "", "no room on the felt: the upgrade can't be bought")
+	# With room, it can, and a chip can still be placed while it waits.
+	run.felt.bet_upgrades.erase("DOZ3")
+	check(run.buy_block(0) == "" and run.buy(0), "with room it can be bought")
+	check(run.shop.pending_upgrade == "fat_box", "it waits to be laid")
+	run.inventory.append({"kind": "magnet", "value": 1})
+	check(run.place_chip(run.inventory.size() - 1, "S9"), "a rack chip still goes down while an upgrade waits")
+	check(run.apply_upgrade("DOZ3") and run.shop.pending_upgrade == "", "then the upgrade is laid")

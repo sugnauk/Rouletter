@@ -513,6 +513,8 @@ func buy_block(i: int) -> String:
 		return "Not enough cash."
 	if item.type == "rule" and felt.house_rules.size() >= relic_slots():
 		return "Your House Rule slots are full."
+	if item.type == "upgrade" and _targets_for(item.id).is_empty():
+		return "There's no room left on the felt for that."   # (buying it would leave nowhere to lay it)
 	return ""
 
 

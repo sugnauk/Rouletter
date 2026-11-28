@@ -3,6 +3,12 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.62
+- **The Cage no longer locks the felt after you buy a felt upgrade.** A bought upgrade waits for you to lay it, and until now every click on the felt tried to lay it instead.
+  - Chips in your rack couldn't be placed, and clicking anywhere else did nothing, with no explanation.
+  - Now a rack chip you're holding still goes down where it can (its spots light up). Clicking anywhere else says "Your Fat Box is waiting: click a glowing spot to lay it", and NEXT TABLE explains why it won't go yet.
+- **No more permanent lock:** an upgrade with no room left on the felt can't be bought any more. Before, buying one left it with nowhere to go, and the Cage could never be left.
+
 ## 0.0.61
 - **NEXT TABLE lights up when you're done in the Cage.** Once every chip is placed and there's nothing left you can afford (no item, reroll or bigger stack), it becomes a lit marquee and the hint says "All set".
 - **Oro's Coin is worth winning.** It used to add a flat +10 when a zero hit, less than any $5 chip sitting on the zero (35 per level). Now a zero adds +10 and then doubles the whole spin, so a chip on 0 pays (35 + 10) x2 = 90.

@@ -252,7 +252,9 @@ func _end_stock_drag() -> void:
 ## Light the felt for whatever you're holding: a felt upgrade to lay, or a rack chip.
 func _mark_felt() -> void:
 	var run = main.run
-	if run.shop.get("pending_upgrade", "") != "":
+	if mode == "place" and selected_item >= 0 and selected_item < run.inventory.size():
+		Placing.mark(felt_view, run, selected_item)   # a held rack chip shows where it goes, even with an upgrade waiting
+	elif run.shop.get("pending_upgrade", "") != "":
 		Placing.mark_keys(felt_view, run.upgrade_targets())
 	else:
 		Placing.mark(felt_view, run, selected_item if mode == "place" else -1)
@@ -440,8 +442,9 @@ func _next() -> void:
 		main.tutorial_did("leave")
 		Sfx.play("click")
 		main.route()
-	else:
-		status_lbl.text = "Lay your upgrade first."
+	elif main.run.shop.get("pending_upgrade", "") != "":
+		status_lbl.text = "Lay your %s first: click a glowing spot on the felt." % Content.UPGRADES[main.run.shop.pending_upgrade].name
+		Sfx.play("click")
 
 
 func refresh() -> void:
@@ -1000,10 +1003,18 @@ func _on_felt(key: String, button: int) -> void:
 	if button != MOUSE_BUTTON_LEFT or main.dialogue.is_open():
 		return
 	if run.shop.pending_upgrade != "":
+		# A felt upgrade is waiting to be laid. A rack chip you're holding still goes down where it
+		# can; otherwise the click lays the upgrade, or says plainly what's waiting.
+		if selected_item >= 0 and selected_item < run.inventory.size() and run.can_place_chip(run.inventory[selected_item].kind, key):
+			_place_selected(key)
+			return
 		if run.apply_upgrade(key):
 			felt_view.flash(key)
 			main.fx.burst(main.fx.local(felt_view.key_global(key)), 20, [P.CYAN, P.GOLD, P.CREAM])
 			Sfx.play("chip_place")
+		else:
+			status_lbl.text = "Your %s is waiting: click a glowing spot to lay it. %s" % [Content.UPGRADES[run.shop.pending_upgrade].name, Content.place_hint(run.shop.pending_upgrade)]
+			Sfx.play("click")
 		return
 	if selected_item >= 0:
 		_place_selected(key)
