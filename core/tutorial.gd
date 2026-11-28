@@ -60,8 +60,8 @@ func allows(action: String, key: String = "", kind: String = "") -> bool:
 			return action == "place" and Board.is_straight(key) and Board.straight_number(key) > 0
 		"bet_red":
 			return action == "bet" and key == "RED"
-		"spin":
-			return action == "spin"
+		"spin":   # (RED can go back on if it came off)
+			return action == "spin" or (action == "bet" and key == "RED") or action == "take_back"
 		"spin_free", "buy":
 			return action in ["place", "bet", "spin", "buy", "take_back"]
 		"leave":

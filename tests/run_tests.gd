@@ -27,7 +27,7 @@ func _initialize() -> void:
 		"test_collector", "test_wildcard_zero", "test_en_prison", "test_red_streak", "test_hot_hand",
 		"test_signature", "test_thirteen", "test_enforcers", "test_resolver_is_pure", "test_odds",
 		"test_run_table_flow", "test_rebet_and_clear", "test_pit_boss", "test_loan_shark_and_fence", "test_inside_content", "test_act2", "test_dealer_and_endless", "test_run_save", "test_run_marker", "test_feats", "test_rarity_and_levels", "test_version", "test_staged_vendors", "test_item_hints", "test_abandon_reset_history", "test_grades", "test_content_batch", "test_almanac_categories", "test_big_content_batch", "test_trigger_chips", "test_new_rules", "test_shop", "test_lose_and_bust", "test_rent_control_target",
-		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth", "test_chip_faces", "test_pattern_placement", "test_cast",
+		"test_full_run_victory", "test_seeded_reproducible", "test_profile", "test_preview", "test_pinned_clear", "test_cage_decisions", "test_bridges", "test_refine", "test_table_variety", "test_long_term", "test_stacking_twins", "test_free_chips", "test_onboarding", "test_explosive", "test_bosses_and_grades", "test_meta", "test_save_versions", "test_speed", "test_goal_groups", "test_run_report", "test_provisional_placement", "test_concise_text", "test_balance_content", "test_combos", "test_tutorial", "test_fast_odds", "test_run_arc", "test_novel_wheels", "test_box_chips", "test_drag_buy", "test_story_beats", "test_sfx_synth", "test_music_synth", "test_chip_faces", "test_pattern_placement", "test_cast", "test_tutorial_red_back",
 	]:
 		call(t)
 	print("\n%d passed, %d failed" % [passed, failed])
@@ -1343,7 +1343,10 @@ func test_bosses_and_grades() -> void:
 	# Trophies.
 	var t = felt("european", [["bet", "S17", 1]])
 	t.house_rules.append("oros_coin")
-	near(Resolver.resolve_spin(t, 0).take, 9.0, "Oro's Coin: +10 on a zero (less the lost bet)")
+	near(Resolver.resolve_spin(t, 0).take, 19.0, "Oro's Coin: +10 on a zero doubled, less the lost bet")
+	var oz = felt("european", [["perm", "S0", 1]])
+	oz.house_rules.append("oros_coin")
+	near(Resolver.resolve_spin(oz, 0).take, 90.0, "Oro's Coin beats a plain chip on the zero: (35 + 10) x2")
 	t.house_rules = ["velvet_rope"]
 	check(Resolver.resolve_spin(t, 5).stack == 2, "Velvet Rope: +2 chips a spin")
 	t.house_rules = ["sals_whistle"]
@@ -2177,3 +2180,13 @@ func test_cast() -> void:
 		if who != "Narrator" and not Portraits.has(who):
 			missing.append(who)
 	check(missing.is_empty(), "every speaker has a portrait %s" % [missing])
+
+
+func test_tutorial_red_back() -> void:
+	var T = load("res://core/tutorial.gd")
+	var tut = T.new()
+	tut.idx = 3   # the "spin" step, right after betting RED
+	check(tut.want() == "spin", "tutorial at the spin step")
+	check(tut.allows("bet", "RED"), "RED can go back on at the spin step")
+	check(not tut.allows("bet", "S5"), "...but nothing else")
+	check(tut.allows("take_back"), "and a bet can come off")

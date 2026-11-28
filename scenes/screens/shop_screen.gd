@@ -516,9 +516,29 @@ func refresh() -> void:
 	speed_btn.text = preload("res://core/profile.gd").SPEEDS[main.speed()].label
 	cage_view.queue_redraw()
 	_refresh_choice(run)
+	_light_next(run)
 	_first_time_tips(run)
 	main.tutorial_prompt.call_deferred()
 	_update_buy_btn()
+
+
+## Nothing left to do here (every chip placed, nothing on the counter you can afford, no reroll
+## or bigger stack in reach): NEXT TABLE lights up like the big buttons, and the hint says so.
+func _light_next(run) -> void:
+	var done: bool = choice == null and run.shop.get("pending_upgrade", "") == "" and not run.has_unplaced_chips()
+	if done:
+		for i in range(run.shop.stock.size()):
+			var item: Dictionary = run.shop.stock[i]
+			if not item.sold and run.can_afford(item) and run.buy_block(i) == "":
+				done = false
+				break
+	if done and (run.shop.get("free_rerolls", 0) > 0 or run.cash >= run.shop.reroll or run.cash >= run.stack_price()):
+		done = false
+	nb.marquee = done
+	nb.pulse = done
+	nb.queue_redraw()
+	if done and selected_item < 0 and drag_stock < 0:
+		status_lbl.text = "All set. NEXT TABLE when you're ready."
 
 
 func _first_time_tips(run) -> void:

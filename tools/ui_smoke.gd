@@ -66,7 +66,25 @@ func _process(delta: float) -> void:
 		[2.85, func(): main.screens.table._unzoom()],
 		[2.92, func(): main.screens.table._on_hover("S17")],
 		[3, func(): shot("04_table_bets")],
-		[3.1, func(): main.screens.table._on_spin()],
+		[3.01, func():   # hover a House Rule, then bet with the real mouse: the felt still takes it
+			var t = main.screens.table
+			main.run.felt.house_rules.append("crowd_pleaser")
+			t.refresh()],
+		[3.03, func():
+			var t = main.screens.table
+			var tok: Control = t.rules_flow.get_child(0)
+			_mouse(tok.get_global_rect().get_center(), null)],
+		[3.05, func():
+			var t = main.screens.table
+			_dbg_before = main.run.felt.chips_on("S8").size()
+			_mouse(t.felt_view.key_global("S8"), null)],
+		[3.07, func(): _mouse(main.screens.table.felt_view.key_global("S8"), true)],
+		[3.08, func(): _mouse(main.screens.table.felt_view.key_global("S8"), false)],
+		[3.1, func():
+			var after: int = main.run.felt.chips_on("S8").size()
+			print("BET AFTER RULE: ", "OK" if after == _dbg_before + 1 else "FAIL %d -> %d" % [_dbg_before, after])
+			print("UNDO FIRST BET: ", "OK" if not main.screens.table.undo_btn.disabled else "FAIL")
+			main.screens.table._on_spin()],
 		[5.2, func(): shot("05a_counting")],
 		[6.6, func():
 			main.last_clear = {"take": 12.0, "target": 8, "table": 0, "spins_left": 3, "comps": 1, "reward": 7}
@@ -81,7 +99,23 @@ func _process(delta: float) -> void:
 			run.cash = 40
 			main.route()],
 		[9.9, func(): _close_dialogue()],
-		[10, func(): shot("06_shop")],
+		[10, func():
+			shot("06_shop")
+			# Nothing affordable and nothing to place: NEXT TABLE lights up. With cash, it doesn't.
+			var sh = main.screens.shop
+			var keep: int = main.run.cash
+			main.run.skip_offer()
+			main.run.shop.bonus = []
+			main.run.inventory.clear()
+			main.run.cash = 0
+			main.run.shop.free_rerolls = 0
+			sh.refresh()
+			var lit: bool = sh.nb.marquee
+			main.run.cash = 99
+			sh.refresh()
+			print("NEXT LIT: ", "OK" if lit and not sh.nb.marquee else "FAIL lit=%s rich=%s" % [lit, sh.nb.marquee])
+			main.run.cash = keep
+			sh.refresh()],
 		[10.1, func():
 			run.skip_offer()
 			if run.shop.bonus.is_empty():
@@ -550,6 +584,7 @@ func _process(delta: float) -> void:
 
 ## A real mouse event at `at` (viewport coords): pressed true/false, or null for a move.
 var touch_open := false
+var _dbg_before := 0
 var _touch_at := Vector2.ZERO
 
 
@@ -602,17 +637,18 @@ func _cast_sheet(on: bool) -> void:
 	var Portraits = load("res://scenes/ui/portraits.gd")
 	var names: Array = Portraits.CAST.keys()
 	names.append("Narrator")
-	_sheet = Control.new()
-	_sheet.size = Vector2(640, 360)
-	_sheet.draw.connect(func():
-		_sheet.draw_rect(Rect2(0, 0, 640, 360), Color("#0b0a10"))
+	var sh := Control.new()
+	sh.size = Vector2(640, 360)
+	sh.draw.connect(func():
+		sh.draw_rect(Rect2(0, 0, 640, 360), Color("#0b0a10"))
 		for i in range(names.size()):
 			var x: float = 6 + (i % 9) * 70
 			var y: float = 6 + (i / 9) * 88
-			Portraits.draw(_sheet, names[i], Rect2(x, y, 64, 64))
+			Portraits.draw(sh, names[i], Rect2(x, y, 64, 64))
 			var nm: String = names[i]
-			_sheet.draw_string(P.font(), Vector2(x, y + 74), nm.to_upper().substr(0, 13), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, P.CREAM))
-	main.frame.add_child(_sheet)
+			sh.draw_string(P.font(), Vector2(x, y + 74), nm.to_upper().substr(0, 13), HORIZONTAL_ALIGNMENT_LEFT, -1, 8, P.CREAM))
+	_sheet = sh
+	main.frame.add_child(sh)
 
 
 ## The home footer: the phone tip (as the web build shows it) never touches the version.
@@ -789,7 +825,27 @@ func _portrait_plan() -> Array:
 		[19.75, func(): _touch(Vector2.ZERO, false)],
 		[19.9, func():
 			print("TOUCH CARD: ", "OK" if touch_open and not main.card.visible and main.touch_mode else "FAIL open=%s after=%s touch=%s" % [touch_open, main.card.visible, main.touch_mode])],
-		[20.2, func(): get_tree().quit()],
+		[19.95, func():   # after a rule's card, tap a rack chip then a number: it still places
+			main.hide_card(true)
+			main.run.inventory.append({"kind": "magnet", "value": 1})
+			main.screens.table.refresh()
+			var tok: Control = main.screens.table.rules_flow.get_child(main.screens.table.rules_flow.get_child_count() - 1)
+			_touch(tok.get_global_rect().get_center(), true)],
+		[20.0, func(): _touch(Vector2.ZERO, false)],
+		[20.1, func():
+			var t = main.screens.table
+			var rt: Control = t.rack_grid.get_child(t.rack_grid.get_child_count() - 1)
+			_touch(rt.get_global_rect().get_center(), true)],
+		[20.15, func(): _touch(Vector2.ZERO, false)],
+		[20.25, func():
+			var t = main.screens.table
+			_dbg_before = main.run.felt.chips_on("S11").size()
+			_touch(t.felt_view.key_global("S11"), true)],
+		[20.3, func(): _touch(Vector2.ZERO, false)],
+		[20.45, func():
+			var after: int = main.run.felt.chips_on("S11").size()
+			print("PLACE AFTER RULE: ", "OK" if after == _dbg_before + 1 else "FAIL %d -> %d" % [_dbg_before, after])],
+		[20.6, func(): get_tree().quit()],
 	]
 
 

@@ -577,6 +577,10 @@ func refresh() -> void:
 		log_box.clear()
 		log_box.append_text("[color=#f2c14e]%s[/color]\n" % run.message)
 	felt_view.targets = []
+	# Guided run: if the RED bet came off before the first spin, go back to "bet on RED".
+	if main.tutorial_on() and main.tutorial.want() == "spin" and not spinning \
+			and not run.felt.chips_on("RED").any(func(c): return c.is_bet()):
+		main.tutorial.idx -= 1
 	_sync_wheel(run)
 	main.tutorial_prompt.call_deferred()
 	felt_view.queue_redraw()
@@ -1053,6 +1057,7 @@ func _on_bet_clicked(key: String, button: int) -> void:
 	if run.place_bet(key, amt):
 		main.tutorial_did("bet", key)
 		bet_history.append({"key": key, "amount": amt})
+		undo_btn.disabled = false   # placing the bet refreshed the screen before it was in the history
 		felt_view.pop(key)
 		main.fx.fly(stack_at(), main.fx.local(felt_view.key_global(key)), Art.denom_color(amt), 1)
 		Sfx.play("chip_place")

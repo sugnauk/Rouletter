@@ -3,6 +3,13 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.61
+- **NEXT TABLE lights up when you're done in the Cage.** Once every chip is placed and there's nothing left you can afford (no item, reroll or bigger stack), it becomes a lit marquee and the hint says "All set".
+- **Oro's Coin is worth winning.** It used to add a flat +10 when a zero hit, less than any $5 chip sitting on the zero (35 per level). Now a zero adds +10 and then doubles the whole spin, so a chip on 0 pays (35 + 10) x2 = 90.
+- **Undo works on your first bet.** Placing a bet refreshed the screen before the bet was recorded, so Undo stayed greyed out until a second bet.
+- **The tutorial can't get stuck.** If you took the RED bet off before the first spin, you couldn't put it back. Now RED can go back on, and Rosa's step returns to "bet on RED" until it does.
+- The screenshot run now checks that the felt still takes a bet after viewing a House Rule (mouse and touch), that Undo works after the first bet, and that NEXT TABLE lights up only when you're done.
+
 ## 0.0.60
 - **Meet Rosa.** Dolores the cigarette girl is gone. Your guide is now **Rosa Marchetti, the night-shift croupier** who runs your table: green visor, black waistcoat, a sleek dark bob, and a tiny casino chip for an earring. Every one of her lines is rewritten in her voice (dry, warm, and it's her felt). The tutorial teaches the same steps, and old saves keep working.
 - **Every portrait is redrawn.** Characters are now half-body busts on a 48x48 grid with proper pixel-art shading: a key light from the top left, a warm rim light, three tones per material, a dark outline, and expressions (warm, sly, stern, bored, grin) that set each face's brows and mouth.
