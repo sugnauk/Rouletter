@@ -21,7 +21,7 @@ const T_LAND := 3.7          ## the ball reaches the pockets
 const T_SETTLE := 4.4        ## ...and has settled into one, riding the wheel
 const RIM_R := 2.08
 const POCKET_R := 1.6
-const REST := Vector3(2.6, 0.5, 4.5)   ## the rake, held by the croupier's side between sweeps
+const REST := Vector3(1.3, 0.9, 10.6)       ## the rake head, held up beside the wheel between sweeps
 const RED := Color("#b8262d")
 const BLACK := Color("#1b1a1f")
 const GREEN := Color("#1f7a3e")
@@ -51,6 +51,7 @@ var _motes: Array = []
 var _stacks: Array = []       ## {x, z, n, col, win}: this round's chips
 var _round := -1
 var _win := 0                  ## the winning pocket this round
+var _lane_x := 0.8             ## the column the losing stacks sit in (never the winner's): the rake's lane
 
 
 func _ready() -> void:
@@ -131,12 +132,14 @@ func _new_round(rnd: int) -> void:
 	_round = rnd
 	_win = order[_land_index(rnd)]
 	_stacks.clear()
-	var spots := [[0, 1], [2, 4], [1, 7], [0, 10], [2, 2], [1, 9]]
+	# The losing stacks sit together down one column the winner isn't in, so the croupier can
+	# rake that lane clean without touching the winner.
+	var wc: int = (_win - 1) % 3 if _win > 0 else -1
+	var lose_col: int = (wc + 1 + rnd % 2) % 3 if wc >= 0 else rnd % 3
+	_lane_x = -0.8 + lose_col * 0.8
 	for i in range(3):
-		var sp: Array = spots[(rnd + i * 2) % spots.size()]
-		var n: int = sp[1] * 3 + sp[0] + 1
-		if n == _win:
-			continue
+		var row: int = [1 + rnd % 3, 5 + rnd % 3, 9 + rnd % 2][i]
+		var n: int = row * 3 + lose_col + 1
 		_stacks.append({"n": n, "h": 2 + (rnd + i) % 4, "col": Art.denom_color([1, 5, 10, 25][(rnd + i) % 4]), "win": false})
 	if _win > 0:
 		_stacks.append({"n": _win, "h": 3, "col": Art.denom_color(5), "win": true})
@@ -223,12 +226,12 @@ func _pocket_under_ball(rnd: int, ph: float) -> int:
 ## The rake head: rests by the croupier's side, reaches in at the near end, sweeps to the wheel,
 ## then lifts back out. One continuous path.
 func _rake_head(ph: float) -> Vector3:
-	var start := Vector3(0.9, 0.04, 1.9)
-	var finish := Vector3(0.2, 0.04, 7.4)
-	if ph < 4.7 or ph > 8.4:
+	var start := Vector3(_lane_x, 0.04, 1.9)    # the rake works one lane: the losers' column
+	var finish := Vector3(_lane_x, 0.04, 7.4)
+	if ph < 4.6 or ph > 8.4:
 		return REST
 	if ph < 5.5:
-		return REST.lerp(start, smoothstep(4.7, 5.5, ph))
+		return REST.lerp(start, smoothstep(4.6, 5.5, ph))
 	if ph < 7.6:
 		return start.lerp(finish, smoothstep(5.5, 7.6, ph))
 	return finish.lerp(REST, smoothstep(7.6, 8.4, ph))
@@ -371,6 +374,8 @@ func _draw_wheel(ph: float) -> void:
 		var a1 := wa + TAU * (i + 1) / n
 		var p: int = order[i]
 		var col: Color = GREEN if p <= 0 else (RED if board.is_red(p) else BLACK)
+		if p == _win and ph > T_SETTLE + 0.1 and ph < 8.6:   # the pocket the ball sits in lights up
+			col = col.lerp(P.GOLD, 0.55 + 0.3 * sin(t * 8.0))
 		_quad(c + Vector3(cos(a0) * 1.3, 0.01, sin(a0) * 1.3), c + Vector3(cos(a1) * 1.3, 0.01, sin(a1) * 1.3),
 			c + Vector3(cos(a1) * 1.88, 0.01, sin(a1) * 1.88), c + Vector3(cos(a0) * 1.88, 0.01, sin(a0) * 1.88), col)
 		# Frets: thin brass dividers between the pockets.
@@ -395,13 +400,15 @@ func _draw_wheel(ph: float) -> void:
 	var bs := proj(ball[0])
 	var bv: float = ball[1]
 	if bv > 0.01:
-		var br: float = maxf(1.2, 1.3 * k)
+		var br: float = maxf(1.5, 1.6 * k)
 		canvas.draw_circle(bs + Vector2(0, br * 0.6), br, Color(0, 0, 0, 0.45 * bv), true, -1.0, false)   # its shadow
+		canvas.draw_circle(bs, br + maxf(1.0, k * 0.5), Color(0.05, 0.03, 0.02, 0.8 * bv), true, -1.0, false)   # outline
 		canvas.draw_circle(bs, br, Color(Color("#f4f1e8"), bv), true, -1.0, false)
 		canvas.draw_rect(Rect2(bs - Vector2(br * 0.5, br * 0.6), Vector2(maxf(1.0, k * 0.6), maxf(1.0, k * 0.6))), Color(1, 1, 1, bv))
 	# The result marker pops up over the wheel once the ball has settled.
 	if ph > T_SETTLE + 0.1 and ph < 8.6:
-		var up := proj(c + Vector3(0, 1.5 + 0.1 * sin(t * 4.0), 0))
+		# Hung over the ball itself, on a thin gold line down to it, so the number reads as its pocket.
+		var up := proj(c + Vector3(0, 1.5 + 0.1 * sin(t * 4.0), 0))   # over the wheel
 		var mc: Color = GREEN if _win <= 0 else (RED if board.is_red(_win) else BLACK)
 		var font := P.font()
 		var lab := str(_win)
@@ -457,23 +464,36 @@ func _draw_chips(ph: float) -> void:
 
 
 ## The croupier's arm and rake, reaching in from the right.
+## The rake: no hands on it. A croupier's stick that works by itself, glowing faintly gold,
+## a trail of sparkles behind it as it moves. It floats by the wheel, drifts down to the
+## losers' lane, sweeps them in, and floats back.
 func _draw_rake(ph: float) -> void:
-	var head := _rake_head(ph)
-	var hand := head + Vector3(2.0, 0.9, -1.4)   # the handle's end, in the croupier's hand
+	var bob := Vector3(0, 0.05 * sin(t * 2.2), 0)
+	var head := _rake_head(ph) + bob
+	var tail := head + Vector3(0.35, 1.0, 1.2)   # the handle: always the same angle, back and up
+	# The trail: where the head was over the last moment (fixed samples, no allocation).
+	for i in range(1, 9):
+		var past := _rake_head(maxf(0.0, ph - i * 0.04)) + bob
+		var tp := proj(past + Vector3(0, 0.06, 0))
+		var a: float = 0.55 * (1.0 - i / 9.0)
+		if past.distance_to(head) > 0.02:
+			canvas.draw_rect(Rect2(tp - Vector2(0.5, 0.5) * k, Vector2(maxf(1.0, k), maxf(1.0, k))), Color(1.0, 0.9, 0.55, a))
 	var hs := proj(head)
-	var hn := proj(hand)
-	canvas.draw_line(hs, hn, Color("#c8a46a"), maxf(1.0, k * 0.8))
-	var a := proj(head + Vector3(-0.45, 0, 0))
-	var b := proj(head + Vector3(0.45, 0, 0))
-	canvas.draw_line(a, b, Color("#d8b47a"), maxf(2.0, k * 1.4))
-	# Sleeve: a black dinner jacket with a white cuff, coming in off the right edge.
-	var elbow := Vector2(res.x - 14 * k, hn.y + 18 * k)
-	var jacket := Color("#14111a")
-	canvas.draw_colored_polygon(PackedVector2Array([hn + Vector2(1, -3) * k, hn + Vector2(5, 3) * k, elbow + Vector2(6, 8) * k, elbow + Vector2(-5, -2) * k]), jacket)
-	canvas.draw_colored_polygon(PackedVector2Array([elbow + Vector2(-5, -2) * k, elbow + Vector2(6, 8) * k, Vector2(res.x + 2, res.y * 0.9), Vector2(res.x + 2, elbow.y - 10 * k)]), jacket)
-	canvas.draw_line(hn + Vector2(1, -3) * k, elbow + Vector2(-5, -2) * k, Color("#2a2433"), maxf(1.0, k * 0.6))
-	canvas.draw_rect(Rect2(hn - Vector2(2, 3) * k, Vector2(5, 5) * k), Color("#e8e0d0"))
-	canvas.draw_rect(Rect2(hn - Vector2(3, 1) * k, Vector2(3, 3) * k), Color("#d9a47a"))
+	var ts := proj(tail)
+	# A soft halo round the head, breathing.
+	var glow: float = 0.5 + 0.5 * sin(t * 3.0)
+	var hr: float = _f * 0.5 / _depth(head)
+	canvas.draw_circle(hs, hr, Color(1.0, 0.85, 0.45, 0.07 + 0.05 * glow), true, -1.0, false)
+	canvas.draw_circle(hs, hr * 0.55, Color(1.0, 0.9, 0.6, 0.08 + 0.06 * glow), true, -1.0, false)
+	canvas.draw_line(hs, ts, Color("#c8a46a"), maxf(1.0, k * 0.8))
+	canvas.draw_line(hs, ts, Color(1.0, 0.95, 0.75, 0.25 * glow), maxf(1.0, k * 0.4))
+	var a2 := proj(head + Vector3(-0.42, 0, 0))
+	var b2 := proj(head + Vector3(0.42, 0, 0))
+	canvas.draw_line(a2, b2, Color("#d8b47a"), maxf(2.0, k * 1.4))
+	# A twinkle at the handle's end.
+	var tw: float = maxf(1.0, round(2.0 * k * (0.6 + 0.4 * glow)))
+	canvas.draw_rect(Rect2(ts - Vector2(tw, 0), Vector2(tw * 2 + 1, 1)), Color(1.0, 0.95, 0.7, 0.8))
+	canvas.draw_rect(Rect2(ts - Vector2(0, tw), Vector2(1, tw * 2 + 1)), Color(1.0, 0.95, 0.7, 0.8))
 
 
 ## Foreground: the near rail out of focus, smoke, and a soft vignette.

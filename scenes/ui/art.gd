@@ -618,6 +618,29 @@ static func rbox(ci: CanvasItem, r: Rect2, fill: Color, border: Color, radius: i
 	sb.draw(ci.get_canvas_item(), r)
 
 
+## Like rbox, but each corner has its own radius (x top-left, y top-right, z bottom-right,
+## w bottom-left): the felt rounds only the outside corners of its shape.
+static func rbox_corners(ci: CanvasItem, r: Rect2, fill: Color, border: Color, radii: Vector4, width: int = 1) -> void:
+	var key := "c|%s|%s|%s|%d" % [fill.to_html(), border.to_html(), str(radii), width]
+	var sb: StyleBoxFlat = _rbox_cache.get(key)
+	if sb == null:
+		sb = StyleBoxFlat.new()
+		sb.bg_color = fill
+		sb.draw_center = fill.a > 0.0
+		sb.border_color = border
+		sb.set_border_width_all(width if border.a > 0.0 else 0)
+		sb.corner_radius_top_left = int(radii.x)
+		sb.corner_radius_top_right = int(radii.y)
+		sb.corner_radius_bottom_right = int(radii.z)
+		sb.corner_radius_bottom_left = int(radii.w)
+		sb.corner_detail = 4
+		sb.anti_aliasing = false
+		if _rbox_cache.size() > 512:
+			_rbox_cache.clear()
+		_rbox_cache[key] = sb
+	sb.draw(ci.get_canvas_item(), r)
+
+
 ## A plaque: dark lacquer with a brass hairline and brass corner studs (`dark` = deeper still).
 static func plaque(ci: CanvasItem, r: Rect2, dark: bool = false) -> void:
 	var base := Color("#100d14") if dark else Color("#1a1520")
