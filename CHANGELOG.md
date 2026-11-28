@@ -3,6 +3,10 @@
 The version is shown bottom-right on the title screen (`core/version.gd`). Every update bumps
 the last number; a bigger change of direction bumps the middle one.
 
+## 0.0.67
+- **A magic rake on the home table.** The croupier is gone. The rake works by itself, glowing faintly gold with a twinkle at the end of its handle, and leaves a trail of sparkles as it moves. It floats beside the wheel, drifts down to the losers' lane, sweeps them in and floats back. It still never touches the winning stack.
+- **The number is back over the wheel.** The box floats over the centre of the wheel again, with no line, and the winning pocket still glows gold so you can see which one it means.
+
 ## 0.0.66
 - **You can see the home table's number is right.** The pockets on that wheel are only a couple of pixels wide, so the ball's pocket was impossible to read.
   - The winning pocket now lights up gold on the wheel.
